@@ -10,6 +10,8 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 | `index.html`, `dash.js` | Landing page, sign-in, and "My events" |
 | `app.html`, `app.js` | The planner (`/edit/<id>`) and the public guest page (`/e/<code>`) |
 | `assets.js` | All illustrations, embedded |
+| `brand/`, `brand.js`, `brand.css` | Supra logo (light and dark-surface versions), emblem, favicon PNGs; the shared logo helper and theme switching |
+| `favicon.svg`, `favicon.ico` | Browser icon (emblem on warm ivory) |
 | `i18n.js` | English and Georgian text |
 | `config.js` | Your Supabase URL and public key |
 | `supabase/schema.sql` | Database table and access rules |

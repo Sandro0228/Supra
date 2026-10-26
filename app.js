@@ -327,7 +327,7 @@ function renderTop(){
   sb.hidden=saveState!=='error';sb.textContent=t('save');
   st.textContent=saveState==='saving'?t('saving'):saveState==='error'?t('notSaved'):dirty?t('unsaved'):t('saved');
   st.dataset.state=saveState==='error'||dirty?'dirty':'ok';
-  const bk=$('#backlink');if(bk){bk.title=t('myEvents');bk.setAttribute('aria-label',t('myEvents'))}
+  const bk=$('#backlink');if(bk){bk.setAttribute('aria-label',t('logoHome'));$('#backtxt').textContent=t('myEvents')}
   $('.navwrap').setAttribute('aria-label',t('planner'));
   const sv=$('#savestate');sv.setAttribute('aria-label',t('saveStatus'));
   const hn=$('#hint'),touch=matchMedia('(pointer:coarse)').matches;hn.hidden=!hintOpen||(!!(sel.kind||panel)&&isPhone());
@@ -929,7 +929,8 @@ function guestRender(){
       <button type="submit" class="btn primary gfind">${t('fgFind')}</button>
     </form>
     <div id="gres" class="gres" aria-live="polite"></div><div id="gmap" class="gmap"></div>
-    ${MODE==='edit'?`<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>`:''}</div>`;
+    ${MODE==='edit'?`<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>`:''}
+    <footer class="gpowered"><span>${esc(t('poweredBy'))}</span>${SupraLogo({kind:'full',width:100,alt:UL()==='ka'?'':'Supra',cls:'gplogo'})}</footer></div>`;
   guestShow();
 }
 function guestStatusMsg(st){return{short:t('fgShort'),many:t('fgMany'),rate_limited:t('fgRate'),

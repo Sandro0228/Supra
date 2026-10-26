@@ -1,0 +1,7 @@
+/* Supra logo: keep the artwork's proportions, never filter or shadow it; pick the variant for the actual background. */
+.brand{display:inline-flex;align-items:center;flex:none;line-height:0}
+.brandimg{display:block;width:var(--bw);height:auto;max-width:none}
+.brandimg-d{display:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .brandimg-l{display:none}:root:not([data-theme="light"]) .brandimg-d{display:block}}
+:root[data-theme="dark"] .brandimg-l{display:none}
+:root[data-theme="dark"] .brandimg-d{display:block}

@@ -430,7 +430,9 @@ en:{
   "lang_ka":"ქართული",
   "lang_en":"English",
   "guestWord":"Guest",
-  "headTableMain":"Main table"
+  "headTableMain":"Main table",
+  "logoHome":"Supra — My events",
+  "poweredBy":"Powered by",
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -862,6 +864,8 @@ ka:{
   "lang_ka":"ქართული",
   "lang_en":"English",
   "guestWord":"სტუმარი",
-  "headTableMain":"მთავარი მაგიდა"
+  "headTableMain":"მთავარი მაგიდა",
+  "logoHome":"Supra — ჩემი ღონისძიებები",
+  "poweredBy":"შექმნილია Supra-ს დახმარებით",
 }
 };

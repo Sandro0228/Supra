@@ -6,7 +6,10 @@
 <title>Supra · Wedding seating planner</title>
 <meta name="description" content="Plan who sits where at your wedding, with every guest drawn at their seat. Free floor plan, place cards and a find-my-seat page for guests.">
 <script>try{var th=localStorage.getItem("supra.theme");if(th)document.documentElement.dataset.theme=th}catch(e){}</script>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="/brand.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
 <style>
 /* Layout: one calm column — a hero that shows the head-table illustration, then either the sign-in card or the event list */
@@ -45,7 +48,9 @@ ul.events{list-style:none;margin:0;padding:0}
 
 .wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
 header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.logo{font-family:var(--display);font-size:26px;letter-spacing:.02em;flex:1}
+.logo{flex:0 0 auto;margin-right:auto;display:flex;align-items:center;padding-block:4px;padding-right:8px}
+.hdrlogo{--bw:170px}
+@media (max-width:600px){.hdrlogo{--bw:130px}}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:0;background:var(--panel);padding:6px 10px;font-size:13px}
 
@@ -97,11 +102,13 @@ h2+.field{margin-top:4px}
 @media (max-width:420px){.newgrid{grid-template-columns:minmax(0,1fr)}}
 .newgrid .field{min-width:0}
 :lang(ka) .lbl{text-transform:none;letter-spacing:.02em;font-size:12px}
+.who{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+@media (max-width:600px){.who{order:10;flex-basis:100%;text-align:left}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo">Supra</div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
+  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
   <main>
   <section class="hero" aria-labelledby="tag">
     <h1 id="tag">Plan who sits where, with every guest drawn at their seat.</h1>

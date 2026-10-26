@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Supra · Seating planner</title>
 <script>try{var th=localStorage.getItem("supra.theme");if(th)document.documentElement.dataset.theme=th}catch(e){}</script>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="/brand.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
 <style>
 /* Layout: canvas-first. A slim top bar with the three panels (Event, Guests, Share); the paper plan fills the rest;
@@ -14,7 +17,12 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
 body.guestmode{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
 #app{height:100dvh;display:flex;flex-direction:column}
 .bar{display:flex;align-items:center;gap:10px;padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);min-height:56px;flex-wrap:wrap}
-.back{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;color:var(--ink);text-decoration:none;font-size:22px;line-height:1}
+.back{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:4px 10px 4px 4px;border-radius:10px;color:var(--ink);text-decoration:none;font-size:13px;line-height:1.2;flex:none;border-right:1px solid var(--line);border-radius:10px 0 0 10px;margin-right:2px}
+.back .chev{width:18px;height:18px;flex:none}
+.edlogo{--bw:96px}.edemb{--bw:26px;display:none}
+.backtxt{color:var(--muted);white-space:nowrap}
+@media (max-width:1099px){.edlogo{display:none}.edemb{display:inline-flex}}
+@media (max-width:599px){.edemb{display:none}.back{border-right:0;padding-right:6px}}
 .back:hover{background:var(--soft)}
 .title{display:flex;flex-direction:column;min-width:0;line-height:1.2}
 #evname{margin:0;font-weight:400;font-family:var(--display);font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
@@ -248,13 +256,15 @@ a.btn{text-decoration:none;color:inherit}
 .chip{white-space:normal;text-align:left}
 .nav button{min-width:0}.nav button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:400px){.nav button svg{display:none}.nav button{padding:7px 6px}}
+.gpowered{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.gplogo{--bw:100px}
 </style>
 </head>
 <body>
 
 <div id="app">
 <header class="bar">
-  <a class="back" id="backlink" href="/" aria-label="My events" title="My events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></a>
+  <a class="back" id="backlink" href="/" aria-label="Supra — My events"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="brand edlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="96" height="34" alt=""><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="96" height="34" alt=""></span><span class="brand edemb"><img class="brandimg brandimg-l" src="/brand/supra-emblem.svg" width="26" height="26" alt=""><img class="brandimg brandimg-d" src="/brand/supra-emblem-dark.svg" width="26" height="26" alt=""></span><span class="backtxt" id="backtxt">My events</span></a>
   <div class="title"><h1 id="evname">Supra</h1><span id="stats"></span></div>
   <nav class="navwrap" aria-label="Planner"><div class="nav" id="nav" role="tablist" aria-label="Panels"></div></nav>
   <div class="tools">
@@ -292,6 +302,7 @@ a.btn{text-decoration:none;color:inherit}
 <script src="/config.js"></script>
 <script src="/assets.js"></script>
 <script src="/i18n.js"></script>
+<script src="/brand.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>
