@@ -6,7 +6,7 @@ const CFG=window.SUPRA_CONFIG||{},L=window.SUPRA_I18N;
 let lang=(()=>{try{return localStorage.getItem('supra.lang')}catch(e){return null}})()||((navigator.language||'').startsWith('ka')?'ka':'en');
 const t=(k,v)=>{let s=(L[lang]||L.en)[k]??L.en[k]??k;if(v)for(const x in v)s=s.replace('{'+x+'}',v[x]);return s};
 const next=new URLSearchParams(location.search).get('next');
-let SB=null,session=null,events=[],confirmId=null,msg={text:'',err:false},sent=false;
+let SB=null,session=null,events=[],confirmId=null,msg={text:'',err:false},sent=false,mode='signin',recovery=false;
 function toast(m){const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
 const rand=n=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';const r=crypto.getRandomValues(new Uint8Array(n));r.forEach(v=>s+=a[v%a.length]);return s};
 const fmtDate=d=>d?new Date(d+'T12:00').toLocaleDateString(lang==='ka'?'ka-GE':'en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
@@ -20,14 +20,25 @@ function chrome(){
   const so=$('#signout');so.hidden=!session;so.textContent=t('dSignOut');
 }
 function render(){chrome();session?renderDash():renderSignIn()}
+function friendly(err){const m=(err&&err.message||'').toLowerCase();
+  if(m.includes('invalid login'))return t('dBadLogin');if(m.includes('already registered')||m.includes('already been registered'))return t('dExists');
+  if(m.includes('rate limit'))return t('dRate');if(m.includes('password')&&(m.includes('least')||m.includes('weak')||m.includes('short')))return t('dWeak');
+  if(m.includes('not confirmed'))return t('dUnconfirmed');return err&&err.message||t('dErr')}
 function renderSignIn(){
-  $('#main').innerHTML=`<form class="card signin" id="sform" novalidate>
-    ${sent?`<p class="msg">${esc(t('dSent'))}</p>`:`
+  const tab=(k,l)=>`<button type="button" class="tabbtn" data-mode="${k}" aria-pressed="${mode===k}">${esc(t(l))}</button>`;
+  let body;
+  if(recovery)body=`<h2>${esc(t('dNewPw'))}</h2><label class="field"><span class="lbl">${esc(t('dPassword'))}</span><input class="inp" id="pw" type="password" autocomplete="new-password" minlength="6" required></label><button class="btn primary" type="submit">${esc(t('dSavePw'))}</button>`;
+  else if(sent)body=`<p class="msg">${esc(t(mode==='forgot'?'dResetSent':mode==='signup'?'dConfirm':'dSent'))}</p><button type="button" class="linkish" data-mode="signin">${esc(t('dBack'))}</button>`;
+  else if(mode==='link'||mode==='forgot')body=`<label class="field"><span class="lbl">${esc(t('dEmail'))}</span><input class="inp" id="email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
+    <button class="btn primary" type="submit">${esc(t(mode==='forgot'?'dSendReset':'dSend'))}</button><button type="button" class="linkish" data-mode="signin">${esc(t('dBack'))}</button>`;
+  else body=`<div class="tabs2">${tab('signin','dSignIn')}${tab('signup','dSignUp')}</div>
     <label class="field"><span class="lbl">${esc(t('dEmail'))}</span><input class="inp" id="email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
-    <button class="btn primary" type="submit">${esc(t('dSend'))}</button>
-    ${CFG.googleSignIn?`<div class="or">${esc(t('dOr'))}</div><button class="btn" type="button" id="google">${esc(t('dGoogle'))}</button>`:''}`}
-    ${msg.text?`<p class="msg ${msg.err?'err':''}">${esc(msg.text)}</p>`:''}
-  </form>`;
+    <label class="field"><span class="lbl">${esc(t('dPassword'))}</span><input class="inp" id="pw" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" minlength="6" required>${mode==='signup'?`<span class="small">${esc(t('dPwHint'))}</span>`:''}</label>
+    <button class="btn primary" type="submit">${esc(t(mode==='signup'?'dCreateAcct':'dSignIn'))}</button>
+    <div class="row2l">${mode==='signin'?`<button type="button" class="linkish" data-mode="forgot">${esc(t('dForgot'))}</button>`:'<span></span>'}<button type="button" class="linkish" data-mode="link">${esc(t('dUseLink'))}</button></div>
+    ${CFG.googleSignIn?`<div class="or">${esc(t('dOr'))}</div><button class="btn" type="button" id="google">${esc(t('dGoogle'))}</button>`:''}`;
+  $('#main').innerHTML=`<form class="card signin" id="sform" novalidate>${body}${msg.text?`<p class="msg ${msg.err?'err':''}" role="alert">${esc(msg.text)}</p>`:''}</form>`;
+  $('#email')?.focus();
 }
 function renderDash(){
   const today=new Date().toISOString().slice(0,10);
@@ -66,10 +77,18 @@ async function create(fields){
 }
 document.addEventListener('submit',async e=>{
   e.preventDefault();
-  if(e.target.id==='sform'){const email=$('#email').value.trim();
-    if(!/^\S+@\S+\.\S+$/.test(email)){msg={text:t('dEmail')+'?',err:true};renderSignIn();return}
-    const{error}=await SB.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+(next||'/')}});
-    if(error){msg={text:error.message||t('dErr'),err:true};renderSignIn()}else{sent=true;msg={text:'',err:false};renderSignIn()}}
+  if(e.target.id==='sform'){
+    const email=$('#email')?.value.trim(),pw=$('#pw')?.value||'',btn=e.target.querySelector('[type=submit]');
+    const fail=err=>{msg={text:typeof err==='string'?err:friendly(err),err:true};renderSignIn()};
+    if(!recovery&&!/^\S+@\S+\.\S+$/.test(email||''))return fail(t('dEmailBad'));
+    if((recovery||mode==='signin'||mode==='signup')&&pw.length<6)return fail(t('dWeak'));
+    btn.disabled=true;msg={text:'',err:false};
+    if(recovery){const{error}=await SB.auth.updateUser({password:pw});if(error)return fail(error);recovery=false;history.replaceState(null,'','/');render();load();return}
+    if(mode==='signin'){const{error}=await SB.auth.signInWithPassword({email,password:pw});if(error)return fail(error);return}
+    if(mode==='signup'){const{data,error}=await SB.auth.signUp({email,password:pw,options:{emailRedirectTo:location.origin+(next||'/')}});if(error)return fail(error);
+      if(!data.session){sent=true;renderSignIn()}return}
+    if(mode==='forgot'){const{error}=await SB.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/'});if(error)return fail(error);sent=true;renderSignIn();return}
+    const{error}=await SB.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+(next||'/')}});if(error)return fail(error);sent=true;renderSignIn()}
   if(e.target.id==='nform'){const name=$('#nname').value.trim();
     if(!name){const n=$('#nerr');n.textContent=t('dNameReq');n.hidden=false;$('#nname').focus();return}
     create({name,type:$('#ntype').value,event_date:$('#ndate').value||null})}
@@ -85,6 +104,7 @@ document.addEventListener('change',async e=>{
 });
 document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.mode){mode=d.mode;sent=false;msg={text:'',err:false};renderSignIn();return}
   if(d.lang){lang=d.lang;try{localStorage.setItem('supra.lang',lang)}catch(x){}render();return}
   if(b.id==='signout'){await SB.auth.signOut();return}
   if(b.id==='google'){SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+(next||'/')}});return}
@@ -100,7 +120,7 @@ async function boot(){
   const{data}=await SB.auth.getSession();session=data.session;
   if(session&&next&&next.startsWith('/')){location.replace(next);return}
   render();if(session)load();
-  SB.auth.onAuthStateChange((ev,s)=>{const was=!!session;session=s;
+  SB.auth.onAuthStateChange((ev,s)=>{if(ev==='PASSWORD_RECOVERY'){recovery=true;session=null;render();return}if(recovery)return;const was=!!session;session=s;
     if(s&&!was){if(next&&next.startsWith('/')){location.replace(next);return}render();load()}
     else if(!s&&was){events=[];sent=false;render()}});
 }
