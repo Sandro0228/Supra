@@ -433,6 +433,15 @@ en:{
   "headTableMain":"Main table",
   "logoHome":"Supra — My events",
   "poweredBy":"Powered by",
+  "dlPdf":"Download PDF",
+  "dlPng":"Download picture (PNG)",
+  "pdfPlanHint":"The PDF has the plan, then every guest A–Z with their table, then a list for each table. A4, ready to print.",
+  "cardsPdf":"Download all pages as one PDF",
+  "pdfAZ":"Guests A–Z",
+  "pdfByTable":"Guests by table",
+  "pdfMaking":"Preparing the PDF…",
+  "pdfFail":"Couldn't make the PDF. Check your connection and try again.",
+  "pageN":"Page {n} of {of}"
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -867,5 +876,14 @@ ka:{
   "headTableMain":"მთავარი მაგიდა",
   "logoHome":"Supra — ჩემი ღონისძიებები",
   "poweredBy":"შექმნილია Supra-ს დახმარებით",
+  "dlPdf":"PDF-ის ჩამოტვირთვა",
+  "dlPng":"სურათის ჩამოტვირთვა (PNG)",
+  "pdfPlanHint":"PDF-ში არის გეგმა, შემდეგ ყველა სტუმარი ანბანის მიხედვით თავისი მაგიდით და ბოლოს — სია თითოეული მაგიდისთვის. A4 ფორმატი, დასაბეჭდად მზად.",
+  "cardsPdf":"ყველა გვერდის ჩამოტვირთვა ერთ PDF-ად",
+  "pdfAZ":"სტუმრები ანბანის მიხედვით",
+  "pdfByTable":"სტუმრები მაგიდების მიხედვით",
+  "pdfMaking":"PDF მზადდება…",
+  "pdfFail":"PDF ვერ შეიქმნა. შეამოწმე ინტერნეტი და სცადე თავიდან.",
+  "pageN":"გვერდი {n} / {of}"
 }
 };

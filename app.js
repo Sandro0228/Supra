@@ -395,7 +395,7 @@ function renderLeft(){
     </section>
     ${det('print',t('printOuts'),`<div class="field"><span class="lbl">${t('cards')}</span><p class="muted">${t('cardsHint')}</p><button type="button" class="btn" data-act="cards">${t('makeCards')}</button></div>
       <div class="field"><span class="lbl">${t('caterer')}</span><p class="muted">${t('catererHint')}</p><button type="button" class="btn" data-act="caterer">${t('openCaterer')}</button></div>
-      <div class="field"><span class="lbl">${t('planImg')}</span><p class="muted">${t('planImgHint')}</p><button type="button" class="btn" data-act="planimg">${t('makeImg')}</button></div>`)}`}
+      <div class="field"><span class="lbl">${t('planImg')}</span><p class="muted">${t('planImgHint')}</p><div class="row"><button type="button" class="btn" data-act="planpdf">${t('dlPdf')}</button><button type="button" class="btn" data-act="planimg">${t('dlPng')}</button></div><p class="muted small">${t('pdfPlanHint')}</p></div>`)}`}
   L.innerHTML=h;
   if(panel==='guests')doFind();
   if(panel==='share')drawQR();
@@ -405,7 +405,7 @@ function doFind(){const q=($('#find')?.value||'').trim().toLowerCase(),box=$('#f
   S.waiting.forEach(id=>{const G=S.guests[id];if(G&&G.name.toLowerCase().includes(q))res.push(`<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`)});
   box.innerHTML=res.join('')||`<span class="muted">${t('noOne')}</span>`}
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector(`script[src="${src}"]`)&&window.__loaded?.[src])return ok();const s=document.createElement('script');s.src=src;s.onload=()=>{(window.__loaded=window.__loaded||{})[src]=1;ok()};s.onerror=no;document.head.appendChild(s)})}
-const QRLIB='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',XLSXLIB='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const QRLIB='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',XLSXLIB='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',PDFLIB='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 async function setLookup(ch){
   const args={p_event:ROW.id,p_mode:ch.mode||ROW.lookup_mode||'prefix',p_pin:ch.pin===undefined?null:ch.pin,p_mates:ch.mates===undefined?!!ROW.show_tablemates:ch.mates};
   const{data,error}=await SB.rpc('set_guest_lookup',args);
@@ -619,6 +619,7 @@ function act(a){
     case'cards':placeCards();break;
     case'caterer':catererModal();break;
     case'planimg':planImage();break;
+    case'planpdf':planPdf();break;
     case'import':importModal();break;
     case'export':exportX();break;
   }
@@ -796,6 +797,55 @@ function svgToPng(inner,vb,W,H,scale=2){return new Promise((ok,no)=>{
 const fname=s=>(S.event.name||t('fileBase')).replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-|-$/g,'').toLowerCase()+s;
 async function planImage(){const keep=sel;sel={kind:null};const{B,inner}=planSVG();sel=keep;
   try{const r=await svgToPng(allDefs()+inner,`${B.x} ${B.y} ${B.w} ${B.h}`,B.w,B.h,2);offerFile(fname('-'+t('fileSeating')+'.png'),r.blob,r.url)}catch(e){toast(t('couldntSave'))}}
+/* ---------------- PDF ----------------
+   Pages are pictures (the plan, place cards) or lists drawn on a canvas with the page's own fonts, so Georgian
+   names print correctly without embedding a font in the PDF. A4, 72pt per inch. */
+const A4={w:595.28,h:841.89};
+async function savePdf(pages,name,title){
+  await loadScript(PDFLIB);const{jsPDF}=window.jspdf;let doc=null;
+  for(const pg of pages){const land=pg.w>pg.h&&!pg.fill,W=land?A4.h:A4.w,H=land?A4.w:A4.h;
+    if(!doc)doc=new jsPDF({orientation:land?'landscape':'portrait',unit:'pt',format:'a4',compress:true});else doc.addPage('a4',land?'landscape':'portrait');
+    const m=pg.fill?0:28,sc=Math.min((W-2*m)/pg.w,(H-2*m)/pg.h),iw=pg.w*sc,ih=pg.h*sc;
+    doc.addImage(pg.url,pg.url.startsWith('data:image/jpeg')?'JPEG':'PNG',(W-iw)/2,pg.fill?0:m,iw,ih,undefined,'FAST')}
+  doc.setProperties({title:title||'Supra',creator:'Supra'});
+  offerFile(name,doc.output('blob'))}
+/* Lists for the plan PDF: everyone A–Z (for the entrance), then each table (for the venue staff). */
+function listPages(){
+  const W=1588,H=2246,M=120,F="'Noto Sans Georgian', system-ui, sans-serif",FD="Marcellus, 'Noto Serif Georgian', Georgia, serif",p=P();
+  const rows=[];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)rows.push({name:g.name,table:tName(x),seat:i+1})}));
+  const coll=new Intl.Collator(UL()==='ka'?'ka':'en',{sensitivity:'base'});rows.sort((a,b)=>coll.compare(a.name,b.name));
+  const pages=[];let c,x,y,col;
+  const page=(heading)=>{const cv=document.createElement('canvas');cv.width=W;cv.height=H;c=cv.getContext('2d');c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);
+    c.fillStyle=p.ink;c.font=`56px ${FD}`;c.textBaseline='alphabetic';c.fillText(S.event.name||'Supra',M,M+40);
+    c.fillStyle=p.accent;c.font=`30px ${F}`;c.fillText([gDate(),heading].filter(Boolean).join('  ·  '),M,M+96);
+    c.strokeStyle=p.accent;c.lineWidth=2;c.beginPath();c.moveTo(M,M+124);c.lineTo(W-M,M+124);c.stroke();
+    pages.push(cv);col=0;x=M;y=M+200};
+  const fit=(txt,max)=>{if(c.measureText(txt).width<=max)return txt;while(txt.length>1&&c.measureText(txt+'…').width>max)txt=txt.slice(0,-1);return txt+'…'};
+  // A–Z: two columns, name left, table and seat right
+  const colW=(W-2*M-60)/2,lh=58;page(t('pdfAZ'));
+  rows.forEach(r=>{if(y>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfAZ'))}
+    const right=`${r.table} · ${t('seatN',{number:r.seat})}`;c.font=`28px ${F}`;const rw=c.measureText(right).width;
+    c.fillStyle=p.accent;c.fillText(right,x+colW-rw,y);c.fillStyle=p.ink;c.font=`32px ${F}`;c.fillText(fit(r.name,colW-rw-30),x,y);
+    c.strokeStyle='#E6E1DA';c.lineWidth=1;c.beginPath();c.moveTo(x,y+18);c.lineTo(x+colW,y+18);c.stroke();y+=lh});
+  // by table: each table as a block; a block never splits across columns
+  page(t('pdfByTable'));
+  S.tables.forEach(tb=>{const names=tb.seats.map((id,i)=>id&&S.guests[id]?`${i+1}. ${S.guests[id].name}`:null).filter(Boolean);if(!names.length)return;
+    const need=70+names.length*50+40;if(y+need>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfByTable'))}
+    c.fillStyle=p.accent;c.font=`40px ${FD}`;c.fillText(fit(tName(tb),colW),x,y);
+    c.font=`26px ${F}`;c.fillStyle='#8A8580';c.fillText(t('statSeats',{occupied:names.length,capacity:tb.seats.length}),x,y+40);y+=90;
+    c.fillStyle=p.ink;c.font=`30px ${F}`;names.forEach(n=>{c.fillText(fit(n,colW),x,y);y+=50});y+=40});
+  // page numbers
+  pages.forEach((cv,i)=>{const g=cv.getContext('2d');g.fillStyle='#8A8580';g.font=`24px ${F}`;const s=t('pageN',{n:i+1,of:pages.length});g.fillText(s,W-M-g.measureText(s).width,H-60)});
+  return pages.map(cv=>({url:cv.toDataURL('image/png'),w:W,h:H}));
+}
+async function planPdf(){
+  const btn=document.querySelector('[data-act=planpdf]');if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true')}
+  toast(t('pdfMaking'));
+  try{await document.fonts?.ready;const keep=sel;sel={kind:null};const{B,inner}=planSVG();sel=keep;
+    const r=await svgToPng(allDefs()+inner,`${B.x} ${B.y} ${B.w} ${B.h}`,B.w,B.h,2);
+    await savePdf([{url:r.url,w:B.w,h:B.h},...listPages()],fname('-'+t('fileSeating')+'.pdf'),(S.event.name||'Supra')+' · '+t('planLabel'))}
+  catch(e){console.error(e);toast(t('pdfFail'))}
+  if(btn){btn.disabled=false;btn.removeAttribute('aria-busy')}}
 async function dlQR(){const c=$('#qr canvas');if(!c)return;const pad=document.createElement('canvas');pad.width=c.width+80;pad.height=c.height+120;const x=pad.getContext('2d');
   x.fillStyle='#FFFFFF';x.fillRect(0,0,pad.width,pad.height);x.drawImage(c,40,40);x.fillStyle='#24302A';x.font='600 20px Noto Sans Georgian, sans-serif';x.textAlign='center';x.fillText(t('fgTitle'),pad.width/2,c.height+80);
   pad.toBlob(b=>offerFile(fname('-'+t('qrFile')+'.png'),b,pad.toDataURL()),'image/png')}
@@ -820,6 +870,10 @@ async function placeCards(){
     try{out.push(await svgToPng(allDefs()+s,'0 0 794 1123',794,1123,2))}catch(e){}
   }
   const box=$('#cardpages');if(!box)return;
+  box.insertAdjacentHTML('beforebegin',`<div class="row"><button type="button" class="btn primary" id="cardspdf">${t('cardsPdf')}</button></div>`);
+  $('#cardspdf').onclick=async()=>{const b=$('#cardspdf');b.disabled=true;b.setAttribute('aria-busy','true');
+    try{await savePdf(out.map(r=>({url:r.url,w:794,h:1123,fill:true})),fname('-'+t('fileCards')+'.pdf'),t('cardsTitle'))}catch(e){console.error(e);toast(t('pdfFail'))}
+    b.disabled=false;b.removeAttribute('aria-busy')};
   box.innerHTML=out.map((r,i)=>`<figure><img src="${r.url}" alt="${t('page')} ${i+1}"><button type="button" class="btn sm" data-dlcard="${i}">${t('download')} · ${t('page')} ${i+1}</button></figure>`).join('');
   box.onclick=e=>{const b=e.target.closest('[data-dlcard]');if(b){const i=+b.dataset.dlcard;offerFile(fname(`-${t('fileCards')}-${i+1}.png`),out[i].blob,out[i].url)}};
 }
