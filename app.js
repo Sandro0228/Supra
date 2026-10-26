@@ -253,7 +253,7 @@ function planSVG(opt={}){
     g.seats.forEach((st,i)=>{
       const gid=x.seats[i],G=gid&&S.guests[gid],ang=Math.atan2(-st.oy,-st.ox)*180/Math.PI-90;
       const on=(!opt.guest&&sel.kind==='seat'&&sel.t===x.id&&sel.i===i)||(opt.hi&&opt.hi===gid);
-      tb+=`<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest?'':'role="button" tabindex="0"'} aria-label="${esc(seatLabel(x,i,G))}"><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
+      tb+=`<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest?'':`role="button" tabindex="0" aria-label="${esc(seatLabel(x,i,G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb+=`<circle class="ring" r="40" fill="${p.accent}" opacity="${on?.32:0}"/>`;
       tb+=G?person(G,p):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
       tb+=`</g></g>`;
