@@ -86,7 +86,7 @@ function person(G,P,withChair=true){return`${withChair?chairM():''}<g transform=
 /* ---------------- state ---------------- */
 let DRAFT='supra.draft';
 const CFG=window.SUPRA_CONFIG||{};let SB=null,ROW=null,MODE='edit',saveT=0;
-let S=null,PUB=null,hist=[],sel={kind:null},zoom=1,waitSel=null,confirmK=null,tab='plan',dirty=false,saveState='idle',ART=undefined,DL=undefined,readOnly=false,guestMode=false;
+let S=null,PUB=null,hist=[],sel={kind:null},zoom=1,waitSel=null,confirmK=null,dirty=false,saveState='idle',ART=undefined,DL=undefined,readOnly=false,guestMode=false;
 function mkGuest(name,look,extra){const id=uid();S.guests[id]=Object.assign({id,name,group:'',side:'',kid:false,meal:'',allergies:'',look:look||randLook(guessKind(name))},extra||{});return id}
 function sample(){
   S={event:{name:'Sandro & Tamta',type:'wedding',date:'2026-10-31',palette:'blush',lang:'en',shareLink:''},guests:{},waiting:[],rules:[],venue:[],tables:[]};
@@ -111,7 +111,7 @@ function clearDraft(){try{localStorage.removeItem(DRAFT)}catch(e){}}
 function markDirty(){if(MODE!=='edit')return;dirty=true;if(saveState!=='saving')saveState='idle';saveDraft();renderTop();clearTimeout(saveT);saveT=setTimeout(savePlan,1500)}
 function commit(fn){hist.push(JSON.stringify(S));if(hist.length>80)hist.shift();fn();resolveOverlaps();markDirty();renderAll()}
 function undo(){if(!hist.length)return;S=JSON.parse(hist.pop());markDirty();sel={kind:null};renderAll();toast(t('undone'))}
-function toast(m){const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
+function toast(m){const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;(document.fullscreenElement||document.body).appendChild(d);setTimeout(()=>d.remove(),2200)}
 const P=()=>PALETTES[S.event.palette]||PALETTES.blush;
 const T=id=>S.tables.find(x=>x.id===id);
 const V=id=>S.venue.find(x=>x.id===id);
@@ -284,61 +284,78 @@ function planSVG(opt={}){
 }
 
 /* ---------------- top bar ---------------- */
+/* ---------------- top bar ---------------- */
+let panel=null;const OPEN=new Set();
+const ICON={
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  full:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  unfull:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
+  event:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  guests:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5.5 5"/></svg>',
+  share:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>'};
+function curTheme(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
+function isFull(){return !!document.fullscreenElement||document.body.classList.contains('focus')}
+function hintSeen(){try{return localStorage.getItem('supra.hint')==='1'}catch(e){return false}}
 function renderTop(){
   const seated=S.tables.reduce((a,x)=>a+x.seats.filter(Boolean).length,0),cap=S.tables.reduce((a,x)=>a+x.seats.length,0);
   const sides={bride:0,groom:0};Object.values(S.guests).forEach(g=>{if(sides[g.side]!==undefined)sides[g.side]++});
   const nb=S.rules.filter(ruleBroken).length;
-  $('#stats').innerHTML=`<span>${seated} ${t('seated')} · ${cap-seated} ${t('emptySeats')}${S.waiting.length?` · ${S.waiting.length} ${t('waiting')}`:''}</span>${sides.bride||sides.groom?`<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>`:''}${nb?`<button class="warn" data-tab="guests">⚠ ${nb} ${nb>1?t('problems'):t('problem')}</button>`:''}`;
+  $('#evname').textContent=S.event.name||'Supra';
+  $('#stats').innerHTML=`<span>${seated}/${cap} ${t('seated')}${S.waiting.length?` · ${S.waiting.length} ${t('waiting')}`:''}</span>${sides.bride||sides.groom?`<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>`:''}${nb?`<button class="warn" data-panel="guests">⚠ ${nb}</button>`:''}`;
+  $('#nav').innerHTML=[['event','event'],['guests','tabGuests'],['share','tabShare']].map(([k,l])=>`<button data-panel="${k}" aria-pressed="${panel===k&&!sel.kind}">${ICON[k]}<span>${esc(t(l))}</span></button>`).join('');
   $('#lang').innerHTML=`<button data-lang="en" aria-pressed="${S.event.lang==='en'}">EN</button><button data-lang="ka" aria-pressed="${S.event.lang==='ka'}">ქარ</button>`;
-  $('#undo').textContent='↶ '+t('undo');
+  $('#undo').title=t('undo');$('#undo').setAttribute('aria-label',t('undo'));$('#undo').disabled=!hist.length;
+  const th=$('#theme');th.innerHTML=curTheme()==='dark'?ICON.sun:ICON.moon;
+  const fb=$('#full');fb.innerHTML=isFull()?ICON.unfull:ICON.full;fb.title=isFull()?t('exitFull'):t('fullscreen');fb.setAttribute('aria-label',fb.title);
   const sb=$('#save'),st=$('#savestate');
-  sb.hidden=readOnly;sb.textContent=t('save');sb.disabled=!dirty||saveState==='saving';
+  sb.hidden=saveState!=='error';sb.textContent=t('save');
   st.textContent=saveState==='saving'?t('saving'):saveState==='error'?t('notSaved'):dirty?t('unsaved'):t('saved');
   st.dataset.state=saveState==='error'||dirty?'dirty':'ok';
-  const bk=$('#backlink');if(bk)bk.textContent='← '+t('myEvents');
-  $('.brand small').textContent=t('brand');
-  $('#hint').textContent=t('hint');
-  $('#quickadd').innerHTML=`<button class="btn sm" data-act="addtable">${t('addTable')}</button>${['stage','bar','dance'].map(k=>`<button class="btn sm" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;$('#zfit').textContent=t('fit');
+  const bk=$('#backlink');if(bk){bk.title=t('myEvents');bk.setAttribute('aria-label',t('myEvents'))}
+  const hn=$('#hint');hn.hidden=hintSeen()||!!sel.kind||!!panel;hn.innerHTML=`<span>${esc(t('hintPlan'))}</span><button data-act="hintok" aria-label="${esc(t('close'))}">×</button>`;
+  $('#quickadd').innerHTML=`<button class="btn" data-act="addtable">${t('addTable')}</button>${['stage','bar','dance'].map(k=>`<button class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
+  $('#zfit').textContent=t('fit');
 }
 
-/* ---------------- left pane ---------------- */
+/* ---------------- panels ---------------- */
 const chipBtns=(attr,list,cur,lbl)=>`<div class="chips">${list.map(k=>`<button class="chip" ${attr}="${k}" aria-pressed="${cur===k}">${esc(lbl?lbl(k):t(k))}</button>`).join('')}</div>`;
+const det=(key,title,body)=>`<details class="more" data-sec="${key}" ${OPEN.has(key)?'open':''}><summary>${title}</summary><div class="body">${body}</div></details>`;
+const dhead=(title,sub)=>`<div class="dhead"><div style="min-width:0"><h2>${title}</h2>${sub?`<span class="muted">${sub}</span>`:''}</div><button class="icon" data-act="close" aria-label="${esc(t('close'))}">${ICON.close}</button></div>`;
 function renderLeft(){
-  const e=S.event;let h=`<div class="tabs" role="tablist">${['plan','guests','share'].map(k=>`<button role="tab" data-tab="${k}" aria-selected="${tab===k}">${t('tab'+k[0].toUpperCase()+k.slice(1))}</button>`).join('')}</div>`;
-  if(tab==='plan'){h+=`
-  <div class="sec"><h2>${t('event')}</h2>
-    <label class="field"><span class="lbl">${t('eventName')}</span><input id="ev-name" value="${esc(e.name)}"></label>
+  const L=$('#left');if(!panel||sel.kind){L.innerHTML='';return}
+  const e=S.event;let h='';
+  if(panel==='event'){h=dhead(t('event'))+`
+    <label class="field"><span class="lbl">${t('eventName')}</span><input id="ev-name" class="inp" value="${esc(e.name)}"></label>
     <div class="row2"><label class="field"><span class="lbl">${t('eventType')}</span><select id="ev-type">${EVENT_TYPES.map(([k,on])=>`<option value="${k}" ${on?'':'disabled'} ${e.type===k?'selected':''}>${t(k)}${on?'':' · '+t('soon')}</option>`).join('')}</select></label>
-    <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" type="date" value="${esc(e.date)}"></label></div>
-    <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal',Object.keys(PALETTES),e.palette,k=>PALETTES[k].name)}</div></div>
-  <div class="sec"><div class="row between"><h2>${t('tables')}</h2><button class="btn sm" data-act="addtable">${t('addTable')}</button></div>
-    <div class="tlist">${S.tables.map(x=>`<button class="titem" data-seltable="${x.id}" aria-current="${sel.t===x.id&&sel.kind==='table'}"><span>${esc(tName(x))} <small class="muted">${t(x.shape)}</small></span><span>${x.seats.filter(Boolean).length}/${x.seats.length}</span></button>`).join('')}</div></div>
-  <div class="sec"><h2>${t('venue')}</h2><p class="muted">${t('venueHint')}</p><div class="chips">${Object.keys(VENUE).map(k=>`<button class="chip" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}</div>
-    <button class="btn sm" data-act="arrange">${t('autoArrange')}</button></div>`}
-  else if(tab==='guests'){h+=`
-  <div class="sec"><h2>${t('findGuest')}</h2><input id="find" type="search" class="inp" placeholder="${t('findPh')}"><div class="search-res" id="findres"></div></div>
-  ${S.waiting.length?`<div class="sec"><h2>${t('waitingTitle')}</h2><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id=>`<button class="wchip" data-wait="${id}" aria-pressed="${waitSel===id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>`:''}
-  <div class="sec"><h2>${t('addGuests')}</h2>
-    <label class="field"><span class="lbl">${t('pasteNames')}</span><textarea id="bulk" rows="3" placeholder="ნინო ბერიძე&#10;Giorgi Kapanadze"></textarea></label>
-    <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${S.tables.map(x=>`<option value="${x.id}">${esc(tName(x))} (${x.seats.filter(v=>!v).length} ${t('free')})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
-    <div class="row"><button class="btn" data-act="bulk">${t('addNames')}</button><button class="btn" data-act="import">${t('importX')}</button><button class="btn" data-act="export">${t('exportX')}</button></div></div>
-  <div class="sec"><h2>${t('rules')}</h2>${S.rules.length?`<div class="rules">${S.rules.map(r=>{const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${esc(S.guests[r.a]?.name)} <b>${r.type==='together'?'＋':'≠'}</b> ${esc(S.guests[r.b]?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}</div>`:`<p class="muted">${t('noRules')}</p>`}<p class="muted">${t('rulesHint')}</p></div>
-  <div class="sec"><h2>${t('tools')}</h2><div class="row"><button class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button class="btn sm" data-act="randall">${t('restyle')}</button><button class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
-    ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
-    ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}</div>`}
-  else{h+=`
-  <div class="sec"><h2>${t('guestPage')}</h2><p class="muted">${t('guestPageHint')}</p>
+    <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" class="inp" type="date" value="${esc(e.date)}"></label></div>
+    <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal',Object.keys(PALETTES),e.palette,k=>PALETTES[k].name)}</div>
+    ${det('layout',t('layoutTools'),`<p class="muted">${t('venueHint')}</p><div class="chips">${Object.keys(VENUE).filter(k=>!['stage','bar','dance'].includes(k)).map(k=>`<button class="chip" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}</div><button class="btn sm" data-act="arrange">${t('autoArrange')}</button>`)}`}
+  else if(panel==='guests'){const total=Object.keys(S.guests).length;h=dhead(t('tabGuests'),`${total} ${t('guests')}`)+`
+    <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}"><div class="search-res" id="findres"></div>
+    ${S.waiting.length?`<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id=>`<button class="wchip" data-wait="${id}" aria-pressed="${waitSel===id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>`:''}
+    ${det('add',t('addGuests'),`<label class="field"><span class="lbl">${t('pasteNames')}</span><textarea id="bulk" rows="3" class="inp" placeholder="ნინო ბერიძე&#10;Giorgi Kapanadze"></textarea></label>
+      <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${S.tables.map(x=>`<option value="${x.id}">${esc(tName(x))} (${x.seats.filter(v=>!v).length} ${t('free')})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
+      <div class="row"><button class="btn primary" data-act="bulk">${t('addNames')}</button></div>
+      <div class="row"><button class="btn sm" data-act="import">${t('importX')}</button><button class="btn sm" data-act="export">${t('exportX')}</button></div>`)}
+    ${det('rules',`${t('rules')}${S.rules.length?` · ${S.rules.length}`:''}`,`${S.rules.length?`<div class="rules">${S.rules.map(r=>{const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${esc(S.guests[r.a]?.name)} <b>${r.type==='together'?'＋':'≠'}</b> ${esc(S.guests[r.b]?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}</div>`:''}<p class="muted">${t('rulesHint')}</p>`)}
+    ${det('tools',t('tools'),`<div class="row"><button class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button class="btn sm" data-act="randall">${t('restyle')}</button><button class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
+      ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
+      ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}`)}`}
+  else{h=dhead(t('tabShare'))+`
+    <div class="field"><span class="lbl">${t('guestPage')}</span><p class="muted">${t('guestPageHint')}</p></div>
     <label class="check"><input type="checkbox" id="gp-on" ${ROW?.guest_page!==false?'checked':''}> ${t('guestPageOn')}</label>
-    ${ROW?.guest_page!==false?`<label class="field"><span class="lbl">${t('shareLink')}</span><div class="row2 linkrow"><input id="sharelink" class="inp" readonly value="${esc(guestUrl())}"><button class="btn" data-act="copylink">${t('copyLink')}</button></div></label>
+    ${ROW?.guest_page!==false?`<div class="row2 linkrow"><input id="sharelink" class="inp" readonly value="${esc(guestUrl())}" aria-label="${t('shareLink')}"><button class="btn" data-act="copylink">${t('copyLink')}</button></div>
     <div id="qr" class="qr"></div>
     <div class="row"><a class="btn" href="${esc(guestUrl())}" target="_blank" rel="noopener">${t('openGuest')}</a><button class="btn" data-act="dlqr">${t('dlQR')}</button></div>`:''}
-    <p class="muted small">${t('privacy')}</p></div>
-  <div class="sec"><h2>${t('cards')}</h2><p class="muted">${t('cardsHint')}</p><button class="btn" data-act="cards">${t('makeCards')}</button></div>
-  <div class="sec"><h2>${t('caterer')}</h2><p class="muted">${t('catererHint')}</p><button class="btn" data-act="caterer">${t('openCaterer')}</button></div>
-  <div class="sec"><h2>${t('planImg')}</h2><p class="muted">${t('planImgHint')}</p><button class="btn primary" data-act="planimg">${t('makeImg')}</button></div>`}
-  $('#left').innerHTML=h;
-  if(tab==='guests')doFind();
-  if(tab==='share')drawQR();
+    <p class="muted small">${t('privacy')}</p>
+    ${det('print',t('printOuts'),`<div class="field"><span class="lbl">${t('cards')}</span><p class="muted">${t('cardsHint')}</p><button class="btn" data-act="cards">${t('makeCards')}</button></div>
+      <div class="field"><span class="lbl">${t('caterer')}</span><p class="muted">${t('catererHint')}</p><button class="btn" data-act="caterer">${t('openCaterer')}</button></div>
+      <div class="field"><span class="lbl">${t('planImg')}</span><p class="muted">${t('planImgHint')}</p><button class="btn" data-act="planimg">${t('makeImg')}</button></div>`)}`}
+  L.innerHTML=h;
+  if(panel==='guests')doFind();
+  if(panel==='share')drawQR();
 }
 function doFind(){const q=($('#find')?.value||'').trim().toLowerCase(),box=$('#findres');if(!box)return;if(!q){box.innerHTML='';return}
   const res=[];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const G=id&&S.guests[id];if(G&&(G.name.toLowerCase().includes(q)||G.group.toLowerCase().includes(q)))res.push(`<button data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i+1}</small></button>`)}));
@@ -353,28 +370,26 @@ async function drawQR(){const box=$('#qr');if(!box)return;box.innerHTML='';const
 /* ---------------- inspector ---------------- */
 const sw=(key,list,val)=>`<div class="chips">${list.map(c=>`<button class="sw" style="background:${c}" data-look="${key}" data-v="${c}" aria-pressed="${val===c}" aria-label="${key} ${c}"></button>`).join('')}</div>`;
 const lch=(key,list,val,map)=>`<div class="chips">${list.map(k=>`<button class="chip" data-look="${key}" data-v="${k}" aria-pressed="${val===k}">${esc(t(map?.[k]||k))}</button>`).join('')}</div>`;
-function preview(G){return`<svg viewBox="-34 -50 68 84" width="160" height="198">${person(G,P())}</svg>`}
+function preview(G){return`<svg viewBox="-34 -50 68 84" width="130" height="161">${person(G,P())}</svg>`}
+const rotUI=it=>`<div class="field"><span class="lbl">${t('rotation')}</span><div class="stepper"><button class="btn sm" data-rot="-15" aria-label="${t('rotLeft')}">↺</button><output>${it.rot||0}°</output><button class="btn sm" data-rot="15" aria-label="${t('rotRight')}">↻</button></div><span class="muted small">${t('rotHint')}</span></div>`;
 function renderRight(){
-  const R=$('#right'),p=P();
+  const R=$('#right');if(!sel.kind){R.innerHTML='';return}
   if(sel.kind==='seat'){
     const x=T(sel.t);if(!x||sel.i>=x.seats.length){sel={kind:null};return renderRight()}
     const id=x.seats[sel.i],G=id&&S.guests[id];
-    if(!G){R.innerHTML=`<div class="sec"><h2>${esc(tName(x))} · ${t('seat')} ${sel.i+1}</h2><p class="muted">${t('freeSeat')}</p>
+    if(!G){R.innerHTML=dhead(`${esc(tName(x))} · ${t('seat')} ${sel.i+1}`,t('freeSeat'))+`
       <label class="field"><span class="lbl">${t('guestName')}</span><input id="newname" class="inp" placeholder="${t('typeName')}"></label>
       <div class="row"><button class="btn primary" data-act="addguest">${t('addGuest')}</button><button class="btn" data-act="addrandom">${t('addRandom')}</button></div>
-      ${S.waiting.length?`<div class="field"><span class="lbl">${t('orWaiting')}</span><div class="waiting">${S.waiting.map(w=>`<button class="wchip" data-seatwait="${w}">${esc(S.guests[w]?.name)}</button>`).join('')}</div></div>`:''}</div>`;return}
+      ${S.waiting.length?`<div class="field"><span class="lbl">${t('orWaiting')}</span><div class="waiting">${S.waiting.map(w=>`<button class="wchip" data-seatwait="${w}">${esc(S.guests[w]?.name)}</button>`).join('')}</div></div>`:''}`;return}
     const L=G.look,groups=[...new Set(Object.values(S.guests).map(g=>g.group).filter(Boolean))];
     const myRules=S.rules.filter(r=>r.a===G.id||r.b===G.id);
     const others=Object.values(S.guests).filter(g=>g.id!==G.id).sort((a,b)=>a.name.localeCompare(b.name));
-    R.innerHTML=`<div class="sec"><div class="who"><div class="preview">${preview(G)}</div><div class="whotxt"><h2>${esc(G.name)}</h2><span class="muted">${esc(tName(x))} · ${t('seat')} ${sel.i+1}</span>
-      <button class="btn primary" data-act="rnd">🎲 ${t('randomLook')}</button><button class="btn sm" data-act="kind">${L.kind==='m'?t('toFem'):t('toMasc')}</button></div></div></div>
-    <div class="sec"><label class="field"><span class="lbl">${t('name')}</span><input id="g-name" class="inp" value="${esc(G.name)}"></label>
-      <label class="field"><span class="lbl">${t('group')}</span><input id="g-group" class="inp" list="grouplist" value="${esc(G.group)}" placeholder="${t('groupPh')}"><datalist id="grouplist">${groups.map(v=>`<option value="${esc(v)}">`).join('')}</datalist></label>
-      <div class="field"><span class="lbl">${t('side')}</span><div class="chips">${SIDES.map(k=>`<button class="chip" data-gside="${k}" aria-pressed="${G.side===k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}</button>`).join('')}</div></div>
-      <div class="row2"><label class="field"><span class="lbl">${t('meal')}</span><select id="g-meal">${MEALS.map(k=>`<option value="${k}" ${G.meal===k?'selected':''}>${t(MEAL_LBL[k]||k)}</option>`).join('')}</select></label>
-      <label class="check"><input type="checkbox" id="g-kid" ${G.kid?'checked':''}> ${t('child')}</label></div>
-      <label class="field"><span class="lbl">${t('allergies')}</span><input id="g-allergies" class="inp" value="${esc(G.allergies)}" placeholder="${t('allergiesPh')}"></label></div>
-    <div class="sec"><span class="lbl">${t('skin')}</span>${sw('skin',OPT.skin,L.skin)}
+    R.innerHTML=dhead(esc(G.name),`${esc(tName(x))} · ${t('seat')} ${sel.i+1}`)+`
+    <div class="who"><div class="preview">${preview(G)}</div><div class="whotxt">
+      <button class="btn primary" data-act="rnd">🎲 ${t('randomLook')}</button><button class="btn sm" data-act="kind">${L.kind==='m'?t('toFem'):t('toMasc')}</button></div></div>
+    <label class="field"><span class="lbl">${t('name')}</span><input id="g-name" class="inp" value="${esc(G.name)}"></label>
+    <div class="field"><span class="lbl">${t('side')}</span><div class="chips">${SIDES.map(k=>`<button class="chip" data-gside="${k}" aria-pressed="${G.side===k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}</button>`).join('')}</div></div>
+    ${det('look',t('appearance'),`<span class="lbl">${t('skin')}</span>${sw('skin',OPT.skin,L.skin)}
       <span class="lbl">${t('hairStyle')}</span>${lch('hair',OPT.hair,L.hair)}
       ${L.hair!=='bald'?`<span class="lbl">${t('hairColour')}</span>${sw('hairColor',OPT.hairColor,L.hairColor)}`:''}
       <span class="lbl">${t('beard')}</span>${lch('beard',OPT.beard,L.beard,BEARD_LBL)}
@@ -382,51 +397,51 @@ function renderRight(){
       <span class="lbl">${t('eyes')}</span>${sw('eye',OPT.eye,L.eye)}
       <span class="lbl">${t('outfit')}</span>${lch('outfit',OPT.outfit,L.outfit)}
       ${['gown','tuxedo'].includes(L.outfit)?'':`<span class="lbl">${t('outfitColour')}</span>${sw('outfitColor',OPT.outfitColor,L.outfitColor)}`}
-      <span class="lbl">${t('glasses')}</span>${lch('glasses',OPT.glasses,L.glasses,GL_LBL)}</div>
-    <div class="sec"><h2>${t('rules')}</h2>
-      ${myRules.map(r=>{const o=S.guests[r.a===G.id?r.b:r.a];const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${r.type==='together'?t('together'):t('apart')}: ${esc(o?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}
+      <span class="lbl">${t('glasses')}</span>${lch('glasses',OPT.glasses,L.glasses,GL_LBL)}`)}
+    ${det('details',t('guestDetails'),`<label class="field"><span class="lbl">${t('group')}</span><input id="g-group" class="inp" list="grouplist" value="${esc(G.group)}" placeholder="${t('groupPh')}"><datalist id="grouplist">${groups.map(v=>`<option value="${esc(v)}">`).join('')}</datalist></label>
+      <div class="row2"><label class="field"><span class="lbl">${t('meal')}</span><select id="g-meal">${MEALS.map(k=>`<option value="${k}" ${G.meal===k?'selected':''}>${t(MEAL_LBL[k]||k)}</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" id="g-kid" ${G.kid?'checked':''}> ${t('child')}</label></div>
+      <label class="field"><span class="lbl">${t('allergies')}</span><input id="g-allergies" class="inp" value="${esc(G.allergies)}" placeholder="${t('allergiesPh')}"></label>`)}
+    ${det('grules',`${t('rules')}${myRules.length?` · ${myRules.length}`:''}`,`${myRules.map(r=>{const o=S.guests[r.a===G.id?r.b:r.a];const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${r.type==='together'?t('together'):t('apart')}: ${esc(o?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}
       <div class="row2"><select id="r-type"><option value="together">${t('together')}</option><option value="apart">${t('apart')}</option></select>
       <select id="r-who"><option value="">${t('pickGuest')}</option>${others.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select></div>
-      <button class="btn sm" data-act="addrule">${t('addRule')}</button></div>
-    <div class="sec"><div class="row"><button class="btn" data-act="unseat">${t('toWaiting')}</button><button class="btn danger" data-act="delguest">${t('removeGuest')}</button></div>
-      ${confirmK==='guest'?`<div class="confirm danger"><span>${t('removeQ',{n:esc(G.name)})}</span><div class="row"><button class="btn sm danger" data-act="delguest-yes">${t('remove')}</button><button class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}</div>`;
+      <button class="btn sm" data-act="addrule">${t('addRule')}</button>`)}
+    <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn sm" data-act="unseat">${t('toWaiting')}</button><button class="btn sm danger" data-act="delguest">${t('removeGuest')}</button></div>
+    ${confirmK==='guest'?`<div class="confirm danger"><span>${t('removeQ',{n:esc(G.name)})}</span><div class="row"><button class="btn sm danger" data-act="delguest-yes">${t('remove')}</button><button class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}`;
     return;
   }
   if(sel.kind==='table'){
     const x=T(sel.t);if(!x){sel={kind:null};return renderRight()}
     const free=x.seats.filter(v=>!v).length;
-    R.innerHTML=`<div class="sec"><h2>${esc(tName(x))}</h2>
+    R.innerHTML=dhead(esc(tName(x)),`${x.seats.length-free}/${x.seats.length} ${t('seated')}`)+`
       <label class="field"><span class="lbl">${t('tableName')}</span><input id="t-name" class="inp" value="${esc(x.name)}"></label>
       <div class="field"><span class="lbl">${t('shape')}</span>${chipBtns('data-shape',SHAPES,x.shape)}</div>
       <div class="field"><span class="lbl">${t('seats')}</span><div class="stepper"><button class="btn sm" data-act="seat-" aria-label="-">−</button><output>${x.seats.length}</output><button class="btn sm" data-act="seat+" aria-label="+">+</button><span class="muted">${free} ${t('free')}</span></div></div>
-      <div class="field"><span class="lbl">${t('decoration')}</span>${chipBtns('data-deco',DECOS,x.deco,k=>t(DECO_LBL[k]||k))}</div>
-      <div class="field"><span class="lbl">${t('rotation')}</span><div class="stepper"><button class="btn sm" data-rot="-15" aria-label="${t('rotLeft')}">↺</button><output>${x.rot||0}°</output><button class="btn sm" data-rot="15" aria-label="${t('rotRight')}">↻</button><span class="chips">${[0,45,90,135].map(a=>`<button class="chip" data-rotset="${a}" aria-pressed="${(x.rot||0)===a}">${a}°</button>`).join('')}</span></div><span class="muted small">${t('rotHint')}</span></div></div>
-    <div class="sec"><h2>${t('fillGroup')}</h2><p class="muted">${t('fillHint')}</p>
-      <label class="field"><span class="lbl">${t('groupName')}</span><input id="grp" class="inp" value="${S.event.lang==='ka'?'მეზობელი':'Neighbour'}"></label>
-      <button class="btn" data-act="fillgroup" ${free?'':'disabled'}>${t('fillFree')}</button></div>
-    <div class="sec"><span class="lbl">${t('setSide')}</span><div class="chips">${SIDES.map(k=>`<button class="chip" data-tside="${k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}</button>`).join('')}</div></div>
-    <div class="sec"><div class="row"><button class="btn sm" data-act="shuffle">${t('shuffleTable')}</button><button class="btn sm" data-act="restyle">${t('restyleTable')}</button><button class="btn sm" data-act="dup">${t('duplicate')}</button><button class="btn sm danger" data-act="deltable">${t('deleteTable')}</button></div>
-      ${confirmK==='table'?`<div class="confirm danger"><span>${t('deleteTableQ',{n:esc(tName(x)),c:x.seats.filter(Boolean).length})}</span><div class="row"><button class="btn sm danger" data-act="deltable-yes">${t('deleteTable')}</button><button class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}</div>`;
+      ${rotUI(x)}
+      ${det('deco',t('decoration'),chipBtns('data-deco',DECOS,x.deco,k=>t(DECO_LBL[k]||k)))}
+      ${det('fill',t('fillGroup'),`<p class="muted">${t('fillHint')}</p><label class="field"><span class="lbl">${t('groupName')}</span><input id="grp" class="inp" value="${S.event.lang==='ka'?'მეზობელი':'Neighbour'}"></label><button class="btn" data-act="fillgroup" ${free?'':'disabled'}>${t('fillFree')}</button>`)}
+      ${det('tmore',t('moreActions'),`<span class="lbl">${t('setSide')}</span><div class="chips">${SIDES.map(k=>`<button class="chip" data-tside="${k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}</button>`).join('')}</div>
+        <div class="row"><button class="btn sm" data-act="shuffle">${t('shuffleTable')}</button><button class="btn sm" data-act="restyle">${t('restyleTable')}</button><button class="btn sm" data-act="dup">${t('duplicate')}</button><button class="btn sm danger" data-act="deltable">${t('deleteTable')}</button></div>
+        ${confirmK==='table'?`<div class="confirm danger"><span>${t('deleteTableQ',{n:esc(tName(x)),c:x.seats.filter(Boolean).length})}</span><div class="row"><button class="btn sm danger" data-act="deltable-yes">${t('deleteTable')}</button><button class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}`)}`;
     return;
   }
   if(sel.kind==='venue'){
     const v=V(sel.v);if(!v){sel={kind:null};return renderRight()}
-    R.innerHTML=`<div class="sec"><h2>${esc(v.label||t(v.type))}</h2>
+    R.innerHTML=dhead(esc(v.label||t(v.type)))+`
       <label class="field"><span class="lbl">${t('itemName')}</span><input id="v-label" class="inp" value="${esc(v.label)}" placeholder="${esc(t(v.type))}"></label>
-      <div class="field"><span class="lbl">${t('width')}</span><div class="stepper"><button class="btn sm" data-vsize="w:-20">−</button><output>${v.w}</output><button class="btn sm" data-vsize="w:20">+</button></div></div>
-      <div class="field"><span class="lbl">${t('height')}</span><div class="stepper"><button class="btn sm" data-vsize="h:-20">−</button><output>${v.h}</output><button class="btn sm" data-vsize="h:20">+</button></div></div>
-      <div class="field"><span class="lbl">${t('rotation')}</span><div class="stepper"><button class="btn sm" data-rot="-15" aria-label="${t('rotLeft')}">↺</button><output>${v.rot||0}°</output><button class="btn sm" data-rot="15" aria-label="${t('rotRight')}">↻</button><span class="chips">${[0,45,90,135].map(a=>`<button class="chip" data-rotset="${a}" aria-pressed="${(v.rot||0)===a}">${a}°</button>`).join('')}</span></div><span class="muted small">${t('rotHint')}</span></div>
-      <button class="btn danger" data-act="delvenue">${t('deleteItem')}</button></div>`;
-    return;
+      <div class="row2"><div class="field"><span class="lbl">${t('width')}</span><div class="stepper"><button class="btn sm" data-vsize="w:-20">−</button><output>${v.w}</output><button class="btn sm" data-vsize="w:20">+</button></div></div>
+      <div class="field"><span class="lbl">${t('height')}</span><div class="stepper"><button class="btn sm" data-vsize="h:-20">−</button><output>${v.h}</output><button class="btn sm" data-vsize="h:20">+</button></div></div></div>
+      ${rotUI(v)}
+      <div class="row"><button class="btn sm danger" data-act="delvenue">${t('deleteItem')}</button></div>`;
   }
-  R.innerHTML=`<div class="sec"><h2>${t('howTitle')}</h2><ol class="how">${[1,2,3,4,5].map(i=>`<li>${t('how'+i)}</li>`).join('')}</ol></div>
-    ${readOnly?`<div class="sec"><p class="muted">${t('readOnly')}</p></div>`:''}`;
 }
+function renderDrawer(){const open=!!sel.kind||!!panel;$('#drawer').hidden=!open;$('#left').hidden=!!sel.kind||!panel;$('#right').hidden=!sel.kind}
 
 /* ---------------- render ---------------- */
 function renderPlan(){const{B,inner}=planSVG();const svg=$('#plan');svg.setAttribute('viewBox',`${B.x} ${B.y} ${B.w} ${B.h}`);svg.dataset.w=B.w;svg.dataset.h=B.h;svg.innerHTML=inner;applyZoom()}
-function applyZoom(){const svg=$('#plan'),sc=$('#scroller');svg.style.width=Math.round(Math.max(sc.clientWidth-2,320)*zoom)+'px';svg.style.height='auto'}
-function renderAll(){document.documentElement.lang=S.event.lang;renderTop();renderPlan();renderLeft();renderRight()}
+function fitWidth(){const svg=$('#plan'),sc=$('#scroller'),W=+svg.dataset.w||1000,H=+svg.dataset.h||800;return Math.max(280,Math.min(sc.clientWidth-24,(sc.clientHeight-24)*W/H))}
+function applyZoom(){const svg=$('#plan');svg.style.width=Math.round(fitWidth()*zoom)+'px';svg.style.height='auto'}
+function renderAll(){document.documentElement.lang=S.event.lang;renderTop();renderDrawer();renderLeft();renderRight();renderPlan()}
 
 /* ---------------- actions ---------------- */
 function curGuest(){const x=T(sel.t);return x&&S.guests[x.seats[sel.i]]}
@@ -468,6 +483,8 @@ function act(a){
     case'reset':confirmK='reset';renderLeft();break;
     case'reset-yes':confirmK=null;commit(()=>{S={event:{...S.event},guests:{},waiting:[],rules:[],venue:[],tables:[{id:uid(),name:'Table 1',shape:'rect',deco:'flowers',seats:Array(10).fill(null),x:0,y:0}]};sel={kind:null}});break;
     case'cancel':confirmK=null;renderLeft();renderRight();break;
+    case'close':sel={kind:null};panel=null;confirmK=null;renderAll();break;
+    case'hintok':try{localStorage.setItem('supra.hint','1')}catch(e){};renderTop();break;
     case'addguest':{const n=($('#newname').value||'').trim();if(!n){toast(t('typeFirst'));$('#newname').focus();return}commit(()=>{x.seats[sel.i]=mkGuest(n)});break}
     case'addrandom':commit(()=>{x.seats[sel.i]=mkGuest(t('guests').replace(/^./,c=>c.toUpperCase())+' '+(Object.keys(S.guests).length+1),randLook())});break;
     case'rnd':commit(()=>{const g=curGuest();g.look=randLook(g.look.kind)});break;
@@ -498,7 +515,7 @@ document.addEventListener('click',e=>{
   if(guestMode)return guestClick(e);
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.act)return act(d.act);
-  if(d.tab){tab=d.tab;confirmK=null;renderLeft();return}
+  if(d.panel){const k=d.panel;panel=(panel===k&&!sel.kind)?null:k;sel={kind:null};confirmK=null;renderAll();return}
   if(d.lang){commit(()=>S.event.lang=d.lang);return}
   if(d.pal)return commit(()=>S.event.palette=d.pal);
   if(d.seltable){sel={kind:'table',t:d.seltable};confirmK=null;renderAll();return}
@@ -539,7 +556,7 @@ document.addEventListener('keydown',e=>{
 function clickSeat(tid,i){const x=T(tid);
   if(waitSel&&!x.seats[i]){const w=waitSel;waitSel=null;commit(()=>{x.seats[i]=w;S.waiting=S.waiting.filter(v=>v!==w);sel={kind:'seat',t:tid,i}});return}
   sel={kind:'seat',t:tid,i};confirmK=null;renderAll();
-  if(matchMedia('(max-width:760px)').matches)$('#right').scrollIntoView({behavior:'smooth',block:'start'})}
+}
 function scrollToSeat(){const el=document.querySelector(`.seat[data-t="${sel.t}"][data-i="${sel.i}"]`);el&&el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
 
 /* drag: seats swap, tables & venue move */
@@ -552,23 +569,28 @@ function freeSpot(w,h){const[cx,cy]=viewCenter(),pad=30,boxes=[];
   for(let r=0;r<3000;r+=40){const steps=Math.max(1,Math.round(r/20));for(let i=0;i<steps;i++){const a=i/steps*Math.PI*2,x=Math.round((cx+r*Math.cos(a))/10)*10,y=Math.round((cy+r*Math.sin(a))/10)*10;if(free(x,y))return[x,y]}}
   return[cx,cy]}
 function svgPt(e){const svg=$('#plan'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
-$('#plan').addEventListener('pointerdown',e=>{
+$('#scroller').addEventListener('pointerdown',e=>{
   if(e.button>0)return;
   const rh=e.target.closest('.rothandle');if(rh){const it=rh.dataset.rk==='table'?T(rh.dataset.rid):V(rh.dataset.rid);hist.push(JSON.stringify(S));drag={kind:'rotate',it,x:e.clientX,y:e.clientY,moved:true};document.body.classList.add('dragging');e.preventDefault();return}
   const s=e.target.closest('.seat');if(s){drag={kind:'seat',t:s.dataset.t,i:+s.dataset.i,x:e.clientX,y:e.clientY,moved:false,el:s};return}
   const tb=e.target.closest('.tbody');if(tb){const x=T(tb.dataset.table),p=svgPt(e);drag={kind:'table',id:x.id,x:e.clientX,y:e.clientY,ox:x.x-p.x,oy:x.y-p.y,moved:false,el:tb.closest('.tgrp')};return}
-  const v=e.target.closest('.venue');if(v){const it=V(v.dataset.v),p=svgPt(e);drag={kind:'venue',id:it.id,x:e.clientX,y:e.clientY,ox:it.x-p.x,oy:it.y-p.y,moved:false,el:v}}
+  const v=e.target.closest('.venue');if(v){const it=V(v.dataset.v),p=svgPt(e);drag={kind:'venue',id:it.id,x:e.clientX,y:e.clientY,ox:it.x-p.x,oy:it.y-p.y,moved:false,el:v};return}
+  const sc=$('#scroller');drag={kind:'pan',x:e.clientX,y:e.clientY,sl:sc.scrollLeft,st:sc.scrollTop,moved:false,mouse:e.pointerType==='mouse'};
 });
 let rotRAF=0;
 window.addEventListener('pointermove',e=>{if(!drag)return;
   if(drag.kind==='rotate'){const p=svgPt(e),it=drag.it;let a=Math.atan2(p.x-it.x,-(p.y-it.y))*180/Math.PI;const snap=e.shiftKey?1:15;a=Math.round(a/snap)*snap;a=((a%360)+360)%360;
     if(a!==it.rot){it.rot=a;if(!rotRAF)rotRAF=requestAnimationFrame(()=>{rotRAF=0;renderPlan()})}return}
+  if(drag.kind==='pan'){if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5){drag.moved=true;$('#scroller').classList.add('panning')}
+    if(drag.moved&&drag.mouse){const sc=$('#scroller');sc.scrollLeft=drag.sl-(e.clientX-drag.x);sc.scrollTop=drag.st-(e.clientY-drag.y)}return}
   if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>7){drag.moved=true;if(drag.kind!=='seat')hist.push(JSON.stringify(S));if(drag.kind==='seat')drag.el.style.opacity=.45;document.body.classList.add('dragging')}
   if(!drag.moved)return;
   if(drag.kind==='seat'){document.querySelectorAll('.seat .ring').forEach(r=>r.setAttribute('opacity',0));const o=document.elementFromPoint(e.clientX,e.clientY)?.closest('.seat');if(o&&o!==drag.el)o.querySelector('.ring').setAttribute('opacity',.35);return}
   const p=svgPt(e),nx=Math.round((p.x+drag.ox)/10)*10,ny=Math.round((p.y+drag.oy)/10)*10;
   const it=drag.kind==='table'?T(drag.id):V(drag.id);it.x=nx;it.y=ny;drag.el.setAttribute('transform',`translate(${nx} ${ny})`)});
+window.addEventListener('pointercancel',()=>{if(drag&&drag.kind==='pan'){drag=null;$('#scroller').classList.remove('panning')}});
 window.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;document.body.classList.remove('dragging');
+  if(d.kind==='pan'){$('#scroller').classList.remove('panning');if(!d.moved&&(sel.kind||panel)){sel={kind:null};panel=null;confirmK=null;renderAll()}return}
   if(d.kind==='rotate'){resolveOverlaps();markDirty();renderAll();return}
   if(d.kind==='table'){if(d.moved){markDirty();renderPlan()}else{sel={kind:'table',t:d.id};confirmK=null;renderAll()}return}
   if(d.kind==='venue'){if(d.moved){markDirty();renderPlan()}else{sel={kind:'venue',v:d.id};renderAll()}return}
@@ -581,6 +603,19 @@ $('#zin').onclick=()=>{zoom=Math.min(3,zoom*1.25);applyZoom()};
 $('#zout').onclick=()=>{zoom=Math.max(.5,zoom/1.25);applyZoom()};
 $('#zfit').onclick=()=>{zoom=1;applyZoom()};
 window.addEventListener('resize',()=>{if(!guestMode)applyZoom()});
+$('#scroller').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();
+  const sc=$('#scroller'),svg=$('#plan'),r=sc.getBoundingClientRect(),ox=e.clientX-r.left,oy=e.clientY-r.top;
+  const w0=svg.getBoundingClientRect().width,fx=(sc.scrollLeft+ox)/w0,fy=(sc.scrollTop+oy)/svg.getBoundingClientRect().height;
+  zoom=Math.min(4,Math.max(.4,zoom*Math.exp(-e.deltaY*.0025)));applyZoom();
+  const b=svg.getBoundingClientRect();sc.scrollLeft=fx*b.width-ox;sc.scrollTop=fy*b.height-oy},{passive:false});
+$('#theme').onclick=()=>{const n=curTheme()==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('supra.theme',n)}catch(e){}renderTop()};
+$('#full').onclick=()=>{const w=$('#work');
+  if(document.fullscreenElement){document.exitFullscreen?.();return}
+  if(document.body.classList.contains('focus')){document.body.classList.remove('focus');renderTop();applyZoom();return}
+  if(w.requestFullscreen)w.requestFullscreen().catch(()=>{document.body.classList.add('focus');renderTop();applyZoom()});else{document.body.classList.add('focus');renderTop();applyZoom()}};
+document.addEventListener('fullscreenchange',()=>{renderTop();requestAnimationFrame(applyZoom)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('focus')){document.body.classList.remove('focus');renderTop();applyZoom()}});
+document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('details[data-sec]')){d.open?OPEN.add(d.dataset.sec):OPEN.delete(d.dataset.sec)}},true);
 $('#undo').onclick=undo;
 $('#save').onclick=savePlan;
 

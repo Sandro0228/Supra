@@ -4,9 +4,72 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Supra · Seating planner</title>
+<script>try{var th=localStorage.getItem("supra.theme");if(th)document.documentElement.dataset.theme=th}catch(e){}</script>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
 <style>
+/* Layout: canvas-first. A slim top bar with the three panels (Event, Guests, Share); the paper plan fills the rest;
+   one slide-in panel shows whichever panel or selected item is active; floating toolbars sit on the canvas. */
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;margin:0}
+body.guestmode{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+#app{height:100dvh;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:10px;padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);min-height:56px;flex-wrap:wrap}
+.back{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;color:var(--ink);text-decoration:none;font-size:22px;line-height:1}
+.back:hover{background:var(--soft)}
+.title{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+#evname{font-family:var(--display);font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
+#stats{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.nav{display:flex;gap:2px;background:var(--soft);border-radius:10px;padding:3px;margin-inline:auto}
+.nav button{border:0;background:none;border-radius:8px;padding:7px 14px;font-size:14px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.nav button[aria-pressed="true"]{background:var(--panel);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.tools{display:flex;align-items:center;gap:6px}
+#savestate{font-size:12px;color:var(--muted);white-space:nowrap}
+#savestate[data-state="dirty"]{color:var(--accent)}
+.icon{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ink)}
+.icon:hover{border-color:var(--muted)}
+.icon svg{width:18px;height:18px}
+.work{position:relative;flex:1;min-height:0;display:flex;background:var(--soft)}
+.scroller{flex:1;overflow:auto;min-width:0;cursor:grab;touch-action:pan-x pan-y}
+.scroller.panning{cursor:grabbing}
+#plan{display:block;margin:0 auto}
+#plan .seat{cursor:pointer;touch-action:none}
+#plan .tbody,#plan .venue{cursor:move;touch-action:none}
+body.dragging,body.dragging *{cursor:grabbing!important}
+#plan .seat:hover .ring{opacity:.45}
+.float{position:absolute;display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px;box-shadow:0 4px 18px rgba(20,25,22,.12);z-index:5}
+.float .btn{border-color:transparent;padding:6px 10px;font-size:13px}
+.float .btn:hover{background:var(--soft)}
+.float .icon{border-color:transparent}
+.float .icon:hover{background:var(--soft)}
+.f-add{top:12px;left:12px}
+.f-zoom{bottom:12px;right:12px}
+.f-zoom output{min-width:44px;text-align:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+#hint{position:absolute;bottom:12px;left:12px;z-index:5;background:var(--ink);color:var(--panel);border-radius:999px;padding:7px 8px 7px 14px;font-size:13px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 200px)}
+#hint button{border:0;background:none;color:inherit;opacity:.7;font-size:16px;line-height:1;padding:0 4px}
+.drawer{position:relative;width:360px;flex:none;background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:16px 16px 28px;display:flex;flex-direction:column;gap:14px}
+.drawer .dhead{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.drawer h2{font-family:var(--display);font-weight:400;font-size:20px;margin:0;text-wrap:balance}
+.drawer h3{font-size:14px;margin:6px 0 0}
+#left,#right{display:flex;flex-direction:column;gap:14px}
+details.more{border-top:1px solid var(--line);padding-top:12px}
+details.more>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;font-weight:500;padding:2px 0}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px;transition:transform .15s}
+details.more[open]>summary::after{transform:rotate(-135deg)}
+details.more>.body{display:flex;flex-direction:column;gap:8px;padding-top:10px}
+body.focus .bar{display:none}
+.work:fullscreen{background:var(--soft)}
+@media (max-width:900px){
+  .bar{gap:8px}
+  .nav{order:5;width:100%;justify-content:space-between}.nav button{flex:1;justify-content:center}
+  #evname{max-width:48vw}
+  .drawer{position:absolute;left:0;right:0;bottom:0;width:auto;max-height:62%;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18);z-index:8;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+  .f-add{left:8px;top:8px;right:8px;overflow-x:auto}
+  .f-zoom{right:8px;bottom:8px}
+  #hint{display:none}
+  .row2{grid-template-columns:1fr}
+}
+@media (max-width:520px){#savestate{display:none}.seg button{padding:6px 8px}}
 /* Layout: three-pane workbench — tabbed event/guest/share panel left, the paper floor plan centre, the inspector right; a separate full-screen "find my seat" view for guests */
 :root{
   --bg:#EEF0EA; --panel:#FFFFFF; --ink:#24302A; --muted:#66706A; --line:#DADFD5;
@@ -22,24 +85,17 @@
   --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 p{margin:0}
 .muted{color:var(--muted);font-size:13px}.small{font-size:12px}
-.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:12px}
-.brand{font-family:var(--display);font-size:24px;letter-spacing:.02em;display:flex;align-items:baseline;gap:8px}
-.brand small{font-family:var(--body);font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.top .spacer{flex:1}
 #stats{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .sides{display:inline-flex;gap:5px;align-items:center}.sides i,.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px}
 .warn{border:1px solid var(--danger);color:var(--danger);background:var(--warn-bg);border-radius:999px;padding:2px 10px;font-size:12px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:0;background:var(--panel);padding:6px 10px;font-size:13px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
-.savebox{display:flex;align-items:center;gap:8px}
 #savestate{font-size:12px;color:var(--muted)}
 #savestate[data-state="dirty"]{color:var(--accent)}
 .btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
@@ -48,15 +104,10 @@ p{margin:0}
 .btn.danger{color:var(--danger)}
 .btn.sm{padding:4px 9px;font-size:13px}
 .btn:disabled{opacity:.45;cursor:default}
-.grid{display:grid;grid-template-columns:290px minmax(0,1fr) 330px;gap:12px;align-items:start}
 .pane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .pane h2{font-family:var(--display);font-weight:400;font-size:17px;margin:0;text-wrap:balance}
 .pane h3{font-size:14px;margin:6px 0 0}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--soft);border-radius:10px;padding:4px}
-.tabs button{border:0;background:none;border-radius:7px;padding:7px 4px;font-size:13px;color:var(--muted)}
-.tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .sec{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
-.tabs+.sec,.sec:first-child{border-top:0;padding-top:0}
 .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.inp,.sec select{border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
@@ -85,12 +136,6 @@ textarea{resize:vertical}
 .x{border:0;background:none;font-size:16px;line-height:1;color:var(--muted);padding:2px 4px}
 .confirm{border:1px solid var(--accent);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .confirm.danger{border-color:var(--danger)}
-.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0;display:flex;flex-direction:column}
-.stagebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
-#hint{font-size:12px;color:var(--muted);flex:1;min-width:160px}
-.quickadd{display:flex;gap:6px;flex-wrap:wrap}
-.quickadd .btn{padding:4px 10px;font-size:13px}
-.scroller{overflow:auto;max-height:calc(100vh - 140px);min-height:420px;background:var(--soft)}
 #plan{display:block;margin:0 auto}
 #plan .seat{cursor:pointer;touch-action:none}
 #plan .tbody,#plan .venue{cursor:grab;touch-action:none}
@@ -144,12 +189,8 @@ table.cat{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;
 .gnone{color:var(--muted)}
 .gmap svg{width:100%;height:auto;border-radius:12px;border:1px solid var(--line)}
 .linkbtn{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:13px;align-self:center}
-@media (max-width:1200px){.grid{grid-template-columns:270px minmax(0,1fr)}.inspector{grid-column:1 / -1}}
-@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.stage{order:-2}.inspector{order:-1}.scroller{max-height:70vh;min-height:320px}.row2{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 .linkrow{grid-template-columns:1fr auto}
-.brand a{color:inherit;text-decoration:none}
-#backlink{font-size:13px;color:var(--muted);text-decoration:none}#backlink:hover{color:var(--ink)}
 [hidden]{display:none!important}
 a.btn{text-decoration:none;color:inherit}
 </style>
@@ -157,26 +198,32 @@ a.btn{text-decoration:none;color:inherit}
 <body>
 
 <div id="app">
-<header class="top">
-  <div class="brand"><a href="/">Supra</a> <small>seating planner</small></div><a id="backlink" href="/">← My events</a>
-  <div id="stats"></div>
-  <div class="spacer"></div>
-  <div class="seg" id="lang"></div>
-  <button class="btn" id="undo">↶ Undo</button>
-  <div class="savebox"><span id="savestate" role="status"></span><button class="btn primary" id="save">Save</button></div>
+<header class="bar">
+  <a class="back" id="backlink" href="/" aria-label="My events" title="My events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></a>
+  <div class="title"><span id="evname">Supra</span><span id="stats"></span></div>
+  <nav class="nav" id="nav" aria-label="Panels"></nav>
+  <div class="tools">
+    <span id="savestate" role="status"></span><button class="btn primary sm" id="save" hidden>Save</button>
+    <button class="icon" id="undo" aria-label="Undo" title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <div class="seg" id="lang"></div>
+    <button class="icon" id="theme" aria-label="Switch light or dark" title="Light / dark"></button>
+  </div>
 </header>
-<div class="grid">
-  <aside class="pane" id="left"></aside>
-  <section class="stage">
-    <div class="stagebar"><div class="quickadd" id="quickadd"></div><span id="hint"></span>
-      <button class="btn sm" id="zout" aria-label="Zoom out">−</button><button class="btn sm" id="zfit">Fit</button><button class="btn sm" id="zin" aria-label="Zoom in">+</button></div>
-    <div class="scroller" id="scroller"><svg id="plan" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
-  </section>
-  <aside class="pane inspector" id="right"></aside>
+<div class="work" id="work">
+  <div class="scroller" id="scroller"><svg id="plan" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
+  <div class="float f-add" id="quickadd"></div>
+  <div class="float f-zoom">
+    <button class="icon" id="zout" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <button class="btn" id="zfit">Fit</button>
+    <button class="icon" id="zin" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="icon" id="full" aria-label="Full screen" title="Full screen"></button>
+  </div>
+  <div id="hint" hidden></div>
+  <aside class="drawer" id="drawer" hidden><div id="left"></div><div id="right"></div></aside>
+  <div id="modalroot"></div>
 </div>
 </div>
 <main id="guest" hidden></main>
-<div id="modalroot"></div>
 <svg id="gsvg" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs id="gdefs"></defs></svg>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>

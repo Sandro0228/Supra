@@ -11,7 +11,10 @@ function toast(m){const d=document.createElement('div');d.className='toast';d.se
 const rand=n=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';const r=crypto.getRandomValues(new Uint8Array(n));r.forEach(v=>s+=a[v%a.length]);return s};
 const fmtDate=d=>d?new Date(d+'T12:00').toLocaleDateString(lang==='ka'?'ka-GE':'en-GB',{day:'numeric',month:'long',year:'numeric'}):'';
 
+const SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const curTheme=()=>document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
 function chrome(){
+  $('#theme').innerHTML=curTheme()==='dark'?SUN:MOON;
   document.documentElement.lang=lang;
   $('#lang').innerHTML=`<button data-lang="en" aria-pressed="${lang==='en'}">EN</button><button data-lang="ka" aria-pressed="${lang==='ka'}">ქარ</button>`;
   $('#tag').textContent=t('dTag');
@@ -106,6 +109,7 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.mode){mode=d.mode;sent=false;msg={text:'',err:false};renderSignIn();return}
   if(d.lang){lang=d.lang;try{localStorage.setItem('supra.lang',lang)}catch(x){}render();return}
+  if(b.id==='theme'){const n=curTheme()==='dark'?'light':'dark';document.documentElement.dataset.theme=n;try{localStorage.setItem('supra.theme',n)}catch(x){}chrome();return}
   if(b.id==='signout'){await SB.auth.signOut();return}
   if(b.id==='google'){SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+(next||'/')}});return}
   if(d.copy){const u=location.origin+'/e/'+d.copy;navigator.clipboard?.writeText(u).then(()=>toast(t('dCopied')),()=>toast(u));return}
