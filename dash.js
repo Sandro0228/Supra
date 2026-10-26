@@ -89,14 +89,15 @@ function renderSignIn(){
   if(F.recovery)body=`<h2 id="ftitle">${esc(t('dNewPw'))}</h2>${pwF}`;
   else if(F.sent)body=`<p class="msg" role="status">${esc(t(F.mode==='forgot'?'dResetSent':F.mode==='signup'?'dConfirm':'dSent'))}</p><button type="button" class="linkish" data-mode="signin">${esc(t('dBack'))}</button>`;
   else if(F.mode==='link'||F.mode==='forgot')body=`<h2 id="ftitle">${esc(t(F.mode==='forgot'?'dForgotTitle':'dLinkTitle'))}</h2>${emailF}`;
-  else body=`<div class="tabs2" role="tablist" aria-label="${esc(t('dAccount'))}">${[['signin','dSignIn'],['signup','dSignUp']].map(([k,l])=>`<button type="button" role="tab" class="tabbtn" id="tab-${k}" data-mode="${k}" aria-selected="${F.mode===k}" aria-controls="sform" tabindex="${F.mode===k?0:-1}">${esc(t(l))}</button>`).join('')}</div>${emailF}${pwF}`;
+  else body=`<div class="tabs2" role="tablist" aria-label="${esc(t('dAccount'))}">${[['signin','dSignIn'],['signup','dSignUp']].map(([k,l])=>`<button type="button" role="tab" class="tabbtn" id="tab-${k}" data-mode="${k}" aria-selected="${F.mode===k}" aria-controls="authpanel" tabindex="${F.mode===k?0:-1}">${esc(t(l))}</button>`).join('')}</div>${emailF}${pwF}`;
   const showSubmit=!F.sent;
   const extra=(!F.recovery&&!F.sent)?(F.mode==='link'||F.mode==='forgot'?`<button type="button" class="linkish" data-mode="signin">${esc(t('dBack'))}</button>`:
     `<div class="row2l">${F.mode==='signin'?`<button type="button" class="linkish" data-mode="forgot">${esc(t('dForgot'))}</button>`:'<span></span>'}<button type="button" class="linkish" data-mode="link">${esc(t('dUseLink'))}</button></div>
     ${CFG.googleSignIn?`<div class="or">${esc(t('dOr'))}</div><button class="btn" type="button" id="google">${esc(t('dGoogle'))}</button>`:''}`):'';
-  $('#main').innerHTML=`<form class="card signin" id="sform" novalidate ${F.mode==='signin'||F.mode==='signup'?`role="tabpanel" aria-labelledby="tab-${F.mode}"`:'aria-labelledby="ftitle"'}>${body}
+  const tp=F.mode==='signin'||F.mode==='signup';
+  $('#main').innerHTML=`${tp?`<div role="tabpanel" id="authpanel" aria-labelledby="tab-${F.mode}">`:''}<form class="card signin" id="sform" novalidate aria-labelledby="${tp?'tab-'+F.mode:'ftitle'}">${body}
     ${fe?`<p class="msg err" id="ferr" role="alert">${esc(fe.text)}</p>`:''}
-    ${showSubmit?`<button class="btn primary" type="submit" ${busy?'disabled aria-busy="true"':''}>${busy?`<span class="spinner sm" aria-hidden="true"></span>`:''}${esc(t(submitLbl))}</button>`:''}${extra}</form>`;
+    ${showSubmit?`<button class="btn primary" type="submit" ${busy?'disabled aria-busy="true"':''}>${busy?`<span class="spinner sm" aria-hidden="true"></span>`:''}${esc(t(submitLbl))}</button>`:''}${extra}</form>${tp?'</div>':''}`;
 }
 function focusAfterRender(field){const el=field==='email'?$('#email'):field==='pw'?$('#pw'):null;(el||$('#email')||$('#pw'))?.focus()}
 
