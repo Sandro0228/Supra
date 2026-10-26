@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Supra · Wedding seating planner</title>
+<meta name="description" content="Plan who sits where at your wedding, with every guest drawn at their seat. Free floor plan, place cards and a find-my-seat page for guests.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<style>
+/* Layout: one calm column — a hero that shows the head-table illustration, then either the sign-in card or the event list */
+:root{
+  --bg:#F6F1EA; --panel:#FFFFFF; --ink:#2B2522; --muted:#6E655F; --line:#E4DACD;
+  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#FBF8F3; --danger:#B3261E; --sage:#6F8F72;
+  --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
+  --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; --danger:#F2867E; --sage:#97B79A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; --danger:#F2867E; --sage:#97B79A; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-size:26px;letter-spacing:.02em;flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:6px 10px;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.who{font-size:13px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.hero{display:grid;gap:18px;text-align:center;justify-items:center}
+.hero h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5.4vw,52px);line-height:1.1;margin:0;max-width:18ch;text-wrap:balance}
+.hero img{width:100%;max-width:820px;height:auto}
+.feats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;color:var(--muted);font-size:14px;margin:0;padding:0;list-style:none}
+.feats li::before{content:"✿ ";color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.signin{max-width:420px;width:100%;margin:0 auto}
+.field{display:flex;flex-direction:column;gap:5px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.inp,select{border:1px solid var(--line);background:var(--soft);border-radius:9px;padding:10px 12px;width:100%;min-width:0}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.msg{font-size:14px;color:var(--muted)}.msg.err{color:var(--danger)}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ev{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.ev h3{font-family:var(--display);font-weight:400;font-size:21px;margin:0;word-break:break-word}
+.ev .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ev .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.confirm{border:1px solid var(--danger);border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.newgrid{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+.empty{color:var(--muted);text-align:center;padding:24px;border:1px dashed var(--line);border-radius:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);padding:9px 14px;border-radius:9px;font-size:14px;z-index:30}
+.small{font-size:13px;color:var(--muted)}
+@media (max-width:720px){.newgrid{grid-template-columns:1fr 1fr}.newgrid .field:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="logo">Supra</div><span class="who" id="who"></span><div class="seg" id="lang"></div><button class="btn sm" id="signout" hidden></button></header>
+  <section class="hero">
+    <h1 id="tag">Plan who sits where, with every guest drawn at their seat.</h1>
+    <img src="/hero.webp" width="1400" height="583" alt="Five illustrated wedding guests sitting at a flower-decorated head table">
+    <ul class="feats" id="feats"></ul>
+  </section>
+  <main id="main"></main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/i18n.js"></script>
+<script src="/dash.js"></script>
+</body>
+</html>

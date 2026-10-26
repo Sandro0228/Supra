@@ -1,0 +1,10 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/edit/:id", "destination": "/app.html" },
+    { "source": "/e/:slug", "destination": "/app.html" }
+  ],
+  "headers": [
+    { "source": "/assets.js", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }
+  ]
+}
