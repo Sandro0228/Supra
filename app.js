@@ -822,11 +822,12 @@ function listPages(){
     pages.push(cv);col=0;x=M;y=M+200};
   const fit=(txt,max)=>{if(c.measureText(txt).width<=max)return txt;while(txt.length>1&&c.measureText(txt+'…').width>max)txt=txt.slice(0,-1);return txt+'…'};
   // A–Z: two columns, name left, table and seat right
-  const colW=(W-2*M-60)/2,lh=58;page(t('pdfAZ'));
-  rows.forEach(r=>{if(y>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfAZ'))}
-    const right=`${r.table} · ${t('seatN',{number:r.seat})}`;c.font=`28px ${F}`;const rw=c.measureText(right).width;
-    c.fillStyle=p.accent;c.fillText(right,x+colW-rw,y);c.fillStyle=p.ink;c.font=`32px ${F}`;c.fillText(fit(r.name,colW-rw-30),x,y);
-    c.strokeStyle='#E6E1DA';c.lineWidth=1;c.beginPath();c.moveTo(x,y+18);c.lineTo(x+colW,y+18);c.stroke();y+=lh});
+  // two lines per guest so long names and long table names both stay whole
+  const colW=(W-2*M-60)/2,lh=96;page(t('pdfAZ'));
+  rows.forEach(r=>{if(y+lh-40>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfAZ'))}
+    c.fillStyle=p.ink;c.font=`34px ${F}`;c.fillText(fit(r.name,colW),x,y);
+    c.fillStyle=p.accent;c.font=`27px ${F}`;c.fillText(fit(`${r.table} · ${t('seatN',{number:r.seat})}`,colW),x,y+38);
+    c.strokeStyle='#E6E1DA';c.lineWidth=1;c.beginPath();c.moveTo(x,y+60);c.lineTo(x+colW,y+60);c.stroke();y+=lh});
   // by table: each table as a block; a block never splits across columns
   page(t('pdfByTable'));
   S.tables.forEach(tb=>{const names=tb.seats.map((id,i)=>id&&S.guests[id]?`${i+1}. ${S.guests[id].name}`:null).filter(Boolean);if(!names.length)return;
@@ -834,8 +835,8 @@ function listPages(){
     c.fillStyle=p.accent;c.font=`40px ${FD}`;c.fillText(fit(tName(tb),colW),x,y);
     c.font=`26px ${F}`;c.fillStyle='#8A8580';c.fillText(t('statSeats',{occupied:names.length,capacity:tb.seats.length}),x,y+40);y+=90;
     c.fillStyle=p.ink;c.font=`30px ${F}`;names.forEach(n=>{c.fillText(fit(n,colW),x,y);y+=50});y+=40});
-  // page numbers
-  pages.forEach((cv,i)=>{const g=cv.getContext('2d');g.fillStyle='#8A8580';g.font=`24px ${F}`;const s=t('pageN',{n:i+1,of:pages.length});g.fillText(s,W-M-g.measureText(s).width,H-60)});
+  // page numbers (the plan itself is page 1)
+  pages.forEach((cv,i)=>{const g=cv.getContext('2d');g.fillStyle='#8A8580';g.font=`24px ${F}`;const s=t('pageN',{n:i+2,of:pages.length+1});g.fillText(s,W-M-g.measureText(s).width,H-60)});
   return pages.map(cv=>({url:cv.toDataURL('image/png'),w:W,h:H}));
 }
 async function planPdf(){
