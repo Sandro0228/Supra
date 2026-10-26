@@ -4,9 +4,11 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CFG=window.SUPRA_CONFIG||{},L=window.SUPRA_I18N;
 let lang=(()=>{try{return localStorage.getItem('supra.lang')}catch(e){return null}})()||((navigator.language||'').startsWith('ka')?'ka':'en');
-const t=(k,v)=>{let s=(L[lang]||L.en)[k]??L.en[k]??k;if(v)for(const x in v)s=s.replace('{'+x+'}',v[x]);return s};
+const t=(k,v)=>{let s=(L[lang]||L.en)[k]??L.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
+const tn=(k,n)=>{const f=new Intl.PluralRules(lang).select(n),D=L[lang]||L.en;return t(D[k+'_'+f]!==undefined?k+'_'+f:k,{count:n})};
 const next=(()=>{const n=new URLSearchParams(location.search).get('next');return n&&n.startsWith('/')&&!n.startsWith('//')?n:null})();
-const fmtDate=d=>d?new Intl.DateTimeFormat(lang==='ka'?'ka-GE':'en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(d+'T12:00')):'';
+const KA_MONTHS=['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი'];
+const fmtDate=d=>{if(!d)return'';const[y,m,day]=String(d).slice(0,10).split('-').map(Number);if(!y||!m||!day)return'';return lang==='ka'?`${day} ${KA_MONTHS[m-1]}, ${y}`:new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(String(d).slice(0,10)+'T12:00'))};
 const rand=n=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';crypto.getRandomValues(new Uint8Array(n)).forEach(v=>s+=a[v%a.length]);return s};
 function toast(m){const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2400)}
 
@@ -52,10 +54,10 @@ const curTheme=()=>document.documentElement.dataset.theme||(matchMedia('(prefers
 function chrome(){
   document.documentElement.lang=lang;document.title=t('dTitle');
   const md=document.querySelector('meta[name=description]');if(md)md.content=t('dMeta');
-  const th=$('#theme'),dark=curTheme()==='dark';th.innerHTML=dark?SUN:MOON;th.setAttribute('aria-pressed',String(dark));th.setAttribute('aria-label',t('darkMode'));th.title=t('darkMode');
+  const th=$('#theme'),dark=curTheme()==='dark';th.innerHTML=dark?SUN:MOON;th.removeAttribute('aria-pressed');th.setAttribute('aria-label',t(dark?'toLight':'toDark'));th.title=t(dark?'toLight':'toDark');
   $('#lang').setAttribute('aria-label',t('language'));
-  $('#lang').innerHTML=[['en','EN','English'],['ka','ქარ','ქართული']].map(([k,s,full])=>`<button type="button" role="radio" data-lang="${k}" aria-checked="${lang===k}" tabindex="${lang===k?0:-1}" aria-label="${full}" lang="${k}">${s}</button>`).join('');
-  $('#tag').textContent=t('dTag');
+  $('#lang').innerHTML=[['en','EN','English'],['ka','ქარ','ქართული']].map(([k,s,full])=>`<button type="button" role="radio" data-lang="${k}" aria-checked="${lang===k}" tabindex="${lang===k?0:-1}" aria-label="${full}" lang="${k}"><span class="full">${full}</span><span class="short" aria-hidden="true">${s}</span></button>`).join('');
+  $('#tag').textContent=t('dTag');{const hi=document.querySelector('.hero img');if(hi)hi.alt=t('heroAlt')}
   $('#feats').innerHTML=['dF1','dF2','dF3','dF4'].map(k=>`<li>${esc(t(k))}</li>`).join('');
   const authed=A.state==='authenticated';
   $('#who').textContent=authed?(A.session.user.email||''):'';
@@ -138,18 +140,18 @@ function renderDash(){
     <div class="newgrid">
       <label class="field"><span class="lbl">${esc(t('eventName'))}</span><input class="inp" id="nname" value="${esc(D.name)}" placeholder="${esc(t('dNamePh'))}" ${D.nerr?'aria-invalid="true" aria-describedby="nerr"':''}></label>
       <label class="field"><span class="lbl">${esc(t('eventType'))}</span><select id="ntype"><option value="wedding">${esc(t('wedding'))}</option></select></label>
-      <label class="field"><span class="lbl">${esc(t('date'))}</span><input class="inp" id="ndate" type="date" min="${today}" value="${esc(D.date)}"></label>
+      <label class="field"><span class="lbl">${esc(t('date'))}</span><input class="inp" id="ndate" type="date" min="${today}" value="${esc(D.date)}" aria-describedby="ndate-txt"><span class="small" id="ndate-txt">${esc(fmtDate(D.date))}</span></label>
       <button class="btn primary" type="submit">${esc(t('dCreate'))}</button>
     </div>
     ${D.nerr?`<p class="msg err" id="nerr" role="alert">${esc(D.nerr)}</p>`:''}
     <p class="small soon">${esc(t('soonLine'))} ${SOON.map(k=>esc(t(k))).join(', ')}.</p>
-    <div class="field"><label class="lbl" for="nfile">${esc(t('dImport'))}</label><input type="file" id="nfile" accept=".json,application/json" aria-describedby="nfilehint"><span class="small" id="nfilehint">${esc(t('dImportHint'))}</span></div>
+    <div class="field"><span class="lbl" id="nfile-l">${esc(t('dImport'))}</span><div class="filepick"><input type="file" id="nfile" class="fileinput" accept=".json,application/json" aria-labelledby="nfile-l nfile-btn" aria-describedby="nfilehint"><label for="nfile" class="btn sm" id="nfile-btn" aria-hidden="true">${esc(t('pickFile'))}</label><span class="small fname" id="nfile-name" aria-live="polite">${esc(t('noFile'))}</span></div><span class="small" id="nfilehint">${esc(t('dImportHint'))}</span></div>
   </form>
   <section aria-labelledby="yourh" class="yours"><h2 id="yourh">${esc(t('dYour'))}</h2>${list}</section></div>`;
 }
 function evCard(e){
   const n=e.guests?Object.keys(e.guests).length:0,nm=e.name||'—';
-  return`<li class="ev"><h3>${esc(nm)}</h3><div class="meta">${esc([fmtDate(e.event_date),n+' '+t('dGuests')].filter(Boolean).join(' · '))}</div>
+  return`<li class="ev"><h3>${esc(nm)}</h3><div class="meta">${esc([fmtDate(e.event_date),tn('nGuests',n)].filter(Boolean).join(' · '))}</div>
     <div class="row"><a class="btn sm primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpen')+': '+nm)}">${esc(t('dOpen'))}</a>${e.guest_page?`<button type="button" class="btn sm" data-copy="${esc(e.slug)}" aria-label="${esc(t('dGuestLink')+': '+nm)}">${esc(t('dGuestLink'))}</button>`:''}<button type="button" class="btn sm danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete')+': '+nm)}">${esc(t('dDelete'))}</button></div>
     ${D.confirmId===e.id?`<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ',{n:nm}))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dDelete'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>`:''}</li>`;
 }
@@ -180,11 +182,11 @@ document.addEventListener('submit',e=>{
 document.addEventListener('input',e=>{
   if(e.target.id==='email')F.email=e.target.value;
   if(e.target.id==='nname'){D.name=e.target.value;if(D.nerr){D.nerr='';e.target.removeAttribute('aria-invalid');$('#nerr')?.remove()}}
-  if(e.target.id==='ndate')D.date=e.target.value;
+  if(e.target.id==='ndate'){D.date=e.target.value;const x=$('#ndate-txt');if(x)x.textContent=fmtDate(D.date)}
   if((e.target.id==='email'||e.target.id==='pw')&&A.formError&&A.formError.field){A.formError=null;$('#ferr')?.remove();e.target.removeAttribute('aria-invalid')}
 });
 document.addEventListener('change',async e=>{
-  if(e.target.id!=='nfile')return;const f=e.target.files[0];if(!f)return;
+  if(e.target.id!=='nfile')return;const f=e.target.files[0];{const n=$('#nfile-name');if(n)n.textContent=f?f.name:t('noFile')}if(!f)return;
   try{const plan=JSON.parse(await f.text());if(!plan||!Array.isArray(plan.tables)||typeof plan.guests!=='object')throw 0;
     delete plan.savedAt;if(plan.event)delete plan.event.shareLink;
     toast(t('dImported'));create({name:plan.event?.name||f.name.replace(/\.json$/,''),type:'wedding',event_date:plan.event?.date||null,data:plan});

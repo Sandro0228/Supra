@@ -51,7 +51,7 @@ def duplicates_list_with_table_context_and_no_empty_tablemates(pw, base):
     hits.nth(3).click(); p.wait_for_selector('#gcard')
     assert p.evaluate("document.activeElement.id") == 'gcard'
     card = p.inner_text('#gcard')
-    assert 'At your table' not in card and 'AT YOUR TABLE' not in card.upper(), card
+    assert 'WITH YOU AT THIS TABLE' not in card.upper(), card
     alt = p.get_attribute('#gmap svg', 'aria-label')
     assert 'Table 2' in alt and 'seat 1' in alt, alt
     p.click('[data-gall]'); assert p.locator('.ghit').count() == 4
@@ -67,7 +67,7 @@ def no_results_and_tablemates_only_when_enabled(pw, base):
     assert "find" in p.inner_text('#gres').lower() or p.locator('.gempty').count() == 1
     search(p, 'ლუკა')
     card = p.inner_text('#gcard')
-    assert 'ტატო აბაშიძე' in card and 'AT YOUR TABLE' in card.upper(), card
+    assert 'ტატო აბაშიძე' in card and 'WITH YOU AT THIS TABLE' in card.upper(), card
     c.close()
 
 @test
@@ -128,7 +128,7 @@ def share_panel_explains_public_data_and_saves_lookup(pw, base):
     p = c.goto('/edit/ev1', wait='#plan')
     p.click('[data-panel=share]'); p.wait_for_selector('#privacy-controls')
     txt = p.inner_text('#privacy-controls')
-    assert 'Never shown' in txt and 'allergies' in txt
+    assert 'never appear' in txt and 'allergies' in txt
     assert 'guestcode1' in p.inner_text('.sharelink')
     # copy and preview come before the QR code
     order = p.evaluate("[...document.querySelectorAll('[data-act=copylink],#qr')].map(e=>e.id||'copy')")

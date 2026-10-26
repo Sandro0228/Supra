@@ -106,5 +106,5 @@ def language_switch_keeps_typed_email_and_mode(pw, base):
     p.click('[data-lang=ka]'); p.wait_for_timeout(100)
     assert p.evaluate("document.documentElement.lang") == 'ka'
     assert p.input_value('#email') == 'nino@example.com' and p.get_attribute('#tab-signup', 'aria-selected') == 'true'
-    assert 'სტუმრების' in p.title()
+    assert 'დასხდომის' in p.title()
     c.close()

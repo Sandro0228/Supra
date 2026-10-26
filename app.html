@@ -238,6 +238,16 @@ table.cat{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;
 .linkrow{grid-template-columns:1fr auto}
 [hidden]{display:none!important}
 a.btn{text-decoration:none;color:inherit}
+.filepick{display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative}
+.fileinput{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.fileinput:focus-visible+label{outline:3px solid var(--accent);outline-offset:2px}
+.filepick label.btn{cursor:pointer}
+.fname{color:var(--muted);overflow-wrap:anywhere;min-width:0}
+.drawer .btn,.modal .btn{white-space:normal;text-align:left;max-width:100%}
+@media (max-width:900px){.row2{grid-template-columns:1fr}}
+.chip{white-space:normal;text-align:left}
+.nav button{min-width:0}.nav button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:400px){.nav button svg{display:none}.nav button{padding:7px 6px}}
 </style>
 </head>
 <body>

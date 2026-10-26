@@ -5,7 +5,14 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const uid=()=>Math.random().toString(36).slice(2,9);
 const IMG=window.SUPRA_IMG||{};
 const L10N=window.SUPRA_I18N;
-function t(k,v){let s=(L10N[S?.event?.lang||'en']||L10N.en)[k]??L10N.en[k]??k;if(v)for(const x in v)s=s.replace('{'+x+'}',v[x]);return s}
+/* Interface language: the visitor's own choice (shared by dashboard, planner and guest page), else the event's, else the browser's. */
+const storedLang=()=>{try{const l=localStorage.getItem('supra.lang');return l==='ka'||l==='en'?l:null}catch(e){return null}};
+let LANG=storedLang();
+const UL=()=>LANG||S?.event?.lang||((navigator.language||'').startsWith('ka')?'ka':'en');
+function setLang(l){LANG=l;try{localStorage.setItem('supra.lang',l)}catch(e){}}
+function t(k,v){let s=(L10N[UL()]||L10N.en)[k]??L10N.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s}
+/* Counted phrases: uses key_one etc. when the language has that form ("1 guest"); Georgian keeps the noun singular. */
+function tn(k,n,v){const f=new Intl.PluralRules(UL()==='ka'?'ka':'en').select(n),L=L10N[UL()]||L10N.en;return t(L[k+'_'+f]!==undefined?k+'_'+f:k,Object.assign({count:n},v))}
 function rng(seed){let h=1779033703^seed.length;for(let i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19}
   return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return((h^=h>>>16)>>>0)/4294967296}}
 const pick=(a,r=Math.random)=>a[Math.floor(r()*a.length)];
@@ -23,8 +30,8 @@ const OPT={
   outfit:['suit','tuxedo','shirt','sweater','dress','gown'],
   glasses:['none','round','square','sun']
 };
-const BEARD_LBL={none:'none',stubble:'stubble',mustache:'mustache',goatee:'goatee',short:'shortB',full:'full'};
-const GL_LBL={none:'none',round:'roundG',square:'squareG',sun:'sun'};
+const BEARD_LBL={none:'beardNone',stubble:'stubble',mustache:'mustache',goatee:'goatee',short:'shortB',full:'full'};
+const GL_LBL={none:'glassesNone',round:'roundG',square:'squareG',sun:'sun'};
 const SHAPES=['rect','round','square','head'];
 const DECOS=['flowers','candles','greenery','mixed','none'];
 const DECO_LBL={none:'plain'};
@@ -116,7 +123,8 @@ const P=()=>PALETTES[S.event.palette]||PALETTES.blush;
 const T=id=>S.tables.find(x=>x.id===id);
 const V=id=>S.venue.find(x=>x.id===id);
 function where(gid){for(const x of S.tables){const i=x.seats.indexOf(gid);if(i>=0)return{t:x,i}}return null}
-const tName=x=>x.shape==='head'&&x.name==='Head table'?t('headTable'):x.name.replace(/^Table (\d+)$/,(m,n)=>t('table')+' '+n);
+const headName=()=>t(S.event.type==='wedding'||!S.event.type?'headTable':'headTableMain');
+const tName=x=>x.shape==='head'&&x.name==='Head table'?headName():x.name.replace(/^Table (\d+)$/,(m,n)=>t('table')+' '+n);
 
 /* ---------------- geometry ---------------- */
 const SP=86;
@@ -243,12 +251,12 @@ function planSVG(opt={}){
   const date=gDate();
   const cx=B.x+B.w/2;
   s+=`<text x="${cx}" y="${B.y+70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(S.event.name||t('wedding'))}</text>`;
-  s+=`<text x="${cx}" y="${B.y+102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date,seated+' '+t('guests'),S.tables.length+' '+t('tablesW')].filter(Boolean).join('  ·  '))}</text>`;
+  s+=`<text x="${cx}" y="${B.y+102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date,tn('nGuests',seated),tn('nTables',S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
   s+=`<path d="M${cx-70},${B.y+116} H${cx+70}" stroke="${p.accent}" stroke-width="1"/>`;
   S.venue.forEach(v=>s+=`<g opacity="${opt.dim?.5:1}">${venueM(v,p,!opt.guest&&sel.kind==='venue'&&sel.v===v.id,opt.guest)}</g>`);
   S.tables.forEach(x=>{
     const g=geo(x),isSel=!opt.guest&&sel.kind==='table'&&sel.t===x.id,dim=opt.dim&&opt.dim!==x.id;
-    const tA=opt.guest?'':` role="button" tabindex="0" aria-label="${esc(t('tableA11y',{n:tName(x),a:x.seats.filter(Boolean).length,b:x.seats.length}))}"`;
+    const tA=opt.guest?'':` role="button" tabindex="0" aria-label="${esc(t('tableA11y',{n:tName(x),occupied:x.seats.filter(Boolean).length,capacity:x.seats.length}))}"`;
     const R0=x.rot||0;let tb=`<g class="tgrp" data-tg="${x.id}" transform="translate(${x.x} ${x.y})" opacity="${dim?.3:1}"><g transform="rotate(${R0})">`;
     g.seats.forEach((st,i)=>{
       const gid=x.seats[i],G=gid&&S.guests[gid],ang=Math.atan2(-st.oy,-st.ox)*180/Math.PI-90;
@@ -306,14 +314,14 @@ function renderTop(){
   const sides={bride:0,groom:0};Object.values(S.guests).forEach(g=>{if(sides[g.side]!==undefined)sides[g.side]++});
   const nb=S.rules.filter(ruleBroken).length;
   $('#evname').textContent=S.event.name||'Supra';if(!guestMode)document.title=t('editTitle',{event:S.event.name||'Supra'});
-  $('#stats').innerHTML=`<span>${seated}/${cap} ${t('seated')}${S.waiting.length?` · ${S.waiting.length} ${t('waiting')}`:''}</span>${sides.bride||sides.groom?`<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>`:''}${nb?`<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>`:''}`;
+  $('#stats').innerHTML=`<span>${esc(t('statSeats',{occupied:seated,capacity:cap}))}${S.waiting.length?` · ${esc(tn('nUnseated',S.waiting.length))}`:''}</span>${sides.bride||sides.groom?`<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>`:''}${nb?`<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>`:''}`;
   const cur=!sel.kind&&panel,tabs=[['event','event'],['guests','tabGuests'],['share','tabShare']];
   $('#nav').setAttribute('aria-label',t('panels'));
   $('#nav').innerHTML=tabs.map(([k,l],i)=>`<button type="button" role="tab" id="tab-${k}" data-panel="${k}" aria-selected="${cur===k}" aria-controls="left" tabindex="${(cur?cur===k:i===0)?0:-1}">${ICON[k]}<span>${esc(t(l))}</span></button>`).join('');
   $('#lang').setAttribute('aria-label',t('language'));
-  $('#lang').innerHTML=[['en','EN','English'],['ka','ქარ','ქართული']].map(([k,l,n])=>`<button type="button" role="radio" data-lang="${k}" lang="${k}" aria-label="${n}" aria-checked="${S.event.lang===k}" tabindex="${S.event.lang===k?0:-1}">${l}</button>`).join('');
+  $('#lang').innerHTML=[['en','EN','English'],['ka','ქარ','ქართული']].map(([k,l,n])=>`<button type="button" role="radio" data-lang="${k}" lang="${k}" aria-label="${n}" aria-checked="${UL()===k}" tabindex="${UL()===k?0:-1}">${l}</button>`).join('');
   $('#undo').title=t('undo');$('#undo').setAttribute('aria-label',t('undo'));$('#undo').disabled=!hist.length;
-  const th=$('#theme');th.innerHTML=curTheme()==='dark'?ICON.sun:ICON.moon;th.setAttribute('aria-label',t('darkMode'));th.title=t('darkMode');th.setAttribute('aria-pressed',curTheme()==='dark');
+  const th=$('#theme');th.innerHTML=curTheme()==='dark'?ICON.sun:ICON.moon;const tl=t(curTheme()==='dark'?'toLight':'toDark');th.setAttribute('aria-label',tl);th.title=tl;th.removeAttribute('aria-pressed');
   const fb=$('#full');fb.innerHTML=isFull()?ICON.unfull:ICON.full;fb.title=isFull()?t('exitFull'):t('fullscreen');fb.setAttribute('aria-label',fb.title);
   const sb=$('#save'),st=$('#savestate');
   sb.hidden=saveState!=='error';sb.textContent=t('save');
@@ -344,15 +352,15 @@ function renderLeft(){
   if(panel==='event'){h=dhead(t('event'))+`
     <label class="field"><span class="lbl">${t('eventName')}</span><input id="ev-name" class="inp" value="${esc(e.name)}"></label>
     <div class="row2"><div class="field"><span class="lbl">${t('eventType')}</span>${EVENT_TYPES.filter(([,on])=>on).length>1?`<select id="ev-type" aria-label="${esc(t('eventType'))}">${EVENT_TYPES.filter(([,on])=>on).map(([k])=>`<option value="${k}" ${e.type===k?'selected':''}>${t(k)}</option>`).join('')}</select>`:`<p class="static">${esc(t(e.type||'wedding'))}</p>`}</div>
-    <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" class="inp" type="date" value="${esc(e.date)}"></label></div>
+    <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" class="inp" type="date" value="${esc(e.date)}" aria-describedby="ev-date-txt"><span class="muted small" id="ev-date-txt">${esc(fmtDate(e.date))}</span></label></div>
     <p class="muted small">${t('soonLine')} ${EVENT_TYPES.filter(([,on])=>!on).map(([k])=>t(k)).join(', ')}.</p>
     <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal',Object.keys(PALETTES),e.palette,k=>t('pal_'+k),t('style'))}</div>
     ${det('layout',t('layoutTools'),`<p class="muted">${t('venueHint')}</p><div class="chips">${Object.keys(VENUE).filter(k=>!['stage','bar','dance'].includes(k)).map(k=>`<button type="button" class="chip" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}</div><button type="button" class="btn sm" data-act="arrange">${t('autoArrange')}</button>`)}`}
-  else if(panel==='guests'){const total=Object.keys(S.guests).length;h=dhead(t('tabGuests'),`${total} ${t('guests')}`)+`
+  else if(panel==='guests'){const total=Object.keys(S.guests).length;const seatedG=S.tables.reduce((a,x)=>a+x.seats.filter(Boolean).length,0);h=dhead(t('tabGuests'),esc(t('statGuests',{seatedGuests:seatedG,totalGuests:total})))+`
     <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(FINDQ)}"><div class="search-res" id="findres"></div>
     ${S.waiting.length?`<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id=>`<button type="button" class="wchip" data-wait="${id}" aria-pressed="${waitSel===id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>`:''}
     ${det('add',t('addGuests'),`<label class="field"><span class="lbl">${t('pasteNames')}</span><textarea id="bulk" rows="3" class="inp" placeholder="ნინო ბერიძე&#10;Giorgi Kapanadze"></textarea></label>
-      <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${S.tables.map(x=>`<option value="${x.id}">${esc(tName(x))} (${x.seats.filter(v=>!v).length} ${t('free')})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
+      <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${S.tables.map(x=>`<option value="${x.id}">${esc(tName(x))} (${esc(tn('nFree',x.seats.filter(v=>!v).length))})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
       <div class="row"><button type="button" class="btn primary" data-act="bulk">${t('addNames')}</button></div>
       <div class="row"><button type="button" class="btn sm" data-act="import">${t('importX')}</button><button type="button" class="btn sm" data-act="export">${t('exportX')}</button></div>`)}
     ${det('rules',`${t('rules')}${S.rules.length?` · ${S.rules.length}`:''}`,`${S.rules.length?`<div class="rules">${S.rules.map(r=>{const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${esc(S.guests[r.a]?.name)} <b>${r.type==='together'?'＋':'≠'}</b> ${esc(S.guests[r.b]?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}</div>`:''}<p class="muted">${t('rulesHint')}</p>`)}
@@ -368,9 +376,11 @@ function renderLeft(){
       <div class="row"><button type="button" class="btn primary" data-act="copylink">${t('copyLink')}</button><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">${t('openGuest')}<span class="sr"> ${t('newTab')}</span></a></div>
       <p id="copystate" class="muted small" role="status"></p></div>
       <div id="qr" class="qr" role="img" aria-label="${esc(t('qrAlt'))}"></div>
-      <div class="row"><button type="button" class="btn sm" data-act="dlqr">${t('dlQR')}</button></div>`:''}
+      <div class="row"><button type="button" class="btn sm" data-act="dlqr">${t('dlQR')}</button></div>
+      <div class="field"><span class="lbl">${t('guestLang')}</span>${radios(t('guestLang'),[['en',t('lang_en')],['ka',t('lang_ka')]].map(([k,l])=>({attr:`data-glangset="${k}" lang="${k}"`,on:(S.event.lang||'en')===k,html:esc(l)})))}<span class="muted small">${t('guestLangHint')}</span></div>`:''}
     <section class="pubbox" id="privacy-controls" aria-labelledby="pub-h">
       <h3 id="pub-h">${t('pubTitle')}</h3>
+      <p class="small">${t('privacy')}</p>
       <p class="small">${t('pubSees')}</p>
       <ul class="small publist"><li>${t('pubLayout')}</li><li>${t('pubMatch')}</li>${ROW?.show_tablemates?`<li>${t('pubMates')}</li>`:''}</ul>
       <p class="small muted">${t('pubNever')}</p>
@@ -429,7 +439,7 @@ function renderRight(){
     <div class="who"><div class="preview">${preview(G)}</div><div class="whotxt">
       <button type="button" class="btn primary" data-act="rnd">🎲 ${t('randomLook')}</button><button type="button" class="btn sm" data-act="kind">${L.kind==='m'?t('toFem'):t('toMasc')}</button></div></div>
     <label class="field"><span class="lbl">${t('name')}</span><input id="g-name" class="inp" value="${esc(G.name)}"></label>
-    <div class="field"><span class="lbl">${t('side')}</span>${radios(t('side'),SIDES.map(k=>({attr:`data-gside="${k}"`,on:G.side===k,html:`${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}`})))}</div>
+    <div class="field"><span class="lbl">${t('side')}</span>${radios(t('side'),SIDES.map(k=>({attr:`data-gside="${k}"`,on:G.side===k,html:`${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'sideNone')}`})))}</div>
     ${det('look',t('appearance'),`<span class="lbl">${t('skin')}</span>${sw('skin',OPT.skin,L.skin)}
       <span class="lbl">${t('hairStyle')}</span>${lch('hair',OPT.hair,L.hair)}
       ${L.hair!=='bald'?`<span class="lbl">${t('hairColour')}</span>${sw('hairColor',OPT.hairColor,L.hairColor)}`:''}
@@ -454,14 +464,14 @@ function renderRight(){
   if(sel.kind==='table'){
     const x=T(sel.t);if(!x){sel={kind:null};return renderRight()}
     const free=x.seats.filter(v=>!v).length;
-    R.innerHTML=dhead(esc(tName(x)),`${x.seats.length-free}/${x.seats.length} ${t('seated')}`)+`
+    R.innerHTML=dhead(esc(tName(x)),esc(t('statSeats',{occupied:x.seats.length-free,capacity:x.seats.length})))+`
       <label class="field"><span class="lbl">${t('tableName')}</span><input id="t-name" class="inp" value="${esc(x.name)}"></label>
-      <div class="field"><span class="lbl">${t('shape')}</span>${chipBtns('data-shape',SHAPES,x.shape,null,t('shape'))}</div>
-      <div class="field"><span class="lbl">${t('seats')}</span><div class="stepper"><button type="button" class="btn sm" data-act="seat-" aria-label="-">−</button><output>${x.seats.length}</output><button type="button" class="btn sm" data-act="seat+" aria-label="+">+</button><span class="muted">${free} ${t('free')}</span></div></div>
+      <div class="field"><span class="lbl">${t('shape')}</span>${chipBtns('data-shape',SHAPES,x.shape,k=>k==='head'?headName():t(k),t('shape'))}</div>
+      <div class="field"><span class="lbl">${t('seats')}</span><div class="stepper"><button type="button" class="btn sm" data-act="seat-" aria-label="-">−</button><output>${x.seats.length}</output><button type="button" class="btn sm" data-act="seat+" aria-label="+">+</button><span class="muted">${esc(tn('nFree',free))}</span></div></div>
       ${rotUI(x)}
       ${det('deco',t('decoration'),chipBtns('data-deco',DECOS,x.deco,k=>t(DECO_LBL[k]||k),t('decoration')))}
-      ${det('fill',t('fillGroup'),`<p class="muted">${t('fillHint')}</p><label class="field"><span class="lbl">${t('groupName')}</span><input id="grp" class="inp" value="${S.event.lang==='ka'?'მეზობელი':'Neighbour'}"></label><button type="button" class="btn" data-act="fillgroup" ${free?'':'disabled'}>${t('fillFree')}</button>`)}
-      ${det('tmore',t('moreActions'),`<span class="lbl">${t('setSide')}</span><div class="chips">${SIDES.map(k=>`<button type="button" class="chip" data-tside="${k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'none')}</button>`).join('')}</div>
+      ${det('fill',t('fillGroup'),`<p class="muted">${t('fillHint')}</p><label class="field"><span class="lbl">${t('groupName')}</span><input id="grp" class="inp" value="${UL()==='ka'?'მეზობელი':'Neighbour'}"></label><button type="button" class="btn" data-act="fillgroup" ${free?'':'disabled'}>${t('fillFree')}</button>`)}
+      ${det('tmore',t('moreActions'),`<span class="lbl">${t('setSide')}</span><div class="chips">${SIDES.map(k=>`<button type="button" class="chip" data-tside="${k}">${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'sideNone')}</button>`).join('')}</div>
         <div class="row"><button type="button" class="btn sm" data-act="focustable">${t('zoomTable')}</button><button type="button" class="btn sm" data-act="shuffle">${t('shuffleTable')}</button><button type="button" class="btn sm" data-act="restyle">${t('restyleTable')}</button><button type="button" class="btn sm" data-act="dup">${t('duplicate')}</button><button type="button" class="btn sm danger" data-act="deltable">${t('deleteTable')}</button></div>
         ${confirmK==='table'?`<div class="confirm danger"><span>${t('deleteTableQ',{n:esc(tName(x)),c:x.seats.filter(Boolean).length})}</span><div class="row"><button type="button" class="btn sm danger" data-act="deltable-yes">${t('deleteTable')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}`)}`;
     return;
@@ -536,7 +546,7 @@ function focusTable(x){const[w,h]=dims(x),sc=$('#scroller'),svg=$('#plan');
   sc.scrollLeft+=b.left+px-(r.left+r.width/2);sc.scrollTop+=b.top+py-(r.top+r.height/2)}
 function renderAll(){
   const fk=focusKeyOf(document.activeElement);
-  document.documentElement.lang=S.event.lang;renderTop();const st=renderDrawer();renderLeft();renderRight();renderPlan();
+  document.documentElement.lang=UL();renderTop();const st=renderDrawer();renderLeft();renderRight();renderPlan();
   if(st.opened){$('#dtitle')?.focus({preventScroll:true});return}
   if(st.closed){const back=opener&&document.querySelector(opener);opener=null;(back||$('#scroller')).focus({preventScroll:true});return}
   if(fk&&document.activeElement===document.body){const el=document.querySelector(fk);el&&el.focus({preventScroll:true})}}
@@ -585,7 +595,7 @@ function act(a){
     case'focustable':{const tb=T(sel.t);if(tb){if(isPhone())closeDrawer();requestAnimationFrame(()=>focusTable(tb))}break}
     case'hintok':try{localStorage.setItem('supra.hint','1')}catch(e){};hintOpen=false;renderTop();$('#help').focus();break;
     case'addguest':{const n=($('#newname').value||'').trim();if(!n){toast(t('typeFirst'));$('#newname').focus();return}commit(()=>{x.seats[sel.i]=mkGuest(n)});break}
-    case'addrandom':commit(()=>{x.seats[sel.i]=mkGuest(t('guests').replace(/^./,c=>c.toUpperCase())+' '+(Object.keys(S.guests).length+1),randLook())});break;
+    case'addrandom':commit(()=>{x.seats[sel.i]=mkGuest(t('guestWord')+' '+(Object.keys(S.guests).length+1),randLook())});break;
     case'rnd':commit(()=>{const g=curGuest();g.look=randLook(g.look.kind)});break;
     case'kind':commit(()=>{const g=curGuest();g.look=randLook(g.look.kind==='m'?'f':'m')});break;
     case'unseat':commit(()=>{S.waiting.push(x.seats[sel.i]);x.seats[sel.i]=null});toast(t('movedWaiting'));break;
@@ -618,7 +628,8 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.act)return act(d.act);
   if(d.panel){const k=d.panel;if(!drawerOpen)opener='#tab-'+k;panel=(panel===k&&!sel.kind)?null:k;sel={kind:null};confirmK=null;renderAll();return}
-  if(d.lang){commit(()=>S.event.lang=d.lang);return}
+  if(d.lang){if(d.lang!==UL()){setLang(d.lang);renderAll()}return}
+  if(d.glangset){if(S.event.lang!==d.glangset)commit(()=>S.event.lang=d.glangset);return}
   if(d.pal)return commit(()=>S.event.palette=d.pal);
   if(d.seltable){if(!drawerOpen)opener=focusKeyOf(b);sel={kind:'table',t:d.seltable};confirmK=null;renderAll();return}
   if(d.shape)return commit(()=>T(sel.t).shape=d.shape);
@@ -823,19 +834,21 @@ function catererModal(){
   modal(`<h2>${t('catTitle')}</h2><div class="tablewrap"><table class="cat">${head}${rows.map(tr).join('')}<tr class="tot">${tr(Object.assign({table:t('total')},tot)).slice(4)}</table></div>
   <h3>${t('allergyList')}</h3>${al.length?`<ul class="al">${al.join('')}</ul>`:`<p class="muted">${t('noAllergies')}</p>`}
   <div class="row"><button type="button" class="btn primary" id="dlcsv">${t('dlCSV')}</button></div>`);
-  $('#dlcsv').onclick=()=>{const L=[['Table','Seat','Name','Meal','Child','Allergies','Side','Group']];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)L.push([tName(x),i+1,g.name,t(MEAL_LBL[g.meal]||g.meal),g.kid?'yes':'',g.allergies,g.side?t(g.side):'',g.group])}));
+  $('#dlcsv').onclick=()=>{const L=[['colTable','colSeat','colName','colMeal','colChild','colAllergies','colSide','colGroup'].map(k=>t(k))];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)L.push([tName(x),i+1,g.name,t(MEAL_LBL[g.meal]||g.meal),g.kid?t('yes'):'',g.allergies,g.side?t(g.side):'',g.group])}));
     const csv='﻿'+L.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');offerFile(fname('-'+t('fileCaterer')+'.csv'),new Blob([csv],{type:'text/csv'}))};
 }
 
 /* excel */
 async function exportX(){try{await loadScript(XLSXLIB)}catch(e){return toast(t('couldntSave'))}
-  const L=[['Name','Table','Seat','Group','Side','Meal','Child','Allergies']];
-  S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)L.push([g.name,tName(x),i+1,g.group,g.side,g.meal,g.kid?'yes':'',g.allergies])}));
-  S.waiting.forEach(id=>{const g=S.guests[id];if(g)L.push([g.name,'','',g.group,g.side,g.meal,g.kid?'yes':'',g.allergies])});
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(L),'Guests');
+  // Headings and values follow the interface language; the importer reads both languages back.
+  const L=[['colName','colTable','colSeat','colGroup','colSide','colMeal','colChild','colAllergies'].map(k=>t(k))];
+  const row=(g,tb,i)=>[g.name,tb,i,g.group,g.side?t(g.side):'',g.meal?t(MEAL_LBL[g.meal]||g.meal):'',g.kid?t('yes'):'',g.allergies];
+  S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)L.push(row(g,tName(x),i+1))}));
+  S.waiting.forEach(id=>{const g=S.guests[id];if(g)L.push(row(g,'',''))});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(L),t('sheetGuests').slice(0,31));
   offerFile(fname('-'+t('fileGuests')+'.xlsx'),new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}
 function parseRows(rows){
-  const re={name:/^(name|names|guest|სახელი|სტუმარი|სახელი გვარი)/i,table:/(table|მაგიდ)/i,group:/(group|ჯგუფ)/i,side:/(side|მხარე)/i,meal:/(meal|menu|კერძ)/i,kid:/(child|kid|ბავშ)/i,allergies:/(allerg|ალერგ)/i};
+  const re={name:/^(name|names|guest|სახელი|სტუმარი|სახელი გვარი)/i,table:/(table|მაგიდ)/i,group:/(group|ჯგუფ)/i,side:/(side|მხარე)/i,meal:/(meal|menu|კერძ|კვებ|მენიუ)/i,kid:/(child|kid|ბავშ)/i,allergies:/(allerg|ალერგ)/i};
   let hr=-1,col={};
   for(let r=0;r<Math.min(rows.length,10)&&hr<0;r++)(rows[r]||[]).forEach((c,i)=>{if(typeof c==='string'&&re.name.test(c.trim())){hr=r}});
   if(hr>=0){(rows[hr]||[]).forEach((c,i)=>{if(typeof c!=='string')return;for(const k in re)if(col[k]===undefined&&re[k].test(c.trim()))col[k]=i})}
@@ -846,7 +859,7 @@ function parseRows(rows){
 }
 function importModal(){
   modal(`<h2>${t('importTitle')}</h2><p class="muted">${t('importHint')}</p>
-  <label class="field"><span class="lbl">${t('chooseFile')}</span><input type="file" id="xfile" accept=".xlsx,.xls,.csv"></label>
+  <div class="field"><span class="lbl" id="xfile-l">${t('chooseFile')}</span>${filePick('xfile','.xlsx,.xls,.csv','xfile-l')}</div>
   <p id="xinfo" class="muted"></p>
   <div class="field"><span class="lbl">${t('importMode')}</span><label class="check"><input type="radio" name="xmode" value="add" checked> ${t('importAdd')}</label><label class="check"><input type="radio" name="xmode" value="replace"> ${t('importReplace')}</label></div>
   <div class="row"><button type="button" class="btn primary" id="xgo" disabled>${t('importGo')}</button></div>`);
@@ -873,6 +886,9 @@ function importModal(){
 }
 
 /* ---------------- modal ---------------- */
+/* File chooser with interface-language text: the native input stays (keyboard, screen readers, drag-and-drop), its browser-language button is hidden. */
+const filePick=(id,accept,labelled)=>`<div class="filepick"><input type="file" id="${id}" accept="${accept}" class="fileinput" aria-labelledby="${labelled} ${id}-btn"><label for="${id}" class="btn" id="${id}-btn" aria-hidden="true">${t('pickFile')}</label><span class="fname" id="${id}-name" aria-live="polite">${t('noFile')}</span></div>`;
+document.addEventListener('change',e=>{const i=e.target;if(i.classList?.contains('fileinput')){const n=document.getElementById(i.id+'-name');if(n)n.textContent=i.files[0]?.name||t('noFile')}},true);
 function modal(html){const r=$('#modalroot'),back=document.activeElement;
   r.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle"><div class="box" tabindex="-1">${html.replace('<h2>','<h2 id="mtitle">')}<div class="row end"><button type="button" class="btn" data-close>${t('close')}</button></div></div></div>`;
   const shut=()=>{r.innerHTML='';document.removeEventListener('keydown',key,true);back&&back.focus&&back.focus()};
@@ -888,9 +904,13 @@ function modal(html){const r=$('#modalroot'),back=document.activeElement;
    for one name at a time (find_seat), which returns only name, drawing, table and seat. */
 let GROOM=false,GL={mode:'prefix',pin:false},GQ='',GPIN='',gseq=0,gT=null,GS={status:'idle',matches:[],chosen:-1};
 const gnorm=s=>String(s||'').normalize('NFC').toLowerCase().replace(/\s+/g,' ').trim();
-function gDate(){return S.event.date?new Intl.DateTimeFormat(S.event.lang==='ka'?'ka-GE':'en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(S.event.date+'T12:00')):''}
+/* Dates: "31 ოქტომბერი, 2026" / "31 October 2026". Georgian is spelled out here because some browsers ship without Georgian date data. */
+const KA_MONTHS=['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი'];
+function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-').map(Number);if(!y||!m||!day)return'';
+  return UL()==='ka'?`${day} ${KA_MONTHS[m-1]}, ${y}`:new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(d+'T12:00'))}
+function gDate(){return fmtDate(S.event.date)}
 function guestMeta(){
-  document.documentElement.lang=S.event.lang==='ka'?'ka':'en';
+  document.documentElement.lang=UL();
   document.title=[t('fgTitle'),S.event.name,'Supra'].filter(Boolean).join(' · ');
   let m=document.querySelector('meta[name=description]');if(!m){m=document.createElement('meta');m.name='description';document.head.appendChild(m)}
   m.content=t('fgMeta',{event:S.event.name||'Supra'});
@@ -899,7 +919,7 @@ function guestRender(){
   document.body.classList.add('guestmode');guestMeta();
   const date=gDate(),hint=GL.mode==='exact'?t('fgHintExact'):t('fgHintPrefix');
   $('#guest').innerHTML=`<div class="gwrap">
-    <div class="glang" role="radiogroup" aria-label="${esc(t('language'))}">${[['en','EN'],['ka','ქარ']].map(([k,l])=>`<button type="button" role="radio" data-glang="${k}" aria-checked="${S.event.lang===k}" tabindex="${S.event.lang===k?0:-1}" lang="${k}">${l}</button>`).join('')}</div>
+    <div class="glang" role="radiogroup" aria-label="${esc(t('language'))}">${[['en','English'],['ka','ქართული']].map(([k,l])=>`<button type="button" role="radio" data-glang="${k}" aria-checked="${UL()===k}" tabindex="${UL()===k?0:-1}" lang="${k}">${l}</button>`).join('')}</div>
     ${date?`<p class="gdate"><time datetime="${esc(S.event.date)}">${esc(date)}</time></p>`:''}<h1>${esc(S.event.name||'Supra')}</h1>
     <form id="gform" class="gform" role="search" autocomplete="off" novalidate>
       <h2 id="gtitle">${t('fgTitle')}</h2>
@@ -912,8 +932,8 @@ function guestRender(){
     ${MODE==='edit'?`<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>`:''}</div>`;
   guestShow();
 }
-function guestStatusMsg(st){return{short:GL.mode==='exact'?t('fgHintExact'):t('fgHintPrefix'),many:t('fgMany'),rate_limited:t('fgRate'),
-  pin:GPIN?t('fgPinBad'):t('fgPinNeed'),not_found:t('notFound'),error:t('fgErr'),none:t('fgNone'),searching:t('fgSearching')}[st]||''}
+function guestStatusMsg(st){return{short:t('fgShort'),many:t('fgMany'),rate_limited:t('fgRate'),
+  pin:GPIN?t('fgPinBad'):t('fgPinNeed'),not_found:t('fgUnavailable'),error:t('fgErr'),none:t('fgNone'),searching:t('fgSearching')}[st]||''}
 function guestShow(){
   const res=$('#gres'),map=$('#gmap');if(!res)return;
   const st=GS.status,ms=GS.matches;
@@ -922,12 +942,12 @@ function guestShow(){
   if(st!=='ok'){res.innerHTML=`<p class="gnone ${st==='searching'?'gwait':''}" ${['rate_limited','error','pin'].includes(st)?'role="alert"':''}>${esc(guestStatusMsg(st))}</p>`;return}
   if(!ms.length){res.innerHTML=`<div class="gempty"><p class="gnone">${esc(t('fgNone'))}</p></div>`;return}
   if(ms.length>1&&GS.chosen<0){
-    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}"><span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))} · ${esc(t('seat'))} ${m.seat}</span></button></li>`).join('')}</ul>`;return}
+    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}"><span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))} · ${esc(t('seatN',{number:m.seat}))}</span></button></li>`).join('')}</ul>`;return}
   const m=ms[Math.max(0,GS.chosen)],mates=Array.isArray(m.mates)?m.mates.filter(Boolean):[];
   res.innerHTML=`<div class="gcard" tabindex="-1" id="gcard"><span class="lbl">${t('fgTable')}</span><div class="gbig">${esc(gTableName(m))}</div>
-    <div class="gname">${esc(m.name)} · <span class="gseat">${esc(t('seat'))} ${m.seat}</span></div>
+    <div class="gname">${esc(m.name)} · <span class="gseat">${esc(t('seatN',{number:m.seat}))}</span></div>
     ${mates.length?`<h3 class="lbl">${t('fgWith')}</h3><p class="gwith">${mates.map(esc).join(' · ')}</p>`:''}
-    ${ms.length>1?`<button type="button" class="linkbtn" data-gall>${t('fgNotYou')}</button>`:''}</div>`;
+    <div class="row gacts">${ms.length>1?`<button type="button" class="linkbtn" data-gall>${t('fgNotYou')}</button>`:''}<button type="button" class="linkbtn" data-gagain>${t('fgAgain')}</button></div></div>`;
   gMap(m);
 }
 function gTableName(m){const x=S.tables[m.table];return x?tName(x):(m.tableName||'')}
@@ -971,8 +991,9 @@ async function guestSearch(now){
 function guestClick(e){const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ghit!==undefined){GS.chosen=+b.dataset.ghit;guestShow();$('#gcard')?.focus();return}
   if(b.dataset.groom!==undefined){GROOM=!GROOM;guestShow();$('[data-groom]')?.focus();return}
+  if(b.dataset.gagain!==undefined){GQ='';GS={status:'idle',matches:[],chosen:-1};GROOM=false;const q=$('#gq');q.value='';guestShow();q.focus();return}
   if(b.dataset.gall!==undefined){GS.chosen=-1;guestShow();$('.ghit')?.focus();return}
-  if(b.dataset.glang){const a=document.activeElement?.id;S.event.lang=b.dataset.glang;guestRender();(a?document.getElementById(a):$(`[data-glang="${b.dataset.glang}"]`))?.focus();return}
+  if(b.dataset.glang){const a=document.activeElement?.id;setLang(b.dataset.glang);guestRender();(a?document.getElementById(a):$(`[data-glang="${b.dataset.glang}"]`))?.focus();return}
   if(b.dataset.gback!==undefined){history.replaceState(null,'',location.pathname+location.search);route()}}
 document.addEventListener('submit',e=>{if(e.target.id==='gform'){e.preventDefault();guestSearch(true)}});
 function route(){$('#loading').hidden=true;
@@ -999,7 +1020,7 @@ function fromPublic(d){
   return normalize(o);
 }
 async function boot(){
-  measure();{const l=(navigator.language||'').startsWith('ka')?'ka':'en';document.documentElement.lang=l;$('#loadingtxt').textContent=(L10N[l]||L10N.en).loadingPlan||'Loading…'}
+  measure();{const l=UL();document.documentElement.lang=l;$('#loadingtxt').textContent=(L10N[l]||L10N.en).loadingPlan||'Loading…'}
   S={event:{lang:(navigator.language||'').startsWith('ka')?'ka':'en'},tables:[],guests:{}};
   const path=location.pathname,qs=new URLSearchParams(location.search);
   const gm=path.match(/^\/e\/([\w-]+)/),em=path.match(/^\/edit\/([\w-]+)/);
@@ -1009,7 +1030,7 @@ async function boot(){
   if(slug){MODE='guest';
     SLUG=slug;
     const{data,error}=await SB.rpc('public_plan',{p_slug:slug});
-    if(error||!data||!data.tables){fatal(t('notFound'));return}
+    if(error||!data||!data.tables){fatal(t('fgUnavailable'));return}
     S=fromPublic(data);readOnly=true;
   }else{
     const{data:{session}}=await SB.auth.getSession();
