@@ -160,6 +160,53 @@ function autoArrange(){
     r.forEach(o=>{o.x.x=Math.round(cx+o.g.w/2);o.x.y=Math.round(y+rh/2);cx+=o.g.w+GAP});y+=rh+GAP});
   let vx=-500;S.venue.forEach(v=>{v.x=vx+v.w/2;v.y=y+v.h/2;vx+=v.w+40});
 }
+/* ---------------- arrange tables ----------------
+   A grid of guest tables in rows, the head table centred on top, optional room items lined up between them.
+   Wider gaps ("aisles") go after the rows and columns the planner picks. Pure: returns positions, changes nothing. */
+const AISLE={normal:140,wide:220,xwide:320},GAP=60,SECTION=100; // GAP ≥ resolveOverlaps' clearance, so arranged tables never get nudged
+function arrangeDefaults(){const n=S.tables.filter(x=>x.shape!=='head').length||1;const o=S.layout||{};
+  const rows=Math.min(n,Math.max(1,o.rows||Math.round(Math.sqrt(n/1.6))||1));
+  return{orient:o.orient==='vertical'?'vertical':'horizontal',rows,rowAisles:(o.rowAisles||[]).filter(i=>i<rows-1),colAisles:o.colAisles||[],aisle:AISLE[o.aisle]?o.aisle:'wide',venue:o.venue!==false}}
+function arrangeLayout(o){
+  const heads=S.tables.filter(x=>x.shape==='head'),guests=S.tables.filter(x=>x.shape!=='head'),n=guests.length;
+  const R=Math.min(Math.max(1,o.rows|0),Math.max(1,n)),C=Math.max(1,Math.ceil(n/R)),out={tables:{},venue:{},R,C,bands:[]};
+  const rotOf=x=>x.shape==='rect'?(o.orient==='vertical'?90:0):0;
+  const size=x=>{const g=geo(x);return rbox(g.w,g.h,rotOf(x))};
+  const colW=Array(C).fill(0),rowH=Array(R).fill(0);
+  guests.forEach((x,i)=>{const r=Math.floor(i/C),c=i%C,[w,h]=size(x);colW[c]=Math.max(colW[c],w);rowH[r]=Math.max(rowH[r],h)});
+  const gapAfter=(list,i)=>list.includes(i)?AISLE[o.aisle]||AISLE.wide:GAP;
+  const colX=[];let cx=0;colW.forEach((w,c)=>{colX[c]=cx+w/2;cx+=w+(c<C-1?gapAfter(o.colAisles,c):0)});const gridW=cx;
+  // head table(s) on top, side by side
+  let y=0;const hs=heads.map(x=>{const g=geo(x);return[g.w,g.h]});
+  if(heads.length){const hw=hs.reduce((a,[w])=>a+w,0)+GAP*(heads.length-1),hh=Math.max(...hs.map(([,h])=>h));let hx=-hw/2;
+    heads.forEach((x,i)=>{out.tables[x.id]={x:Math.round(hx+hs[i][0]/2),y:Math.round(hh/2),rot:0};hx+=hs[i][0]+GAP});y=hh+SECTION}
+  // room items in one row under the head table, keeping their left-to-right order
+  if(o.venue&&S.venue.length){const vs=[...S.venue].sort((a,b)=>(a.x||0)-(b.x||0)),dims=vs.map(v=>rbox(v.w,v.h,v.rot)),vw=dims.reduce((a,[w])=>a+w,0)+GAP*(vs.length-1),vh=Math.max(...dims.map(([,h])=>h));
+    let vx=-vw/2;vs.forEach((v,i)=>{out.venue[v.id]={x:Math.round(vx+dims[i][0]/2),y:Math.round(y+vh/2)};vx+=dims[i][0]+GAP});y+=vh+SECTION}
+  else if(!o.venue&&S.venue.length){S.venue.forEach(v=>{const[,h]=rbox(v.w,v.h,v.rot);y=Math.max(y,(v.y||0)+h/2+SECTION)})}
+  // the grid, centred under everything above it
+  const x0=-gridW/2;let ry=y;const rowY=[];
+  rowH.forEach((h,r)=>{rowY[r]=ry+h/2;ry+=h+(r<R-1?gapAfter(o.rowAisles,r):0)});
+  guests.forEach((x,i)=>{const r=Math.floor(i/C),c=i%C;out.tables[x.id]={x:Math.round(x0+colX[c]),y:Math.round(rowY[r]),rot:rotOf(x)}});
+  // aisles, for the preview
+  o.rowAisles.filter(i=>i<R-1).forEach(i=>out.bands.push({k:'row',x:x0,y:rowY[i]+rowH[i]/2,w:gridW,h:gapAfter(o.rowAisles,i)}));
+  o.colAisles.filter(i=>i<C-1).forEach(i=>out.bands.push({k:'col',x:x0+colX[i]+colW[i]/2,y,w:gapAfter(o.colAisles,i),h:ry-y}));
+  return out}
+function applyArrangement(o){const L=arrangeLayout(o);
+  S.tables.forEach(x=>{const p=L.tables[x.id];if(p){x.x=p.x;x.y=p.y;x.rot=p.rot}});
+  S.venue.forEach(v=>{const p=L.venue[v.id];if(p){v.x=p.x;v.y=p.y}});
+  S.layout={orient:o.orient,rows:o.rows,rowAisles:o.rowAisles,colAisles:o.colAisles,aisle:o.aisle,venue:o.venue}}
+/* Small picture of the arrangement for the panel: table footprints, room items, aisles. */
+function arrangePreview(o){const L=arrangeLayout(o),p=P();let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity,s='';
+  const box=(cx,cy,w,h)=>{x0=Math.min(x0,cx-w/2);x1=Math.max(x1,cx+w/2);y0=Math.min(y0,cy-h/2);y1=Math.max(y1,cy+h/2)};
+  S.tables.forEach(x=>{const q=L.tables[x.id],g=geo(x),[w,h]=rbox(g.w,g.h,q.rot);box(q.x,q.y,w,h)});
+  S.venue.forEach(v=>{const q=L.venue[v.id]||v,[w,h]=rbox(v.w,v.h,v.rot);box(q.x,q.y,w,h)});
+  L.bands.forEach(b=>s+=`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="${p.accent}" opacity=".16"/>`);
+  S.venue.forEach(v=>{const q=L.venue[v.id]||v,[w,h]=rbox(v.w,v.h,v.rot);s+=`<rect x="${q.x-w/2}" y="${q.y-h/2}" width="${w}" height="${h}" rx="8" fill="none" stroke="${p.edge}" stroke-width="6" stroke-dasharray="14 10"/>`});
+  S.tables.forEach(x=>{const q=L.tables[x.id],g=geo(x);
+    s+=g.shape.type==='round'?`<circle cx="${q.x}" cy="${q.y}" r="${g.shape.r}" fill="${p.cloth}" stroke="${p.accent}" stroke-width="6"/>`
+      :`<rect x="${-g.shape.w/2}" y="${-g.shape.h/2}" width="${g.shape.w}" height="${g.shape.h}" rx="10" transform="translate(${q.x} ${q.y}) rotate(${q.rot})" fill="${x.shape==='head'?p.accent:p.cloth}" fill-opacity="${x.shape==='head'?.35:1}" stroke="${p.accent}" stroke-width="6"/>`});
+  const pad=40;return{svg:`<svg viewBox="${x0-pad} ${y0-pad} ${x1-x0+2*pad} ${y1-y0+2*pad}" role="img" aria-label="${esc(t('arrPreviewA11y',{rows:L.R,cols:L.C}))}" class="arrprev"><rect x="${x0-pad}" y="${y0-pad}" width="${x1-x0+2*pad}" height="${y1-y0+2*pad}" fill="${p.floor}"/>${s}</svg>`,R:L.R,C:L.C}}
 function rbox(w,h,deg){const a=(deg||0)*Math.PI/180,c=Math.abs(Math.cos(a)),n=Math.abs(Math.sin(a));return[w*c+h*n,w*n+h*c]}
 function rot(x,y,deg){const a=(deg||0)*Math.PI/180,c=Math.cos(a),n=Math.sin(a);return[x*c-y*n,x*n+y*c]}
 function dims(x){const g=geo(x);return rbox(g.w,g.h,x.rot)}
@@ -255,7 +302,7 @@ function planSVG(opt={}){
   s+=`<path d="M${cx-70},${B.y+116} H${cx+70}" stroke="${p.accent}" stroke-width="1"/>`;
   S.venue.forEach(v=>s+=`<g opacity="${opt.dim?.5:1}">${venueM(v,p,!opt.guest&&sel.kind==='venue'&&sel.v===v.id,opt.guest)}</g>`);
   S.tables.forEach(x=>{
-    const g=geo(x),isSel=!opt.guest&&sel.kind==='table'&&sel.t===x.id,dim=opt.dim&&opt.dim!==x.id;
+    const g=geo(x),isSel=!opt.guest&&((sel.kind==='table'&&sel.t===x.id)||swapFrom===x.id),dim=opt.dim&&opt.dim!==x.id;
     const tA=opt.guest?'':` role="button" tabindex="0" aria-label="${esc(t('tableA11y',{n:tName(x),occupied:x.seats.filter(Boolean).length,capacity:x.seats.length}))}"`;
     const R0=x.rot||0;let tb=`<g class="tgrp" data-tg="${x.id}" transform="translate(${x.x} ${x.y})" opacity="${dim?.3:1}"><g transform="rotate(${R0})">`;
     g.seats.forEach((st,i)=>{
@@ -295,7 +342,7 @@ function planSVG(opt={}){
 
 /* ---------------- top bar ---------------- */
 /* ---------------- top bar ---------------- */
-let panel=null,FINDQ='';const OPEN=new Set();
+let panel=null,FINDQ='',ARR=null,swapFrom=null;const OPEN=new Set();
 const ICON={
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
@@ -304,6 +351,8 @@ const ICON={
   unfull:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   event:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   guests:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 5.5 5"/></svg>',
+  swap:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v13M3 13l4 4 4-4M17 20V7M21 11l-4-4-4 4"/></svg>',
+  arrange:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="7" height="5" rx="1"/><rect x="14" y="4" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="5" rx="1"/><rect x="14" y="15" width="7" height="5" rx="1"/></svg>',
   share:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>'};
 function curTheme(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function isFull(){return !!document.fullscreenElement||document.body.classList.contains('focus')}
@@ -334,9 +383,12 @@ function renderTop(){
   hn.innerHTML=`<span>${esc(t(touch?'hintTouch':'hintPlan'))}</span><button type="button" data-act="hintok" aria-label="${esc(t('hintClose'))}">×</button>`;
   $('#help').setAttribute('aria-expanded',!hn.hidden);
   $('#quickadd').setAttribute('aria-label',t('addToRoom'));
-  $('#quickadd').innerHTML=`<button type="button" class="btn" data-act="addtable">${t('addTable')}</button>${['stage','bar','dance'].map(k=>`<button type="button" class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
+  $('#quickadd').innerHTML=`<button type="button" class="btn" data-act="arr-open" aria-pressed="${panel==='arrange'}">${ICON.arrange}<span>${t('arrOpenShort')}</span></button><span class="tsep" aria-hidden="true"></span><button type="button" class="btn" data-act="addtable">${t('addTable')}</button>${['stage','bar','dance'].map(k=>`<button type="button" class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
   [['zout','zoomOut'],['zin','zoomIn'],['zall','fitAll'],['zwidth','fitWidth'],['help','helpMove']].forEach(([id,k])=>{const b=$('#'+id);b.setAttribute('aria-label',t(k));b.title=t(k)});
   $('#zoombar').setAttribute('aria-label',t('zoom'));
+  const swb=$('#swapbar'),sf=swapFrom&&T(swapFrom);swb.hidden=!sf;
+  if(sf)swb.innerHTML=`<span>${esc(t('swapPick',{n:tName(sf)}))}</span><button type="button" class="btn sm" data-act="swap-cancel">${t('swapCancel')}</button>`;else swb.innerHTML='';
+  document.body.classList.toggle('swapping',!!sf);
   $('#scroller').setAttribute('aria-label',t('planLabel'));$('#plankeys').textContent=t('planKeys');
 }
 
@@ -354,8 +406,21 @@ function renderLeft(){
     <div class="row2"><div class="field"><span class="lbl">${t('eventType')}</span>${EVENT_TYPES.filter(([,on])=>on).length>1?`<select id="ev-type" aria-label="${esc(t('eventType'))}">${EVENT_TYPES.filter(([,on])=>on).map(([k])=>`<option value="${k}" ${e.type===k?'selected':''}>${t(k)}</option>`).join('')}</select>`:`<p class="static">${esc(t(e.type||'wedding'))}</p>`}</div>
     <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" class="inp" type="date" value="${esc(e.date)}" aria-describedby="ev-date-txt"><span class="muted small" id="ev-date-txt">${esc(fmtDate(e.date))}</span></label></div>
     <p class="muted small">${t('soonLine')} ${EVENT_TYPES.filter(([,on])=>!on).map(([k])=>t(k)).join(', ')}.</p>
+    <div class="field"><span class="lbl">${t('arrTitle')}</span><p class="muted small">${t('arrHint')}</p><div class="row"><button type="button" class="btn" data-act="arr-open">${t('arrOpen')}</button></div></div>
     <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal',Object.keys(PALETTES),e.palette,k=>t('pal_'+k),t('style'))}</div>
     ${det('layout',t('layoutTools'),`<p class="muted">${t('venueHint')}</p><div class="chips">${Object.keys(VENUE).filter(k=>!['stage','bar','dance'].includes(k)).map(k=>`<button type="button" class="chip" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}</div><button type="button" class="btn sm" data-act="arrange">${t('autoArrange')}</button>`)}`}
+  else if(panel==='arrange'){const o=ARR||(ARR=arrangeDefaults()),pv=arrangePreview(o),n=S.tables.filter(x=>x.shape!=='head').length;
+    const tog=(kind,count,list)=>count<1?`<p class="muted small">${t('arrNoGaps')}</p>`:`<div class="chips">${Array.from({length:count},(_,i)=>`<button type="button" class="chip" data-aisle="${kind}:${i}" aria-pressed="${list.includes(i)}">${esc(t(kind==='row'?'arrBetweenRows':'arrBetweenCols',{a:i+1,b:i+2}))}</button>`).join('')}</div>`;
+    h=dhead(t('arrTitle'),esc(t('arrSub',{n})))+`
+    <div class="field"><span class="lbl">${t('arrOrient')}</span>${radios(t('arrOrient'),[['horizontal','arrHoriz'],['vertical','arrVert']].map(([k,l])=>({attr:`data-arr-orient="${k}"`,on:o.orient===k,html:esc(t(l))})))}<span class="muted small">${t('arrOrientHint')}</span></div>
+    <div class="field"><span class="lbl" id="arr-rows-l">${t('arrRows')}</span><div class="stepper"><button type="button" class="btn sm" data-act="arr-rows-" aria-label="${esc(t('arrFewer'))}" ${o.rows<=1?'disabled':''}>−</button><output aria-labelledby="arr-rows-l" aria-live="polite">${pv.R}</output><button type="button" class="btn sm" data-act="arr-rows+" aria-label="${esc(t('arrMore'))}" ${o.rows>=n?'disabled':''}>+</button><span class="muted">${esc(t('arrGrid',{rows:pv.R,cols:pv.C}))}</span></div></div>
+    <div class="field"><span class="lbl">${t('arrRowAisles')}</span>${tog('row',pv.R-1,o.rowAisles)}</div>
+    <div class="field"><span class="lbl">${t('arrColAisles')}</span>${tog('col',pv.C-1,o.colAisles)}</div>
+    <div class="field"><span class="lbl">${t('arrAisleW')}</span>${radios(t('arrAisleW'),[['normal','arrAisleN'],['wide','arrAisleWd'],['xwide','arrAisleX']].map(([k,l])=>({attr:`data-arr-aisle="${k}"`,on:o.aisle===k,html:esc(t(l))})))}</div>
+    ${S.venue.length?`<label class="check"><input type="checkbox" id="arr-venue" ${o.venue?'checked':''}> ${t('arrVenue')}</label>`:''}
+    <div class="field"><span class="lbl">${t('arrPreview')}</span>${pv.svg}</div>
+    <div class="row"><button type="button" class="btn primary" data-act="arr-apply">${t('arrApply')}</button><button type="button" class="btn" data-act="close">${t('arrCancel')}</button></div>
+    <p class="muted small">${t('arrUndoHint')}</p>`}
   else if(panel==='guests'){const total=Object.keys(S.guests).length;const seatedG=S.tables.reduce((a,x)=>a+x.seats.filter(Boolean).length,0);h=dhead(t('tabGuests'),esc(t('statGuests',{seatedGuests:seatedG,totalGuests:total})))+`
     <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(FINDQ)}"><div class="search-res" id="findres"></div>
     ${S.waiting.length?`<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id=>`<button type="button" class="wchip" data-wait="${id}" aria-pressed="${waitSel===id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>`:''}
@@ -468,6 +533,7 @@ function renderRight(){
       <label class="field"><span class="lbl">${t('tableName')}</span><input id="t-name" class="inp" value="${esc(x.name)}"></label>
       <div class="field"><span class="lbl">${t('shape')}</span>${chipBtns('data-shape',SHAPES,x.shape,k=>k==='head'?headName():t(k),t('shape'))}</div>
       <div class="field"><span class="lbl">${t('seats')}</span><div class="stepper"><button type="button" class="btn sm" data-act="seat-" aria-label="-">−</button><output>${x.seats.length}</output><button type="button" class="btn sm" data-act="seat+" aria-label="+">+</button><span class="muted">${esc(tn('nFree',free))}</span></div></div>
+      <div class="row"><button type="button" class="btn" data-act="swap">${ICON.swap}<span>${t('swapBtn')}</span></button></div><p class="muted small" style="margin-top:-6px">${t('swapHint')}</p>
       ${rotUI(x)}
       ${det('deco',t('decoration'),chipBtns('data-deco',DECOS,x.deco,k=>t(DECO_LBL[k]||k),t('decoration')))}
       ${det('fill',t('fillGroup'),`<p class="muted">${t('fillHint')}</p><label class="field"><span class="lbl">${t('groupName')}</span><input id="grp" class="inp" value="${UL()==='ka'?'მეზობელი':'Neighbour'}"></label><button type="button" class="btn" data-act="fillgroup" ${free?'':'disabled'}>${t('fillFree')}</button>`)}
@@ -492,7 +558,7 @@ let drawerOpen=false,opener=null;
 function renderDrawer(){const open=!!sel.kind||!!panel,d=$('#drawer'),modal=open&&isPhone(),was=drawerOpen;
   keepView(()=>{d.hidden=!open});drawerOpen=open;
   $('#left').hidden=!!sel.kind||!panel;$('#right').hidden=!sel.kind;
-  const L=$('#left');if(panel&&!sel.kind){L.setAttribute('role','tabpanel');L.setAttribute('aria-labelledby','tab-'+panel)}else{L.removeAttribute('role');L.removeAttribute('aria-labelledby')}
+  const L=$('#left');if(panel&&!sel.kind&&['event','guests','share'].includes(panel)){L.setAttribute('role','tabpanel');L.setAttribute('aria-labelledby','tab-'+panel)}else{L.removeAttribute('role');L.removeAttribute('aria-labelledby')}
   if(modal){d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','dtitle')}
   else{d.removeAttribute('aria-modal');d.setAttribute('role','complementary');d.setAttribute('aria-label',t('details'));d.removeAttribute('aria-labelledby')}
   $('#backdrop').hidden=!modal;
@@ -582,6 +648,12 @@ function act(a){
   switch(a){
     case'addtable':commit(()=>{const n=S.tables.length;const nt={id:uid(),name:'Table '+n,shape:'round',deco:'flowers',seats:Array(8).fill(null),x:0,y:0};{const g=geo(nt);[nt.x,nt.y]=freeSpot(g.w,g.h)}S.tables.push(nt);sel={kind:'table',t:nt.id}});toast(t('tableAdded'));break;
     case'arrange':commit(()=>autoArrange());break;
+    case'arr-open':if(!drawerOpen)opener='#quickadd [data-act="arr-open"]';ARR=arrangeDefaults();sel={kind:null};swapFrom=null;panel=panel==='arrange'?null:'arrange';renderAll();break;
+    case'arr-rows-':case'arr-rows+':{const n=S.tables.filter(x=>x.shape!=='head').length;ARR.rows=Math.min(Math.max(1,ARR.rows+(a==='arr-rows+'?1:-1)),Math.max(1,n));
+      ARR.rowAisles=ARR.rowAisles.filter(i=>i<ARR.rows-1);const C=Math.ceil(n/ARR.rows);ARR.colAisles=ARR.colAisles.filter(i=>i<C-1);renderLeft();$(`[data-act="${a}"]`)?.focus();break}
+    case'arr-apply':{const o=ARR;commit(()=>applyArrangement(o));panel=null;ARR=null;renderAll();requestAnimationFrame(()=>setFit(isPhone()?'width':'all'));toast(t('arrDone'));break}
+    case'swap':if(x){swapFrom=x.id;sel={kind:null};panel=null;renderAll();$('#swapbar button')?.focus()}break;
+    case'swap-cancel':swapFrom=null;renderAll();break;
     case'bulk':{const names=$('#bulk').value.split(/\n/).map(s=>s.trim()).filter(Boolean);if(!names.length){toast(t('pasteFirst'));return}
       const tid=$('#bulk-t').value;commit(()=>placeNames(names,tid));toast(t('added',{n:names.length}));break}
     case'randall':commit(()=>Object.values(S.guests).forEach(g=>{if(!['gown','tuxedo'].includes(g.look.outfit))g.look=randLook(g.look.kind)}));toast(t('newLooks'));break;
@@ -632,6 +704,9 @@ document.addEventListener('click',e=>{
   if(d.lang){if(d.lang!==UL()){setLang(d.lang);renderAll()}return}
   if(d.glangset){if(S.event.lang!==d.glangset)commit(()=>S.event.lang=d.glangset);return}
   if(d.pal)return commit(()=>S.event.palette=d.pal);
+  if(d.arrOrient){ARR.orient=d.arrOrient;renderLeft();return}
+  if(d.arrAisle){ARR.aisle=d.arrAisle;renderLeft();return}
+  if(d.aisle){const[k,i]=d.aisle.split(':'),list=k==='row'?ARR.rowAisles:ARR.colAisles,n=+i,j=list.indexOf(n);j<0?list.push(n):list.splice(j,1);renderLeft();$(`[data-aisle="${d.aisle}"]`)?.focus();return}
   if(d.seltable){if(!drawerOpen)opener=focusKeyOf(b);sel={kind:'table',t:d.seltable};confirmK=null;renderAll();return}
   if(d.shape)return commit(()=>T(sel.t).shape=d.shape);
   if(d.deco)return commit(()=>T(sel.t).deco=d.deco);
@@ -660,6 +735,7 @@ document.addEventListener('change',e=>{if(guestMode)return;const id=e.target.id;
   if(id==='g-kid')commit(()=>curGuest().kid=e.target.checked);
   if(e.target.name==='lk-mode'){setLookup({mode:e.target.value});return}
   if(id==='lk-mates'){setLookup({mates:e.target.checked});return}
+  if(id==='arr-venue'){ARR.venue=e.target.checked;renderLeft();$('#arr-venue')?.focus();return}
   if(id==='gp-on'){const on=e.target.checked;SB.from('events').update({guest_page:on}).eq('id',ROW.id).then(({error})=>{if(error){toast(t('couldntSave'));e.target.checked=!on}else{ROW.guest_page=on;renderLeft()}})}
   if(['t-name','g-name','v-label'].includes(id)){renderLeft();renderRight()}});
 /* Arrow keys for tab lists and radio groups (editor and guest page). */
@@ -674,6 +750,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keydown',e=>{
   if(guestMode)return;
   const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'');
+  if(e.key==='Escape'&&swapFrom){e.preventDefault();act('swap-cancel');return}
   if(e.key==='Escape'&&drawerOpen&&!$('#modalroot').innerHTML){e.preventDefault();closeDrawer();return}
   if(e.key==='Tab'&&drawerOpen&&isPhone()){const f=[...$('#drawer').querySelectorAll('button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&(el.checkVisibility?el.checkVisibility():el.offsetParent!==null));
     if(f.length){const a=f[0],z=f[f.length-1];if(e.shiftKey&&(document.activeElement===a||document.activeElement.id==='dtitle'||!$('#drawer').contains(document.activeElement))){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}}}
@@ -691,11 +768,13 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='newname')act('addguest');
   if((e.key==='Enter'||e.key===' ')&&e.target.classList?.contains('seat')){e.preventDefault();clickSeat(e.target.dataset.t,+e.target.dataset.i)}
 });
-function clickSeat(tid,i){const x=T(tid);if(!drawerOpen)opener=`.seat[data-t="${tid}"][data-i="${i}"]`;
+function clickSeat(tid,i){if(swapFrom)return selectItem('table',tid);const x=T(tid);if(!drawerOpen)opener=`.seat[data-t="${tid}"][data-i="${i}"]`;
   if(waitSel&&!x.seats[i]){const w=waitSel;waitSel=null;commit(()=>{x.seats[i]=w;S.waiting=S.waiting.filter(v=>v!==w);sel={kind:'seat',t:tid,i}});return}
   sel={kind:'seat',t:tid,i};confirmK=null;renderAll();
 }
-function selectItem(kind,id){if(!drawerOpen)opener=kind==='table'?`.tbody[data-table="${id}"]`:`.venue[data-v="${id}"]`;sel=kind==='table'?{kind,t:id}:{kind,v:id};confirmK=null;renderAll()}
+function swapTables(a,b){const A=T(a),B=T(b);if(!A||!B||A===B)return;
+  commit(()=>{[A.x,B.x]=[B.x,A.x];[A.y,B.y]=[B.y,A.y];[A.rot,B.rot]=[B.rot||0,A.rot||0]});toast(t('swapDone',{a:tName(A),b:tName(B)}))}
+function selectItem(kind,id){if(swapFrom){if(kind==='table'&&id!==swapFrom){const f=swapFrom;swapFrom=null;swapTables(f,id);return}if(kind==='table'&&id===swapFrom){swapFrom=null;renderAll();return}}if(!drawerOpen)opener=kind==='table'?`.tbody[data-table="${id}"]`:`.venue[data-v="${id}"]`;sel=kind==='table'?{kind,t:id}:{kind,v:id};confirmK=null;renderAll()}
 function closeDrawer(){sel={kind:null};panel=null;confirmK=null;renderAll()}
 function scrollToSeat(){const el=document.querySelector(`.seat[data-t="${sel.t}"][data-i="${sel.i}"]`);el&&el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}
 
