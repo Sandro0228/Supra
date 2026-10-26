@@ -30,12 +30,25 @@ button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--panel)}
+.tabbtn[aria-selected="true"]{background:var(--panel);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.loading{flex-direction:row;align-items:center;justify-content:center;gap:12px;color:var(--muted);min-height:180px}
+.spinner{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;display:inline-block}
+.spinner.sm{width:14px;height:14px;border-width:2px;border-top-color:currentColor;border-color:color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+.dash{display:flex;flex-direction:column;gap:22px}.yours{display:flex;flex-direction:column;gap:12px}
+ul.events{list-style:none;margin:0;padding:0}
+.soon{margin:0}
+.btn[aria-busy="true"]{opacity:.8}
+
 .wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
 header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .logo{font-family:var(--display);font-size:26px;letter-spacing:.02em;flex:1}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:0;background:var(--panel);padding:6px 10px;font-size:13px}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+
 .who{font-size:13px;color:var(--muted)}
 .iconb{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ink)}.iconb svg{width:18px;height:18px}
 .btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
@@ -78,13 +91,13 @@ h2+.field{margin-top:4px}
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo">Supra</div><span class="who" id="who"></span><div class="seg" id="lang"></div><button class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button class="btn sm" id="signout" hidden></button></header>
+  <header><div class="logo">Supra</div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
   <section class="hero">
     <h1 id="tag">Plan who sits where, with every guest drawn at their seat.</h1>
     <img src="/hero.webp" width="1400" height="583" alt="Five illustrated wedding guests sitting at a flower-decorated head table">
     <ul class="feats" id="feats"></ul>
   </section>
-  <main id="main"></main>
+  <main id="main" aria-live="polite"></main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>

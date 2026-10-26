@@ -1,0 +1,459 @@
+{
+ "event": {
+  "name": "Nino & Giorgi",
+  "type": "wedding",
+  "date": "2027-06-12",
+  "palette": "blush",
+  "lang": "en"
+ },
+ "guests": {
+  "g01": {
+   "id": "g01",
+   "name": "ლაშა ბერიძე",
+   "group": "",
+   "side": "groom",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#FBE5D3",
+    "hair": "sidepart",
+    "hairColor": "#1E1916",
+    "beard": "short",
+    "beardColor": "#1E1916",
+    "eye": "#4A7A4C",
+    "outfit": "tuxedo",
+    "outfitColor": "#E2A9BA",
+    "glasses": "none"
+   }
+  },
+  "g02": {
+   "id": "g02",
+   "name": "ნინო კაპანაძე",
+   "group": "",
+   "side": "bride",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#E7B790",
+    "hair": "bun",
+    "hairColor": "#9C6430",
+    "beard": "none",
+    "beardColor": "#9C6430",
+    "eye": "#4A7A4C",
+    "outfit": "gown",
+    "outfitColor": "#6F8F72",
+    "glasses": "none"
+   }
+  },
+  "g03": {
+   "id": "g03",
+   "name": "გიორგი ლომიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#A06A46",
+    "hair": "curly",
+    "hairColor": "#1E1916",
+    "beard": "none",
+    "beardColor": "#3A2618",
+    "eye": "#3A281E",
+    "outfit": "dress",
+    "outfitColor": "#E2A9BA",
+    "glasses": "none"
+   }
+  },
+  "g04": {
+   "id": "g04",
+   "name": "ანა ხუციშვილი",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#E7B790",
+    "hair": "sidepart",
+    "hairColor": "#9C6430",
+    "beard": "stubble",
+    "beardColor": "#9C6430",
+    "eye": "#4A7A4C",
+    "outfit": "tuxedo",
+    "outfitColor": "#E2A9BA",
+    "glasses": "none"
+   }
+  },
+  "g05": {
+   "id": "g05",
+   "name": "მარიამ ჯაფარიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#F4D0B4",
+    "hair": "bun",
+    "hairColor": "#D2AE6B",
+    "beard": "none",
+    "beardColor": "#D2AE6B",
+    "eye": "#4A7A4C",
+    "outfit": "dress",
+    "outfitColor": "#B4506F",
+    "glasses": "none"
+   }
+  },
+  "g06": {
+   "id": "g06",
+   "name": "მარიამ ტაბატაძე",
+   "group": "SECRET_GROUP_X",
+   "side": "",
+   "kid": false,
+   "meal": "fish",
+   "allergies": "SECRET_ALLERGY_PEANUTS",
+   "look": {
+    "kind": "m",
+    "skin": "#A06A46",
+    "hair": "short",
+    "hairColor": "#1E1916",
+    "beard": "none",
+    "beardColor": "#1E1916",
+    "eye": "#4A7A4C",
+    "outfit": "shirt",
+    "outfitColor": "#B4506F",
+    "glasses": "none"
+   }
+  },
+  "g07": {
+   "id": "g07",
+   "name": "მარიამ ნოზაძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#E7B790",
+    "hair": "bob",
+    "hairColor": "#9B9792",
+    "beard": "none",
+    "beardColor": "#9B9792",
+    "eye": "#4A7A4C",
+    "outfit": "sweater",
+    "outfitColor": "#9C3F3A",
+    "glasses": "none"
+   }
+  },
+  "g08": {
+   "id": "g08",
+   "name": "დავით ქავთარაძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#F4D0B4",
+    "hair": "bun",
+    "hairColor": "#9C6430",
+    "beard": "none",
+    "beardColor": "#9C6430",
+    "eye": "#788A98",
+    "outfit": "dress",
+    "outfitColor": "#2A2A2C",
+    "glasses": "none"
+   }
+  },
+  "g09": {
+   "id": "g09",
+   "name": "თეონა ბერიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#F4D0B4",
+    "hair": "short",
+    "hairColor": "#B4472C",
+    "beard": "none",
+    "beardColor": "#B4472C",
+    "eye": "#4A7A4C",
+    "outfit": "tuxedo",
+    "outfitColor": "#6F8F72",
+    "glasses": "none"
+   }
+  },
+  "g10": {
+   "id": "g10",
+   "name": "ლევან გელაშვილი",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#6F4630",
+    "hair": "curly",
+    "hairColor": "#1E1916",
+    "beard": "none",
+    "beardColor": "#1E1916",
+    "eye": "#4A7A4C",
+    "outfit": "sweater",
+    "outfitColor": "#E3C066",
+    "glasses": "none"
+   }
+  },
+  "g11": {
+   "id": "g11",
+   "name": "სოფო გელაშვილი",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#FBE5D3",
+    "hair": "short",
+    "hairColor": "#B4472C",
+    "beard": "short",
+    "beardColor": "#B4472C",
+    "eye": "#3A281E",
+    "outfit": "tuxedo",
+    "outfitColor": "#4A5568",
+    "glasses": "none"
+   }
+  },
+  "g12": {
+   "id": "g12",
+   "name": "ირაკლი წერეთელი",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#A06A46",
+    "hair": "bald",
+    "hairColor": "#B4472C",
+    "beard": "none",
+    "beardColor": "#B4472C",
+    "eye": "#5E3B22",
+    "outfit": "suit",
+    "outfitColor": "#9C3F3A",
+    "glasses": "none"
+   }
+  },
+  "g13": {
+   "id": "g13",
+   "name": "მარიამ ჩხეიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#A06A46",
+    "hair": "buzz",
+    "hairColor": "#9B9792",
+    "beard": "none",
+    "beardColor": "#9B9792",
+    "eye": "#2F5E8C",
+    "outfit": "tuxedo",
+    "outfitColor": "#3D7EA6",
+    "glasses": "square"
+   }
+  },
+  "g14": {
+   "id": "g14",
+   "name": "ქეთევან ლორთქიფანიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#FBE5D3",
+    "hair": "ponytail",
+    "hairColor": "#6A4226",
+    "beard": "none",
+    "beardColor": "#6A4226",
+    "eye": "#5E3B22",
+    "outfit": "sweater",
+    "outfitColor": "#8E7CC3",
+    "glasses": "none"
+   }
+  },
+  "g15": {
+   "id": "g15",
+   "name": "ზურაბ მაჭავარიანი",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#E7B790",
+    "hair": "buzz",
+    "hairColor": "#6A4226",
+    "beard": "short",
+    "beardColor": "#6A4226",
+    "eye": "#3A281E",
+    "outfit": "tuxedo",
+    "outfitColor": "#6F8F72",
+    "glasses": "none"
+   }
+  },
+  "g16": {
+   "id": "g16",
+   "name": "ეკა დოლიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#A06A46",
+    "hair": "long",
+    "hairColor": "#9B9792",
+    "beard": "none",
+    "beardColor": "#9B9792",
+    "eye": "#2F5E8C",
+    "outfit": "sweater",
+    "outfitColor": "#B4506F",
+    "glasses": "none"
+   }
+  },
+  "g17": {
+   "id": "g17",
+   "name": "ლუკა ჯანაშია",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "f",
+    "skin": "#FBE5D3",
+    "hair": "long",
+    "hairColor": "#1E1916",
+    "beard": "none",
+    "beardColor": "#1E1916",
+    "eye": "#5E3B22",
+    "outfit": "shirt",
+    "outfitColor": "#9C3F3A",
+    "glasses": "none"
+   }
+  },
+  "g18": {
+   "id": "g18",
+   "name": "ტატო აბაშიძე",
+   "group": "",
+   "side": "",
+   "kid": false,
+   "meal": "",
+   "allergies": "",
+   "look": {
+    "kind": "m",
+    "skin": "#F4D0B4",
+    "hair": "short",
+    "hairColor": "#B4472C",
+    "beard": "none",
+    "beardColor": "#B4472C",
+    "eye": "#5E3B22",
+    "outfit": "shirt",
+    "outfitColor": "#B4506F",
+    "glasses": "none"
+   }
+  }
+ },
+ "waiting": [],
+ "rules": [
+  {
+   "id": "r1",
+   "type": "apart",
+   "a": "g06",
+   "b": "g07"
+  }
+ ],
+ "venue": [
+  {
+   "id": "v1",
+   "type": "dance",
+   "label": "",
+   "x": 0,
+   "y": 380,
+   "w": 300,
+   "h": 180
+  }
+ ],
+ "tables": [
+  {
+   "id": "th",
+   "name": "Head table",
+   "shape": "head",
+   "deco": "flowers",
+   "seats": [
+    "g01",
+    "g02",
+    "g03",
+    "g04"
+   ],
+   "x": 0,
+   "y": 130
+  },
+  {
+   "id": "t1",
+   "name": "Table 1",
+   "shape": "rect",
+   "deco": "mixed",
+   "seats": [
+    "g05",
+    "g06",
+    "g07",
+    "g08",
+    "g09",
+    "g10",
+    "g11",
+    "g12"
+   ],
+   "x": 0,
+   "y": 760
+  },
+  {
+   "id": "t2",
+   "name": "Table 2",
+   "shape": "rect",
+   "deco": "greenery",
+   "seats": [
+    "g13",
+    "g14",
+    "g15",
+    "g16",
+    "g17",
+    "g18"
+   ],
+   "x": 0,
+   "y": 1120
+  }
+ ]
+}
