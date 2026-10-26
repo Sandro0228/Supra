@@ -405,7 +405,7 @@ async function setLookup(ch){
   const f=ch.mode?`[name=lk-mode][value=${data.mode}]`:ch.mates!==undefined?'#lk-mates':'#lk-pin';$(f)?.focus()}
 function guestUrl(){return ROW?location.origin+'/e/'+ROW.slug:''}
 async function drawQR(){const box=$('#qr');if(!box)return;box.innerHTML='';const u=guestUrl();if(!u)return;
-  try{await loadScript(QRLIB);new QRCode(box,{text:u,width:180,height:180,colorDark:'#24302A',colorLight:'#FFFFFF',correctLevel:QRCode.CorrectLevel.M})}catch(e){box.textContent=u}}
+  try{await loadScript(QRLIB);new QRCode(box,{text:u,width:180,height:180,colorDark:'#24302A',colorLight:'#FFFFFF',correctLevel:QRCode.CorrectLevel.M});box.querySelectorAll('img,canvas').forEach(el=>{el.setAttribute('alt','');el.setAttribute('aria-hidden','true')})}catch(e){box.textContent=u}}
 
 /* ---------------- inspector ---------------- */
 const SW_LBL={skin:'skin',hairColor:'hairColour',beardColor:'beardColour',eye:'eyes',outfitColor:'outfitColour'},LOOK_LBL={hair:'hairStyle',beard:'beard',outfit:'outfit',glasses:'glasses'};
@@ -444,8 +444,8 @@ function renderRight(){
       <label class="check"><input type="checkbox" id="g-kid" ${G.kid?'checked':''}> ${t('child')}</label></div>
       <label class="field"><span class="lbl">${t('allergies')}</span><input id="g-allergies" class="inp" value="${esc(G.allergies)}" placeholder="${t('allergiesPh')}"></label>`)}
     ${det('grules',`${t('rules')}${myRules.length?` · ${myRules.length}`:''}`,`${myRules.map(r=>{const o=S.guests[r.a===G.id?r.b:r.a];const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${r.type==='together'?t('together'):t('apart')}: ${esc(o?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}
-      <div class="row2"><select id="r-type"><option value="together">${t('together')}</option><option value="apart">${t('apart')}</option></select>
-      <select id="r-who"><option value="">${t('pickGuest')}</option>${others.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select></div>
+      <div class="row2"><select id="r-type" aria-label="${esc(t('ruleType'))}"><option value="together">${t('together')}</option><option value="apart">${t('apart')}</option></select>
+      <select id="r-who" aria-label="${esc(t('pickGuest'))}"><option value="">${t('pickGuest')}</option>${others.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}</select></div>
       <button type="button" class="btn sm" data-act="addrule">${t('addRule')}</button>`)}
     <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button type="button" class="btn sm" data-act="unseat">${t('toWaiting')}</button><button type="button" class="btn sm danger" data-act="delguest">${t('removeGuest')}</button></div>
     ${confirmK==='guest'?`<div class="confirm danger"><span>${t('removeQ',{n:esc(G.name)})}</span><div class="row"><button type="button" class="btn sm danger" data-act="delguest-yes">${t('remove')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>`:''}`;

@@ -17,7 +17,7 @@ body.guestmode{padding-left:max(16px,env(safe-area-inset-left,0px));padding-righ
 .back{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;color:var(--ink);text-decoration:none;font-size:22px;line-height:1}
 .back:hover{background:var(--soft)}
 .title{display:flex;flex-direction:column;min-width:0;line-height:1.2}
-#evname{font-family:var(--display);font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
+#evname{margin:0;font-weight:400;font-family:var(--display);font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34vw}
 #stats{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
 .nav{display:flex;gap:2px;background:var(--soft);border-radius:10px;padding:3px}
 .nav button{border:0;background:none;border-radius:8px;padding:7px 14px;font-size:14px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
@@ -245,7 +245,7 @@ a.btn{text-decoration:none;color:inherit}
 <div id="app">
 <header class="bar">
   <a class="back" id="backlink" href="/" aria-label="My events" title="My events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></a>
-  <div class="title"><span id="evname">Supra</span><span id="stats"></span></div>
+  <div class="title"><h1 id="evname">Supra</h1><span id="stats"></span></div>
   <nav class="navwrap" aria-label="Planner"><div class="nav" id="nav" role="tablist" aria-label="Panels"></div></nav>
   <div class="tools">
     <span id="savestate" role="status"></span><button type="button" class="btn primary sm" id="save" hidden>Save</button>
@@ -254,7 +254,7 @@ a.btn{text-decoration:none;color:inherit}
     <button type="button" class="icon" id="theme" aria-label="Dark mode" aria-pressed="false"></button>
   </div>
 </header>
-<div class="work" id="work">
+<main class="work" id="work">
   <div class="canvas" id="canvas">
     <div class="float f-add" id="quickadd" role="toolbar" aria-label="Add to the room"></div>
     <div class="scroller" id="scroller" tabindex="0" role="region" aria-label="Seating plan" aria-describedby="plankeys"><svg id="plan" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg></div>
@@ -271,9 +271,9 @@ a.btn{text-decoration:none;color:inherit}
     </div>
   </div>
   <div class="backdrop" id="backdrop" hidden></div>
-  <aside class="drawer" id="drawer" hidden><div id="left"></div><div id="right"></div></aside>
+  <div class="drawer" id="drawer" hidden><div id="left"></div><div id="right"></div></div>
   <div id="modalroot"></div>
-</div>
+</main>
 </div>
 <main id="guest" hidden></main>
 <main id="loading" class="apploading" role="status"><span class="spinner" aria-hidden="true"></span><span id="loadingtxt">Loading your plan…</span></main>
