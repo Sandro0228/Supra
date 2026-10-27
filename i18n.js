@@ -488,8 +488,8 @@ en:{
   "smTable":"Only their table — they choose a seat",
   "smSeatHint":"Guests see their table and seat number, and the plan shows them at their chair.",
   "smTableHint":"Guests see only their table and sit wherever they like at it. The guest page shows empty chairs, and the seat order in your plan stays private.",
-  "fgAnySeat":"Take any free seat at this table.",
-  "fgMapAltTable":"Seating plan with {table} highlighted. Take any free seat at this table.",
+  "fgAnySeat":"Take any free seat at this table",
+  "fgMapAltTable":"Seating plan with {table} highlighted. Take any free seat at this table",
   "pubMatchTable":"one guest's name, drawing and table (no seat), only after typing that name",
   "fgPortrait":"Drawing of {name}"
 },
@@ -981,7 +981,7 @@ ka:{
   "smTable":"მხოლოდ თავის მაგიდას — ადგილს თვითონ ირჩევს",
   "smSeatHint":"სტუმარი ხედავს თავის მაგიდას და ადგილის ნომერს, გეგმაზე კი თავის სკამზეა დახატული.",
   "smTableHint":"სტუმარი ხედავს მხოლოდ თავის მაგიდას და ჯდება იქ, სადაც მოეწონება. სტუმრების გვერდზე სკამები ცარიელია, ადგილების რიგი კი მხოლოდ შენ ჩანს.",
-  "fgAnySeat":"დაიკავე ნებისმიერი თავისუფალი ადგილი ამ მაგიდასთან.",
+  "fgAnySeat":"დაიკავე ნებისმიერი თავისუფალი ადგილი ამ მაგიდასთან",
   "fgMapAltTable":"დარბაზის გეგმა, მონიშნულია {table}. დაიკავე ნებისმიერი თავისუფალი ადგილი ამ მაგიდასთან.",
   "pubMatchTable":"ერთი სტუმრის სახელს, ილუსტრაციას და მაგიდას (ადგილის გარეშე) — მხოლოდ ამ სახელის აკრეფის შემდეგ",
   "fgPortrait":"{name} — ილუსტრაცია"

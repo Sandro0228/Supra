@@ -165,7 +165,7 @@ def table_only_mode_hides_seats(pw, base):
     c = Ctx(pw, base, session=False, events=[ev])
     p = c.goto('/e/guestcode1', wait='#gq')
     st = p.evaluate("JSON.parse(JSON.stringify(window.__supraState()))")
-    assert all(g.get('ghost') for g in st['guests'].values()), 'no drawings at chairs in table-only mode'
+    assert not any(g.get('name') for g in st['guests'].values()), 'no names on the guest page'
     search(p, 'მარიამ')
     txt = p.inner_text('#gres')
     assert 'Seat' not in txt and 'Table 1' in txt, txt
@@ -188,18 +188,21 @@ def organiser_switches_to_table_only(pw, base):
     c.close()
 
 @test
-def table_only_mode_shows_guests_beside_their_table(pw, base):
+def table_only_mode_seats_everyone_without_marking_a_seat(pw, base):
     plan = json.loads(json.dumps(PLAN)); plan['event']['seatMode'] = 'table'
     ev = dict(id='ev1', owner='u1', name='x', slug='guestcode1', guest_page=True, data=plan, public_data={},
               lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')
     c = Ctx(pw, base, session=False, events=[ev])
     p = c.goto('/e/guestcode1', wait='#gq')
     search(p, 'ლუკა'); p.wait_for_selector('#gmap svg')
-    n_t2 = sum(1 for s in PLAN['tables'][2]['seats'] if s)
-    assert p.locator('#gmap .tgrp[data-tg=pt2] .standing').count() == n_t2
+    st = p.evaluate("JSON.parse(JSON.stringify(window.__supraState()))")
+    t2 = [st['guests'][g] for g in st['tables'][2]['seats'] if g]
+    assert len(t2) == sum(1 for s in PLAN['tables'][2]['seats'] if s) and not any(g.get('ghost') for g in t2), 'everyone is seated'
+    # the drawings sit in name order, not in the organiser's seat order
+    by_name = sorted((PLAN['guests'][g] for g in PLAN['tables'][2]['seats'] if g), key=lambda g: g['name'])
+    assert [g['look']['hair'] for g in t2] == [g['look']['hair'] for g in by_name]
     assert p.locator('#gmap .seat .ring[opacity="0.32"]').count() == 0, 'no chair is marked as theirs'
-    assert p.locator('#gmap .standing circle[opacity=".32"]').count() == 1, 'the guest is highlighted among the standing figures'
-    assert 'ლუკა' not in p.evaluate("JSON.stringify(window.__supraState().tables)")
+    assert p.locator('#gcard .gfree').count() == 1 and p.evaluate("getComputedStyle(document.querySelector('#gcard .gfree')).fontWeight") == '700'
     c.close()
 
 @test

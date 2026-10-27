@@ -264,7 +264,12 @@ body.swapping #plan .tbody{cursor:pointer}
 .tsep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
 .f-add .btn svg{flex:none}
 .arrprev{width:100%;height:auto;max-height:260px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
-.gfree{margin:4px 0 0;color:var(--muted);font-size:14px}
+.gfree{margin:10px auto 2px;display:inline-flex;align-items:center;gap:10px;align-self:center;max-width:100%;padding:10px 16px;border-radius:14px;text-align:left;
+  background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
+  color:var(--accent);font-weight:700;font-size:17px;line-height:1.35;text-wrap:pretty}
+:lang(ka) .gfree{font-size:16px}
+.gfree svg{flex:none}
+.gfree span{flex:1 1 auto;min-width:0}
 .gchar{display:flex;justify-content:center;margin:-2px 0 4px}
 .gportrait{display:block;flex:none;overflow:visible}
 .ghit{justify-content:flex-start}.ghit .gname{flex:1}.ghit .gportrait{margin:-4px 0}
