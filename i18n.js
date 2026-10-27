@@ -475,7 +475,14 @@ en:{
   "swapHint":"Then tap the table to swap with. You can also drag tables anywhere.",
   "swapPick":"Tap the table to swap with {n}",
   "swapCancel":"Cancel",
-  "swapDone":"{a} and {b} swapped places"
+  "swapDone":"{a} and {b} swapped places",
+  "matchBtn":"Match drawings to names",
+  "matchQ":"{count} guests are drawn as a man or woman that doesn't match their name.",
+  "matchQ_one":"{count} guest is drawn as a man or woman that doesn't match their name.",
+  "matchDone":"Redrew {n} guests to match their names. Undo brings the old drawings back.",
+  "matchNone":"Every drawing already matches its name.",
+  "relookF":"Drawn as a woman to match the name. Undo keeps the old drawing.",
+  "relookM":"Drawn as a man to match the name. Undo keeps the old drawing."
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -952,6 +959,13 @@ ka:{
   "swapHint":"შემდეგ დააჭირე მაგიდას, რომელთანაც გინდა გაცვლა. მაგიდების გადათრევაც შეგიძლია ნებისმიერ ადგილას.",
   "swapPick":"დააჭირე მაგიდას, რომელთანაც {n} ადგილს გაცვლის",
   "swapCancel":"გაუქმება",
-  "swapDone":"{a} და {b} ადგილები გაცვალეს"
+  "swapDone":"{a} და {b} ადგილები გაცვალეს",
+  "matchBtn":"ილუსტრაციების შესწორება სახელების მიხედვით",
+  "matchQ":"{count} სტუმარი სახელის შეუსაბამოდ არის დახატული (ქალად ან კაცად).",
+  "matchQ_one":"{count} სტუმარი სახელის შეუსაბამოდ არის დახატული (ქალად ან კაცად).",
+  "matchDone":"{n} სტუმრის ილუსტრაცია შესწორდა სახელის მიხედვით. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“.",
+  "matchNone":"ყველა ილუსტრაცია სახელს უკვე შეესაბამება.",
+  "relookF":"სახელის მიხედვით დაიხატა ქალად. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“.",
+  "relookM":"სახელის მიხედვით დაიხატა კაცად. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“."
 }
 };

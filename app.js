@@ -47,7 +47,7 @@ const PALETTES={
   wine:{name:'Autumn wine',floor:'#F6EFEC',cloth:'#FFFCFA',edge:'#E1CFCA',runner:'#7B2F3D',ink:'#3E2428',accent:'#7B2F3D',chair:'#D7BE9F',leaf:'#7F8F5A',fl:['#B23A52','#F2C1C8','#FFFFFF','#E8A15C']}
 };
 const EVENT_TYPES=[['wedding',true],['birthday',false],['corporate',false],['baby',false],['anniv',false]];
-const FEM=new Set('მარიამ ქეთი ქეთევან თიკო თინათინ ნანა მექი ეკა ეკატერინე ხატია სალომე თამთა ნინო ანა ანი ლიკა ნათია მაკა თამარ ნატო სოფო სოფიო ლელა ლია მზია ნესტან ელენე ბარბარე მაია ირმა ია ნუცა მარი ხათუნა ქრისტინე ლალი ნია თეონა გვანცა'.split(' '));
+/* Women's and men's first names: see names.js. null = not sure (the drawing then picks either). */
 
 function randLook(kind,r=Math.random){
   kind=kind||(r()<.5?'m':'f');const m=kind==='m';const hairColor=pick(OPT.hairColor.slice(0,7),r);
@@ -56,7 +56,11 @@ function randLook(kind,r=Math.random){
     eye:pick(OPT.eye,r),outfit:pick(m?['suit','suit','shirt','sweater','tuxedo']:['dress','dress','dress','shirt','sweater'],r),
     outfitColor:pick(OPT.outfitColor,r),glasses:r()<.16?pick(['round','square','sun'],r):'none'};
 }
-const guessKind=n=>FEM.has(String(n).trim().split(/\s+/)[0])?'f':'m';
+const guessKind=n=>window.SupraNames?.guess(n)||null;
+/* Redraw someone as a woman or a man, keeping skin, eyes, hair colour and glasses so they still look like themselves. */
+function relook(L,kind,r){const n=randLook(kind,r);return Object.assign(n,{skin:L.skin,eye:L.eye,hairColor:L.hairColor,beardColor:L.hairColor,glasses:L.glasses,outfitColor:L.outfitColor})}
+/* Guests whose drawing doesn't match their name (and that nobody switched by hand). */
+const lookMismatch=G=>{if(!G||G.look?.kindSet||G.look?.outfit==='gown')return null;const k=guessKind(G.name);return k&&k!==G.look?.kind?k:null};
 
 /* ---------------- character drawing ---------------- */
 // Characters are stacked illustration layers placed in the base artwork's own pixel space (1254 px canvas, head centre ~627,505).
@@ -429,7 +433,8 @@ function renderLeft(){
       <div class="row"><button type="button" class="btn primary" data-act="bulk">${t('addNames')}</button></div>
       <div class="row"><button type="button" class="btn sm" data-act="import">${t('importX')}</button><button type="button" class="btn sm" data-act="export">${t('exportX')}</button></div>`)}
     ${det('rules',`${t('rules')}${S.rules.length?` · ${S.rules.length}`:''}`,`${S.rules.length?`<div class="rules">${S.rules.map(r=>{const b=ruleBroken(r);return`<div class="rule ${b?'bad':''}"><span>${esc(S.guests[r.a]?.name)} <b>${r.type==='together'?'＋':'≠'}</b> ${esc(S.guests[r.b]?.name)}</span><span class="pill ${b?'bad':''}">${b?t('ruleBroken'):t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`}).join('')}</div>`:''}<p class="muted">${t('rulesHint')}</p>`)}
-    ${det('tools',t('tools'),`<div class="row"><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
+    ${(()=>{const n=Object.values(S.guests).filter(lookMismatch).length;return n?`<div class="confirm"><span>${esc(tn('matchQ',n))}</span><div class="row"><button type="button" class="btn sm primary" data-act="matchlooks">${t('matchBtn')}</button></div></div>`:''})()}
+    ${det('tools',t('tools'),`<div class="row"><button type="button" class="btn sm" data-act="matchlooks">${t('matchBtn')}</button><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
       ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
       ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}`)}`}
   else{const on=ROW?.guest_page!==false,mode=ROW?.lookup_mode||'prefix',pin=!!ROW?.lookup_pin_hash,u=guestUrl();
@@ -668,8 +673,10 @@ function act(a){
     case'hintok':try{localStorage.setItem('supra.hint','1')}catch(e){};hintOpen=false;renderTop();$('#help').focus();break;
     case'addguest':{const n=($('#newname').value||'').trim();if(!n){toast(t('typeFirst'));$('#newname').focus();return}commit(()=>{x.seats[sel.i]=mkGuest(n)});break}
     case'addrandom':commit(()=>{x.seats[sel.i]=mkGuest(t('guestWord')+' '+(Object.keys(S.guests).length+1),randLook())});break;
-    case'rnd':commit(()=>{const g=curGuest();g.look=randLook(g.look.kind)});break;
-    case'kind':commit(()=>{const g=curGuest();g.look=randLook(g.look.kind==='m'?'f':'m')});break;
+    case'rnd':commit(()=>{const g=curGuest(),keep=g.look.kindSet;g.look=randLook(g.look.kind);if(keep)g.look.kindSet=true});break;
+    case'kind':commit(()=>{const g=curGuest();g.look=relook(g.look,g.look.kind==='m'?'f':'m');g.look.kindSet=true});break;
+    case'matchlooks':{let n=0;const fix=Object.values(S.guests).filter(lookMismatch);if(!fix.length){toast(t('matchNone'));break}
+      commit(()=>fix.forEach(G=>{G.look=relook(G.look,lookMismatch(G));n++}));toast(t('matchDone',{n}));break}
     case'unseat':commit(()=>{S.waiting.push(x.seats[sel.i]);x.seats[sel.i]=null});toast(t('movedWaiting'));break;
     case'delguest':confirmK='guest';renderRight();break;
     case'delguest-yes':confirmK=null;commit(()=>{const id=x.seats[sel.i];delete S.guests[id];S.rules=S.rules.filter(r=>r.a!==id&&r.b!==id);x.seats[sel.i]=null});break;
@@ -737,6 +744,7 @@ document.addEventListener('change',e=>{if(guestMode)return;const id=e.target.id;
   if(id==='lk-mates'){setLookup({mates:e.target.checked});return}
   if(id==='arr-venue'){ARR.venue=e.target.checked;renderLeft();$('#arr-venue')?.focus();return}
   if(id==='gp-on'){const on=e.target.checked;SB.from('events').update({guest_page:on}).eq('id',ROW.id).then(({error})=>{if(error){toast(t('couldntSave'));e.target.checked=!on}else{ROW.guest_page=on;renderLeft()}})}
+  if(id==='g-name'){const G=curGuest(),k=lookMismatch(G);if(k){commit(()=>{G.look=relook(G.look,k)});toast(t(k==='f'?'relookF':'relookM'));return}}
   if(['t-name','g-name','v-label'].includes(id)){renderLeft();renderRight()}});
 /* Arrow keys for tab lists and radio groups (editor and guest page). */
 document.addEventListener('keydown',e=>{
