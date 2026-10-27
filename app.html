@@ -273,6 +273,15 @@ body.swapping #plan .tbody{cursor:pointer}
 .gchar{display:flex;justify-content:center;margin:-2px 0 4px}
 .gportrait{display:block;flex:none;overflow:visible}
 .ghit{justify-content:flex-start}.ghit .gname{flex:1}.ghit .gportrait{margin:-4px 0}
+.gerr{margin:0;color:var(--danger);font-size:14px;font-weight:600}.gerr:empty{display:none}
+.gpreview{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 14px;border-radius:12px;border:1px dashed var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel));font-size:13px}
+.sharebox{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.shhead{display:flex;align-items:center;justify-content:space-between;gap:8px}.shhead h3{margin:0;font-size:15px}
+.badge{font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid currentColor;white-space:nowrap}
+.st-draft{color:var(--muted)}.st-published{color:#2E7D4F}.st-revoked,.st-expired{color:var(--danger)}
+:root[data-theme="dark"] .st-published{color:#7FD3A2}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .st-published{color:#7FD3A2}}
+.pubbox [role=radiogroup] .chip{flex:1 1 30%;justify-content:center}
 </style>
 </head>
 <body>

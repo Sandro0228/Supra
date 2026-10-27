@@ -26,7 +26,8 @@ def serve():
 def seed_script(session=True, cfg=None, events=None, extra=''):
     if events is None:
         events = [dict(id='ev1', owner='u1', name=PLAN['event']['name'], slug='guestcode1', guest_page=True, data=PLAN,
-                       public_data={}, lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')]
+                       public_data={}, lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed',
+                       share_status='published', show_layout=True)]
     return ("if(!sessionStorage.getItem('seeded')){sessionStorage.setItem('seeded','1');localStorage.clear();"
             + ("localStorage.setItem('mocksess','1');" if session else "")
             + "localStorage.setItem('mockcfg',%s);localStorage.setItem('mockdb',%s);%s}" % (

@@ -149,16 +149,17 @@ function renderDash(){
   </form>
   <section aria-labelledby="yourh" class="yours"><h2 id="yourh">${esc(t('dYour'))}</h2>${list}</section></div>`;
 }
+const pubOf=e=>(e.share_status||(e.guest_page?'published':'draft'))==='published';
 function evCard(e){
   const n=e.guests?Object.keys(e.guests).length:0,nm=e.name||'—';
-  return`<li class="ev"><h3>${esc(nm)}</h3><div class="meta">${esc([fmtDate(e.event_date),tn('nGuests',n)].filter(Boolean).join(' · '))}</div>
-    <div class="row"><a class="btn sm primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpen')+': '+nm)}">${esc(t('dOpen'))}</a>${e.guest_page?`<button type="button" class="btn sm" data-copy="${esc(e.slug)}" aria-label="${esc(t('dGuestLink')+': '+nm)}">${esc(t('dGuestLink'))}</button>`:''}<button type="button" class="btn sm danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete')+': '+nm)}">${esc(t('dDelete'))}</button></div>
+  return`<li class="ev"><h3>${esc(nm)}</h3><div class="meta">${esc([fmtDate(e.event_date),tn('nGuests',n),t(pubOf(e)?'st_published':'st_draft')].filter(Boolean).join(' · '))}</div>
+    <div class="row"><a class="btn sm primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpen')+': '+nm)}">${esc(t('dOpen'))}</a>${pubOf(e)?`<button type="button" class="btn sm" data-copy="${esc(e.slug)}" aria-label="${esc(t('dGuestLink')+': '+nm)}">${esc(t('dGuestLink'))}</button>`:''}<button type="button" class="btn sm danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete')+': '+nm)}">${esc(t('dDelete'))}</button></div>
     ${D.confirmId===e.id?`<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ',{n:nm}))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dDelete'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>`:''}</li>`;
 }
 let loadGen=0;
 async function loadEvents(){
   const g=++loadGen;D.loadErr=false;
-  const{data,error}=await SB.from('events').select('id,name,event_date,slug,guest_page,updated_at,guests:data->guests').order('updated_at',{ascending:false});
+  const{data,error}=await SB.from('events').select('id,name,event_date,slug,guest_page,share_status,updated_at,guests:data->guests').order('updated_at',{ascending:false});
   if(g!==loadGen||A.state!=='authenticated')return;
   if(error){D.loadErr=true;D.events=[]}else D.events=data||[];
   render();

@@ -54,14 +54,15 @@ def guest_page_follows_visitor_choice_and_counts_in_georgian(pw, base):
     assert 'ადგილი 5' in p.inner_text('#gcard')
     p.click('[data-gagain]'); assert p.input_value('#gq') == '' and p.evaluate("document.activeElement.id") == 'gq'
     p.fill('#gq', 'ზზზზ'); p.press('#gq', 'Enter'); p.wait_for_timeout(200)
-    assert 'სტუმარი ვერ მოიძებნა' in p.inner_text('#gres')
+    assert 'სახელი ვერ მოიძებნა' in p.inner_text('#gres')
     c.close()
 
 @test
 def share_sets_guest_page_language_and_clear_plan_wording(pw, base):
     c = Ctx(pw, base, session=True, extra=KA)
     p = c.goto('/edit/ev1', wait='#plan .tbody')
-    p.click('#tab-share'); p.wait_for_selector('[data-glangset]')
+    p.click('#tab-share'); p.wait_for_selector('#privacy-controls')
+    p.evaluate("document.querySelector('details[data-sec=privdetails]').open=true"); p.wait_for_selector('[data-glangset]')
     p.click('[data-glangset=ka]'); p.wait_for_timeout(100)
     assert p.evaluate("window.__supraState().event.lang") == 'ka'
     assert 'ილუსტრაციები' in p.inner_text('#privacy-controls')

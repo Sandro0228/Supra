@@ -33,10 +33,16 @@ def guest_page_receives_no_private_data(pw, base):
 def short_query_never_calls_server(pw, base):
     c = Ctx(pw, base, session=False)
     p = c.goto('/e/guestcode1', wait='#gq')
-    p.fill('#gq', 'მა'); p.wait_for_timeout(700)
+    p.fill('#gq', 'მარიამ'); p.wait_for_timeout(700)
+    assert not [x for x in p.evaluate('window.__mockCalls') if x[0] == 'find_seat'], 'nothing is sent while typing'
+    p.fill('#gq', ''); p.press('#gq', 'Enter'); p.wait_for_timeout(100)
+    assert p.inner_text('#gerr') == 'Enter your name' and p.get_attribute('#gq', 'aria-invalid') == 'true'
+    assert p.evaluate("document.activeElement.id") == 'gq' and 'gerr' in p.get_attribute('#gq', 'aria-describedby')
+    assert p.get_attribute('#gerr', 'role') == 'alert'
+    p.fill('#gq', 'მა'); p.press('#gq', 'Enter'); p.wait_for_timeout(100)
+    assert p.inner_text('#gerr') == 'Type at least 3 letters'
     assert not [x for x in p.evaluate('window.__mockCalls') if x[0] == 'find_seat']
-    p.press('#gq', 'Enter'); p.wait_for_timeout(100)
-    assert '3' in p.inner_text('#gres')
+    p.type('#gq', 'რ'); assert p.inner_text('#gerr') == '' and p.get_attribute('#gq', 'aria-invalid') is None
     c.close()
 
 @test
@@ -133,6 +139,7 @@ def share_panel_explains_public_data_and_saves_lookup(pw, base):
     # copy and preview come before the QR code
     order = p.evaluate("[...document.querySelectorAll('[data-act=copylink],#qr')].map(e=>e.id||'copy')")
     assert order == ['copy', 'qr'], order
+    p.evaluate("document.querySelector('details[data-sec=privdetails]').open=true"); p.wait_for_timeout(50)
     p.check('[name=lk-mode][value=exact]'); p.wait_for_timeout(200)
     p.fill('#lk-pin', '12'); p.click('[data-act=setpin]'); p.wait_for_timeout(100)
     p.fill('#lk-pin', '2468'); p.click('[data-act=setpin]'); p.wait_for_timeout(200)
@@ -179,7 +186,8 @@ def table_only_mode_hides_seats(pw, base):
 def organiser_switches_to_table_only(pw, base):
     c = Ctx(pw, base, session=True)
     p = c.goto('/edit/ev1', wait='#plan .tbody')
-    p.click('#tab-share'); p.wait_for_selector('[data-seatmode]')
+    p.click('#tab-share'); p.wait_for_selector('#privacy-controls')
+    p.evaluate("document.querySelector('details[data-sec=privdetails]').open=true"); p.wait_for_selector('[data-seatmode]')
     p.click('[data-seatmode=table]'); p.wait_for_timeout(100)
     assert p.evaluate("window.__supraState().event.seatMode") == 'table'
     assert 'no seat' in p.inner_text('#privacy-controls')

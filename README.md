@@ -18,12 +18,14 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 | `supabase/002_guest_lookup.sql` | Private guest search (run after `schema.sql`) |
 | `supabase/003_public_looks.sql` | Guest page shows each seated guest's drawing (no names) |
 | `supabase/004_seat_choice.sql` | Option to tell guests only their table (they choose a seat) |
-| `supabase/005_table_people.sql` | In that mode, each table's guests are drawn standing beside it |
+| `supabase/005_table_people.sql` | Guest drawings for the "choose your seat" mode |
+| `supabase/006_share_lifecycle.sql` | Guest-link lifecycle (draft/published/revoked/expiry/rotate), privacy presets, organiser preview, backoff, counts-only telemetry |
+| `docs/ROADMAP.md` | Findings, risk register and staged plan toward a commercial release |
 | `tests/` | Database tests (`tests/sql/run.sh`) and browser tests (`python3 tests/e2e/run_all.py`) |
 | `vercel.json` | Clean URLs for `/edit/…` and `/e/…` |
 
 ## One-time setup
-1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql`, `003_public_looks.sql`, `004_seat_choice.sql` and `005_table_people.sql`.
+1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql`, `003_public_looks.sql`, `004_seat_choice.sql`, `005_table_people.sql` and `006_share_lifecycle.sql` (rollback notes are at the top of each file).
 2. **Supabase → Authentication → URL Configuration**: set **Site URL** to your Vercel address (e.g. `https://supra.vercel.app`) and add `https://supra.vercel.app/**` to **Redirect URLs**.
 3. Put the **Project URL** and **anon public key** (Project Settings → API) in `config.js`.
 4. **Vercel**: Add New → Project → import this GitHub repo → Deploy. No settings needed.

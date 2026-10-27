@@ -98,7 +98,7 @@ function person(G,P,withChair=true){return`${withChair?chairM():''}<g transform=
 
 /* ---------------- state ---------------- */
 let DRAFT='supra.draft';
-const CFG=window.SUPRA_CONFIG||{};let SB=null,ROW=null,MODE='edit',SLUG='',saveT=0;
+const CFG=window.SUPRA_CONFIG||{};let SB=null,ROW=null,MODE='edit',SLUG='',saveT=0,PREVIEW=null,PREVIEW_ID=null;
 let S=null,PUB=null,hist=[],sel={kind:null},scale=null,fitMode=null,waitSel=null,confirmK=null,dirty=false,saveState='idle',ART=undefined,DL=undefined,readOnly=false,guestMode=false;
 function mkGuest(name,look,extra){const id=uid();S.guests[id]=Object.assign({id,name,group:'',side:'',kid:false,meal:'',allergies:'',look:look||randLook(guessKind(name))},extra||{});return id}
 function sample(){
@@ -439,32 +439,53 @@ function renderLeft(){
     ${det('tools',t('tools'),`<div class="row"><button type="button" class="btn sm" data-act="matchlooks">${t('matchBtn')}</button><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
       ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
       ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}`)}`}
-  else{const on=ROW?.guest_page!==false,mode=ROW?.lookup_mode||'prefix',pin=!!ROW?.lookup_pin_hash,u=guestUrl();
+  else{const sh=shareInfo(),u=guestUrl(),pre=presetOf(sh),st=sh.status,pv=`/edit/${encodeURIComponent(ROW?.id||'')}?preview=1`;
+    const btn=(act,label,cls='')=>`<button type="button" class="btn ${cls}" data-act="${act}">${label}</button>`;
+    const conf=(k,text,yes,cls='primary')=>confirmK===k?`<div class="confirm ${cls==='danger'?'danger':''}" role="group" aria-label="${esc(text)}"><span>${text}</span><div class="row">${btn(k+'-yes',yes,'sm '+cls)}${btn('cancel',t('keepIt'),'sm')}</div></div>`:'';
     h=dhead(t('tabShare'))+`
     <p class="muted">${t('guestPageHint')}</p>
-    <label class="check"><input type="checkbox" id="gp-on" ${on?'checked':''}> ${t('guestPageOn')}</label>
-    ${on?`<div class="field"><span class="lbl" id="sl-l">${t('shareLink')}</span>
+    <section class="sharebox" aria-labelledby="sh-h">
+      <div class="shhead"><h3 id="sh-h">${t('shTitle')}</h3><span class="badge st-${st}" id="sh-status">${t('st_'+st)}</span></div>
+      <p class="small muted">${t('st_'+st+'Hint',{date:sh.expires?fmtDate(sh.expires.slice(0,10)):''})}</p>
+      <div class="row">
+        ${st==='draft'||st==='expired'?btn('publish',t(st==='expired'?'shRepublish':'shPublish'),'primary'):''}
+        ${st==='published'?btn('unpublish',t('shUnpublish')):''}
+        ${st==='revoked'?btn('rotate',t('shNewLink'),'primary'):''}
+        <a class="btn" href="${esc(pv)}" target="_blank" rel="noopener noreferrer">${t('shPreview')}<span class="sr"> ${t('newTab')}</span></a>
+      </div>
+      ${st==='draft'||st==='expired'?`<label class="field"><span class="lbl">${t('shExpiry')}</span><input type="date" id="sh-exp" class="inp" min="${new Date(Date.now()+864e5).toISOString().slice(0,10)}" aria-describedby="sh-exp-h"><span class="muted small" id="sh-exp-h">${t('shExpiryHint')}</span></label>`:''}
+      ${conf('rotate',t('shRotateQ'),t('shRotateYes'))}
+    </section>
+    ${st!=='revoked'?`<div class="field"><span class="lbl" id="sl-l">${t('shareLink')}</span>
       <p class="sharelink" aria-labelledby="sl-l"><span class="host">${esc(location.host)}/e/</span><b class="code">${esc(ROW?.slug||'')}</b></p>
-      <div class="row"><button type="button" class="btn primary" data-act="copylink">${t('copyLink')}</button><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">${t('openGuest')}<span class="sr"> ${t('newTab')}</span></a></div>
-      <p id="copystate" class="muted small" role="status"></p></div>
+      <div class="row"><button type="button" class="btn ${st==='published'?'primary':''}" data-act="copylink">${t('copyLink')}</button>${st==='published'?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t('openGuest')}<span class="sr"> ${t('newTab')}</span></a>`:''}</div>
+      <p id="copystate" class="muted small" role="status">${st==='published'?'':esc(t('shNotLiveYet'))}</p></div>
       <div id="qr" class="qr" role="img" aria-label="${esc(t('qrAlt'))}"></div>
-      <div class="row"><button type="button" class="btn sm" data-act="dlqr">${t('dlQR')}</button></div>
-      <div class="field"><span class="lbl">${t('guestLang')}</span>${radios(t('guestLang'),[['en',t('lang_en')],['ka',t('lang_ka')]].map(([k,l])=>({attr:`data-glangset="${k}" lang="${k}"`,on:(S.event.lang||'en')===k,html:esc(l)})))}<span class="muted small">${t('guestLangHint')}</span></div>`:''}
-    <div class="field"><span class="lbl">${t('smTitle')}</span>${radios(t('smTitle'),[['seat','smSeat'],['table','smTable']].map(([k,l])=>({attr:`data-seatmode="${k}"`,on:seatMode()===k,html:esc(t(l))})))}<span class="muted small">${t(seatMode()==='table'?'smTableHint':'smSeatHint')}</span></div>
+      <div class="row">${btn('dlqr',t('dlQR'),'sm')}${btn('rotate',t('shRotate'),'sm')}${btn('revoke',t('shRevoke'),'sm danger')}</div>
+      ${st!=='revoked'?conf('rotate',t('shRotateQ'),t('shRotateYes')):''}
+      ${conf('revoke',t('shRevokeQ'),t('shRevokeYes'),'danger')}`:''}
     <section class="pubbox" id="privacy-controls" aria-labelledby="pub-h">
       <h3 id="pub-h">${t('pubTitle')}</h3>
+      ${radios(t('prTitle'),['strict','balanced','open'].map(k=>({attr:`data-preset="${k}"`,on:pre===k,html:`<b>${esc(t('pr_'+k))}</b>`})))}
+      <p class="small muted">${pre==='custom'?t('pr_customHint'):t('pr_'+pre+'Hint')}</p>
+      ${confirmK==='strict'?`<div class="confirm" role="group" aria-label="${esc(t('pr_strict'))}"><label class="field"><span class="lbl">${t('lkPin')}</span><input id="pr-pin" class="inp" maxlength="12" autocomplete="off" aria-describedby="pr-pin-h"></label><span class="small muted" id="pr-pin-h">${t('prStrictCode')}</span><div class="row">${btn('strict-yes',t('prUseStrict'),'sm primary')}${btn('cancel',t('keepIt'),'sm')}</div></div>`:''}
+      ${confirmK==='open'?`<div class="confirm danger" role="group" aria-label="${esc(t('pr_open'))}"><span>${t('prOpenQ')}</span><ul class="small publist"><li>${t('prOpen1')}</li><li>${t('prOpen2')}</li><li>${t('prOpen3')}</li></ul><div class="row">${btn('open-yes',t('prUseOpen'),'sm danger')}${btn('cancel',t('keepIt'),'sm')}</div></div>`:''}
       <p class="small">${t('privacy')}</p>
       <p class="small">${t('pubSees')}</p>
-      <ul class="small publist"><li>${t('pubLayout')}</li><li>${t(seatMode()==='table'?'pubMatchTable':'pubMatch')}</li>${ROW?.show_tablemates?`<li>${t('pubMates')}</li>`:''}</ul>
+      <ul class="small publist"><li>${t(sh.layout?'pubLayout':'pubNoLayout')}</li><li>${t(seatMode()==='table'?'pubMatchTable':'pubMatch')}</li>${sh.mates?`<li>${t('pubMates')}</li>`:''}</ul>
       <p class="small muted">${t('pubNever')}</p>
+      ${det('privdetails',t('privDetails'),`
       <fieldset class="field"><legend class="lbl">${t('lkMode')}</legend>
-        <label class="check"><input type="radio" name="lk-mode" value="prefix" ${mode==='prefix'?'checked':''}> ${t('lkPrefix')}</label>
-        <label class="check"><input type="radio" name="lk-mode" value="exact" ${mode==='exact'?'checked':''}> ${t('lkExact')}</label></fieldset>
-      <label class="check"><input type="checkbox" id="lk-mates" ${ROW?.show_tablemates?'checked':''}> ${t('lkMates')}</label>
+        <label class="check"><input type="radio" name="lk-mode" value="exact" ${sh.mode==='exact'?'checked':''}> ${t('lkExact')}</label>
+        <label class="check"><input type="radio" name="lk-mode" value="prefix" ${sh.mode==='prefix'?'checked':''}> ${t('lkPrefix')}</label></fieldset>
+      <label class="check"><input type="checkbox" id="lk-mates" ${sh.mates?'checked':''}> ${t('lkMates')}</label>
+      <label class="check"><input type="checkbox" id="lk-layout" ${sh.layout?'checked':''}> ${t('lkLayout')}</label>
       <div class="field"><label class="lbl" for="lk-pin">${t('lkPin')}</label>
-        <p class="small muted" id="lk-pin-h">${pin?t('lkPinOn'):t('lkPinOff')} ${t('lkPinHint')}</p>
-        <div class="row2 linkrow"><input id="lk-pin" class="inp" maxlength="12" autocomplete="off" aria-describedby="lk-pin-h"><button type="button" class="btn" data-act="setpin">${pin?t('lkPinChange'):t('lkPinSet')}</button></div>
-        ${pin?`<button type="button" class="btn sm" data-act="rmpin">${t('lkPinRemove')}</button>`:''}</div>
+        <p class="small muted" id="lk-pin-h">${sh.pin?t('lkPinOn'):t('lkPinOff')} ${t('lkPinHint')}</p>
+        <div class="row2 linkrow"><input id="lk-pin" class="inp" maxlength="12" autocomplete="off" aria-describedby="lk-pin-h"><button type="button" class="btn" data-act="setpin">${sh.pin?t('lkPinChange'):t('lkPinSet')}</button></div>
+        ${sh.pin?`<button type="button" class="btn sm" data-act="rmpin">${t('lkPinRemove')}</button>`:''}</div>
+      <div class="field"><span class="lbl">${t('smTitle')}</span>${radios(t('smTitle'),[['seat','smSeat'],['table','smTable']].map(([k,l])=>({attr:`data-seatmode="${k}"`,on:seatMode()===k,html:esc(t(l))})))}<span class="muted small">${t(seatMode()==='table'?'smTableHint':'smSeatHint')}</span></div>
+      <div class="field"><span class="lbl">${t('guestLang')}</span>${radios(t('guestLang'),[['en',t('lang_en')],['ka',t('lang_ka')]].map(([k,l])=>({attr:`data-glangset="${k}" lang="${k}"`,on:(S.event.lang||'en')===k,html:esc(l)})))}<span class="muted small">${t('guestLangHint')}</span></div>`)}
     </section>
     ${det('print',t('printOuts'),`<div class="field"><span class="lbl">${t('cards')}</span><p class="muted">${t('cardsHint')}</p><button type="button" class="btn" data-act="cards">${t('makeCards')}</button></div>
       <div class="field"><span class="lbl">${t('caterer')}</span><p class="muted">${t('catererHint')}</p><button type="button" class="btn" data-act="caterer">${t('openCaterer')}</button></div>
@@ -479,10 +500,24 @@ function doFind(){const q=($('#find')?.value||'').trim().toLowerCase(),box=$('#f
   box.innerHTML=res.join('')||`<span class="muted">${t('noOne')}</span>`}
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector(`script[src="${src}"]`)&&window.__loaded?.[src])return ok();const s=document.createElement('script');s.src=src;s.onload=()=>{(window.__loaded=window.__loaded||{})[src]=1;ok()};s.onerror=no;document.head.appendChild(s)})}
 const QRLIB='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',XLSXLIB='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',PDFLIB='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+/* ---------------- guest link: lifecycle and privacy ----------------
+   The server owns the link token and the publish state (migration 006); the page only asks for changes. */
+function shareInfo(){const r=ROW||{},has=r.share_status!==undefined,exp=r.share_expires_at&&new Date(r.share_expires_at)<=new Date();
+  const status=has?(r.share_status==='published'&&exp?'expired':r.share_status):(r.guest_page===false?'draft':'published');
+  return{status,expires:r.share_expires_at||null,mode:r.lookup_mode||'exact',pin:!!r.lookup_pin_hash,mates:!!r.show_tablemates,layout:r.show_layout===undefined?true:!!r.show_layout}}
+function presetOf(sh){if(sh.mode==='exact'&&!sh.mates&&!sh.layout)return sh.pin?'strict':'balanced';if(sh.mode==='prefix'&&sh.mates&&sh.layout)return'open';return'custom'}
+function applyShare(st){if(!st||!ROW)return;ROW.share_status=st.status==='expired'?'published':st.status;ROW.share_expires_at=st.expires||null;if(st.slug)ROW.slug=st.slug;
+  ROW.lookup_mode=st.mode;ROW.lookup_pin_hash=st.pin?'set':null;ROW.show_tablemates=!!st.mates;ROW.show_layout=!!st.layout;ROW.guest_page=st.status==='published'}
+/* Errors are reported by kind only: never names, codes, or plan contents. */
+function logSafe(kind,err){try{console.warn('[supra]',kind,err&&(err.code||err.status||err.name)||'')}catch(e){}}
+async function shareCall(fn,args,okMsg,focusSel){
+  const{data,error}=await SB.rpc(fn,Object.assign({p_event:ROW.id},args||{}));
+  if(error||!data){logSafe('share:'+fn,error);toast(t(/revoked/.test(error?.message||'')?'shRevokedErr':'shErr'));renderLeft();return false}
+  applyShare(data);confirmK=null;renderLeft();if(okMsg)toast(okMsg);if(focusSel)$(focusSel)?.focus();return true}
 async function setLookup(ch){
   const args={p_event:ROW.id,p_mode:ch.mode||ROW.lookup_mode||'prefix',p_pin:ch.pin===undefined?null:ch.pin,p_mates:ch.mates===undefined?!!ROW.show_tablemates:ch.mates};
   const{data,error}=await SB.rpc('set_guest_lookup',args);
-  if(error||!data){console.error(error);toast(t('lkErr'));renderLeft();return}
+  if(error||!data){logSafe('share:set_guest_lookup',error);toast(t('lkErr'));renderLeft();return}
   ROW.lookup_mode=data.mode;ROW.show_tablemates=data.mates;ROW.lookup_pin_hash=data.pin?'set':null;
   renderLeft();toast(ch.pin===undefined?t('lkSaved'):ch.pin?t('lkPinSaved'):t('lkPinGone'));
   const f=ch.mode?`[name=lk-mode][value=${data.mode}]`:ch.mates!==undefined?'#lk-mates':'#lk-pin';$(f)?.focus()}
@@ -701,6 +736,15 @@ function act(a){
     case'delvenue':commit(()=>{S.venue=S.venue.filter(v=>v.id!==sel.v);sel={kind:null}});break;
     case'copylink':{const st=$('#copystate'),u=guestUrl();const done=ok=>{if(st)st.textContent=ok?t('copied'):t('copyFail',{url:u})};
       (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>done(true),()=>done(false));break}
+    case'publish':{const d=$('#sh-exp')?.value;shareCall('publish_guest_page',{p_expires:d?new Date(d+'T23:59:59').toISOString():null},t('shPublished'),'#sh-status');break}
+    case'unpublish':shareCall('unpublish_guest_page',{},t('shUnpublished'),'#sh-status');break;
+    case'rotate':confirmK='rotate';renderLeft();$('[data-act="rotate-yes"]')?.focus();break;
+    case'rotate-yes':shareCall('rotate_guest_link',{},t('shRotated'),'#sh-status');break;
+    case'revoke':confirmK='revoke';renderLeft();$('[data-act="revoke-yes"]')?.focus();break;
+    case'revoke-yes':shareCall('revoke_guest_link',{},t('shRevoked'),'#sh-status');break;
+    case'strict-yes':{const v=($('#pr-pin')?.value||'').trim();if(!shareInfo().pin&&(v.length<4||v.length>12)){toast(t('lkPinLen'));$('#pr-pin')?.focus();break}
+      shareCall('apply_privacy_preset',{p_preset:'strict',p_pin:v||null},t('lkSaved'),'[data-preset=strict]');break}
+    case'open-yes':shareCall('apply_privacy_preset',{p_preset:'open'},t('lkSaved'),'[data-preset=open]');break;
     case'setpin':{const v=($('#lk-pin')?.value||'').trim();if(v.length<4||v.length>12){toast(t('lkPinLen'));$('#lk-pin')?.focus();break}setLookup({pin:v});break}
     case'rmpin':setLookup({pin:''});break;
     case'dlqr':dlQR();break;
@@ -718,6 +762,9 @@ document.addEventListener('click',e=>{
   if(d.act)return act(d.act);
   if(d.panel){const k=d.panel;if(!drawerOpen)opener='#tab-'+k;panel=(panel===k&&!sel.kind)?null:k;sel={kind:null};confirmK=null;renderAll();return}
   if(d.lang){if(d.lang!==UL()){setLang(d.lang);renderAll()}return}
+  if(d.preset){const k=d.preset;if(k==='balanced'){shareCall('apply_privacy_preset',{p_preset:'balanced'},t('lkSaved'),'[data-preset=balanced]');return}
+    if(k==='strict'&&shareInfo().pin){shareCall('apply_privacy_preset',{p_preset:'strict'},t('lkSaved'),'[data-preset=strict]');return}
+    confirmK=k;renderLeft();(k==='strict'?$('#pr-pin'):$('[data-act="open-yes"]'))?.focus();return}
   if(d.seatmode){if(seatMode()!==d.seatmode)commit(()=>S.event.seatMode=d.seatmode);return}
   if(d.glangset){if(S.event.lang!==d.glangset)commit(()=>S.event.lang=d.glangset);return}
   if(d.pal)return commit(()=>S.event.palette=d.pal);
@@ -739,7 +786,7 @@ document.addEventListener('click',e=>{
   if(d.seatwait){const w=d.seatwait;commit(()=>{T(sel.t).seats[sel.i]=w;S.waiting=S.waiting.filter(v=>v!==w)});return}
 });
 document.addEventListener('input',e=>{
-  if(guestMode){if(e.target.id==='gq'||e.target.id==='gpin')guestSearch(false);return}
+  if(guestMode){if(e.target.id==='gq'&&GERR)setGuestErr('');return}
   const id=e.target.id;
   if(id==='find'){FINDQ=e.target.value;return doFind()}
   const live={'ev-name':v=>S.event.name=v,'g-name':v=>{curGuest().name=v},'g-group':v=>curGuest().group=v,'g-allergies':v=>curGuest().allergies=v,'t-name':v=>T(sel.t).name=v,'v-label':v=>V(sel.v).label=v};
@@ -752,8 +799,8 @@ document.addEventListener('change',e=>{if(guestMode)return;const id=e.target.id;
   if(id==='g-kid')commit(()=>curGuest().kid=e.target.checked);
   if(e.target.name==='lk-mode'){setLookup({mode:e.target.value});return}
   if(id==='lk-mates'){setLookup({mates:e.target.checked});return}
+  if(id==='lk-layout'){const sh=shareInfo();shareCall('set_guest_privacy',{p_mode:sh.mode,p_mates:sh.mates,p_layout:e.target.checked},t('lkSaved'),'#lk-layout');return}
   if(id==='arr-venue'){ARR.venue=e.target.checked;renderLeft();$('#arr-venue')?.focus();return}
-  if(id==='gp-on'){const on=e.target.checked;SB.from('events').update({guest_page:on}).eq('id',ROW.id).then(({error})=>{if(error){toast(t('couldntSave'));e.target.checked=!on}else{ROW.guest_page=on;renderLeft()}})}
   if(id==='g-name'){const G=curGuest(),k=lookMismatch(G);if(k){commit(()=>{G.look=relook(G.look,k)});toast(t(k==='f'?'relookF':'relookM'));return}}
   if(['t-name','g-name','v-label'].includes(id)){renderLeft();renderRight()}});
 /* Arrow keys for tab lists and radio groups (editor and guest page). */
@@ -877,7 +924,7 @@ async function savePlan(){
   try{const{data,error}=await SB.from('events').update({data:S,name:S.event.name||'',event_date:S.event.date||null,type:S.event.type}).eq('id',ROW.id).select('updated_at').single();
     if(error)throw error;ROW.updated_at=data.updated_at;
     if(JSON.stringify(S)===snapshot){dirty=false;clearDraft()}saveState='idle'}
-  catch(err){saveState='error';console.error(err);toast(t('couldntSave'))}
+  catch(err){saveState='error';logSafe('save',err);toast(t('couldntSave'))}
   savingNow=false;renderTop();
   if(saveAgain||dirty&&saveState!=='error'){saveAgain=false;if(dirty)saveT=setTimeout(savePlan,800)}
 }
@@ -942,7 +989,7 @@ async function planPdf(){
   try{await document.fonts?.ready;const keep=sel;sel={kind:null};const{B,inner}=planSVG();sel=keep;
     const r=await svgToPng(allDefs()+inner,`${B.x} ${B.y} ${B.w} ${B.h}`,B.w,B.h,2);
     await savePdf([{url:r.url,w:B.w,h:B.h},...listPages()],fname('-'+t('fileSeating')+'.pdf'),(S.event.name||'Supra')+' · '+t('planLabel'))}
-  catch(e){console.error(e);toast(t('pdfFail'))}
+  catch(e){logSafe('pdf',e);toast(t('pdfFail'))}
   if(btn){btn.disabled=false;btn.removeAttribute('aria-busy')}}
 async function dlQR(){const c=$('#qr canvas');if(!c)return;const pad=document.createElement('canvas');pad.width=c.width+80;pad.height=c.height+120;const x=pad.getContext('2d');
   x.fillStyle='#FFFFFF';x.fillRect(0,0,pad.width,pad.height);x.drawImage(c,40,40);x.fillStyle='#24302A';x.font='600 20px Noto Sans Georgian, sans-serif';x.textAlign='center';x.fillText(t('fgTitle'),pad.width/2,c.height+80);
@@ -970,7 +1017,7 @@ async function placeCards(){
   const box=$('#cardpages');if(!box)return;
   box.insertAdjacentHTML('beforebegin',`<div class="row"><button type="button" class="btn primary" id="cardspdf">${t('cardsPdf')}</button></div>`);
   $('#cardspdf').onclick=async()=>{const b=$('#cardspdf');b.disabled=true;b.setAttribute('aria-busy','true');
-    try{await savePdf(out.map(r=>({url:r.url,w:794,h:1123,fill:true})),fname('-'+t('fileCards')+'.pdf'),t('cardsTitle'))}catch(e){console.error(e);toast(t('pdfFail'))}
+    try{await savePdf(out.map(r=>({url:r.url,w:794,h:1123,fill:true})),fname('-'+t('fileCards')+'.pdf'),t('cardsTitle'))}catch(e){logSafe('pdf',e);toast(t('pdfFail'))}
     b.disabled=false;b.removeAttribute('aria-busy')};
   box.innerHTML=out.map((r,i)=>`<figure><img src="${r.url}" alt="${t('page')} ${i+1}"><button type="button" class="btn sm" data-dlcard="${i}">${t('download')} · ${t('page')} ${i+1}</button></figure>`).join('');
   box.onclick=e=>{const b=e.target.closest('[data-dlcard]');if(b){const i=+b.dataset.dlcard;offerFile(fname(`-${t('fileCards')}-${i+1}.png`),out[i].blob,out[i].url)}};
@@ -1063,21 +1110,22 @@ function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-').map(Number);if(!y
 function gDate(){return fmtDate(S.event.date)}
 function guestMeta(){
   document.documentElement.lang=UL();
-  document.title=[t('fgTitle'),S.event.name,'Supra'].filter(Boolean).join(' · ');
+  document.title=PREVIEW?t('pvTitle')+' · '+(S.event.name||'Supra'):[t('fgTitle'),S.event.name,'Supra'].filter(Boolean).join(' · ');
   let m=document.querySelector('meta[name=description]');if(!m){m=document.createElement('meta');m.name='description';document.head.appendChild(m)}
   m.content=t('fgMeta',{event:S.event.name||'Supra'});
 }
 function guestRender(){
   document.body.classList.add('guestmode');guestMeta();
   const date=gDate(),hint=GL.mode==='exact'?t('fgHintExact'):t('fgHintPrefix');
-  $('#guest').innerHTML=`<div class="gwrap">
+  $('#guest').innerHTML=`<div class="gwrap">${PREVIEW?`<div class="gpreview" role="status"><b>${t('pvTitle')}</b><span>${esc(t('pvHint',{status:t('st_'+PREVIEW)}))}</span></div>`:''}
     <div class="glang" role="radiogroup" aria-label="${esc(t('language'))}">${[['en','English'],['ka','ქართული']].map(([k,l])=>`<button type="button" role="radio" data-glang="${k}" aria-checked="${UL()===k}" tabindex="${UL()===k?0:-1}" lang="${k}">${l}</button>`).join('')}</div>
     ${date?`<p class="gdate"><time datetime="${esc(S.event.date)}">${esc(date)}</time></p>`:''}<h1>${esc(S.event.name||'Supra')}</h1>
     <form id="gform" class="gform" role="search" autocomplete="off" novalidate>
       <h2 id="gtitle">${t('fgTitle')}</h2>
       ${GL.pin?`<label class="gfield"><span>${t('fgPin')}</span><input id="gpin" class="ginput" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" value="${esc(GPIN)}" aria-describedby="gpinhint"><small id="gpinhint">${t('fgPinNeed')}</small></label>`:''}
-      <label class="gfield"><span>${t('fgLabel')}</span><input id="gq" class="ginput" type="search" placeholder="${esc(t('fgPh'))}" value="${esc(GQ)}" aria-describedby="ghint" spellcheck="false" autocapitalize="words"></label>
+      <label class="gfield"><span>${t('fgLabel')}</span><input id="gq" class="ginput" type="search" placeholder="${esc(t(GL.mode==='exact'?'fgPhFull':'fgPh'))}" value="${esc(GQ)}" aria-describedby="ghint gerr" spellcheck="false" autocapitalize="words"${GERR?' aria-invalid="true"':''}></label>
       <small id="ghint" class="ghint">${hint}</small>
+      <p id="gerr" class="gerr" role="alert">${GERR?esc(t(GERR)):''}</p>
       <button type="submit" class="btn primary gfind">${t('fgFind')}</button>
     </form>
     <div id="gres" class="gres" aria-live="polite"></div><div id="gmap" class="gmap"></div>
@@ -1085,14 +1133,15 @@ function guestRender(){
     <footer class="gpowered"><span>${esc(t('poweredBy'))}</span>${SupraLogo({kind:'full',width:100,alt:UL()==='ka'?'':'Supra',cls:'gplogo'})}</footer></div>`;
   guestShow();
 }
-function guestStatusMsg(st){return{short:t('fgShort'),many:t('fgMany'),rate_limited:t('fgRate'),
-  pin:GPIN?t('fgPinBad'):t('fgPinNeed'),not_found:t('fgUnavailable'),error:t('fgErr'),none:t('fgNone'),searching:t('fgSearching')}[st]||''}
+function guestStatusMsg(st){const w=GS.retry||0;return{short:t('fgShort'),many:t('fgMany'),
+  rate_limited:w?t(w<90?'fgRateSec':'fgRateMin',{n:w<90?w:Math.ceil(w/60)}):t('fgRate'),
+  pin:GPIN?t('fgPinBad'):t('fgPinNeed'),not_found:t('fgUnavailable'),unavailable:t('fgUnavailable'),error:t('fgErr'),none:t('fgNone'),searching:t('fgSearching')}[st]||''}
 function guestShow(){
   const res=$('#gres'),map=$('#gmap');if(!res)return;
   const st=GS.status,ms=GS.matches;
   map.innerHTML='';
   if(st==='idle'){res.innerHTML='';return}
-  if(st!=='ok'){res.innerHTML=`<p class="gnone ${st==='searching'?'gwait':''}" ${['rate_limited','error','pin'].includes(st)?'role="alert"':''}>${esc(guestStatusMsg(st))}</p>`;return}
+  if(st!=='ok'){res.innerHTML=`<p class="gnone ${st==='searching'?'gwait':''}" ${['rate_limited','error','pin','unavailable'].includes(st)?'role="alert"':''}>${esc(guestStatusMsg(st))}</p>`;return}
   if(!ms.length){res.innerHTML=`<div class="gempty"><p class="gnone">${esc(t('fgNone'))}</p></div>`;return}
   if(ms.length>1&&GS.chosen<0){
     res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}">${portrait(m,44)}<span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))}${m.seat!=null&&seatMode()==='seat'?` · ${esc(t('seatN',{number:m.seat}))}`:''}</span></button></li>`).join('')}</ul>`;return}
@@ -1104,7 +1153,7 @@ function guestShow(){
     <div class="row gacts">${ms.length>1?`<button type="button" class="linkbtn" data-gall>${t('fgNotYou')}</button>`:''}<button type="button" class="linkbtn" data-gagain>${t('fgAgain')}</button></div></div>`;
   gMap(m);
 }
-function gTableName(m){const x=S.tables[m.table];return x?tName(x):(m.tableName||'')}
+function gTableName(m){const x=S.tables[m.table];return x?tName(x):tName({shape:m.tableName==='Head table'?'head':'',name:m.tableName||''})}
 function gMap(m){
   const x=S.tables[m.table];if(!x)return;const own=m.seat!=null&&seatMode()==='seat';
   if(!own){const keepSel=sel;sel={kind:null};const{B,inner}=planSVG({guest:true,dim:x.id});sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
@@ -1129,19 +1178,23 @@ function findLocal(q){
   const ms=rows.filter(hit);if(ms.length>5)return{status:'many',matches:[]};
   return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:r.g.kid,table:r.ti,tableName:S.tables[r.ti].name,seat:seatMode()==='table'?null:r.si+1,
     mates:ROW?.show_tablemates?rows.filter(o=>o.ti===r.ti&&o.si!==r.si).map(o=>o.g.name):null}))}}
-async function guestSearch(now){
-  GQ=$('#gq')?.value||'';GPIN=$('#gpin')?.value||'';clearTimeout(gT);
+/* Guests search on submit only: nothing is sent while typing, so the page can't be used as an autocomplete. */
+let GERR='';
+function setGuestErr(k){GERR=k;const i=$('#gq'),e=$('#gerr');if(e)e.textContent=k?t(k):'';if(i){k?i.setAttribute('aria-invalid','true'):i.removeAttribute('aria-invalid')}}
+async function guestSearch(){
+  GQ=$('#gq')?.value||'';GPIN=$('#gpin')?.value||'';
   const qn=gnorm(GQ);
-  if(!qn){GS={status:'idle',matches:[],chosen:-1};guestShow();return}
-  if(qn.replace(/ /g,'').length<3){GS={status:now?'short':'idle',matches:[],chosen:-1};guestShow();return}
-  if(!now){gT=setTimeout(()=>guestSearch(true),450);return}
-  const my=++gseq;
+  if(!qn){setGuestErr('fgEmpty');GS={status:'idle',matches:[],chosen:-1};guestShow();$('#gq')?.focus();return}
+  if(qn.replace(/ /g,'').length<3){setGuestErr('fgShort');GS={status:'idle',matches:[],chosen:-1};guestShow();$('#gq')?.focus();return}
+  setGuestErr('');const my=++gseq;
   if(MODE!=='guest'){const r=findLocal(GQ);GS={status:r.status,matches:r.matches,chosen:r.matches.length===1?0:-1};guestShow();return}
-  if(GS.status!=='ok'){GS={status:'searching',matches:[],chosen:-1};guestShow()}
-  let r;try{const{data,error}=await SB.rpc('find_seat',{p_slug:SLUG,p_query:GQ,p_pin:GL.pin?GPIN:null});if(error)throw error;r=data||{status:'error',matches:[]}}
-  catch(e){console.error(e);r={status:'error',matches:[]}}
+  GS={status:'searching',matches:[],chosen:-1};guestShow();
+  let r;try{const{data,error}=PREVIEW?await SB.rpc('preview_find_seat',{p_event:PREVIEW_ID,p_query:GQ}):await SB.rpc('find_seat',{p_slug:SLUG,p_query:GQ,p_pin:GL.pin?GPIN:null});
+    if(error)throw error;r=data||{status:'error',matches:[]}}
+  catch(e){logSafe('lookup',e);r={status:'error',matches:[]}}
   if(my!==gseq)return; // a newer search is on its way
-  GS={status:r.status||'error',matches:r.matches||[],chosen:(r.matches||[]).length===1?0:-1};guestShow();
+  if(r.status==='ok'&&!(r.matches||[]).length)r.status='none';
+  GS={status:r.status||'error',matches:r.matches||[],chosen:(r.matches||[]).length===1?0:-1,retry:r.retry_after};guestShow();
   if(r.status==='pin')$('#gpin')?.focus();
 }
 function guestClick(e){const b=e.target.closest('button');if(!b)return;
@@ -1151,7 +1204,7 @@ function guestClick(e){const b=e.target.closest('button');if(!b)return;
   if(b.dataset.gall!==undefined){GS.chosen=-1;guestShow();$('.ghit')?.focus();return}
   if(b.dataset.glang){const a=document.activeElement?.id;setLang(b.dataset.glang);guestRender();(a?document.getElementById(a):$(`[data-glang="${b.dataset.glang}"]`))?.focus();return}
   if(b.dataset.gback!==undefined){history.replaceState(null,'',location.pathname+location.search);route()}}
-document.addEventListener('submit',e=>{if(e.target.id==='gform'){e.preventDefault();guestSearch(true)}});
+document.addEventListener('submit',e=>{if(e.target.id==='gform'){e.preventDefault();guestSearch()}});
 function route(){$('#loading').hidden=true;
   guestMode=MODE==='guest'||location.hash==='#find';
   $('#app').hidden=guestMode;$('#guest').hidden=!guestMode;
@@ -1195,7 +1248,7 @@ async function boot(){
   if(slug){MODE='guest';
     SLUG=slug;
     const{data,error}=await SB.rpc('public_plan',{p_slug:slug});
-    if(error||!data||!data.tables){fatal(t('fgUnavailable'));return}
+    if(error||!data||!data.event){fatal(t('fgUnavailable'));return}
     S=fromPublic(data);readOnly=true;
   }else{
     const{data:{session}}=await SB.auth.getSession();
@@ -1208,6 +1261,13 @@ async function boot(){
     let draft=null;try{draft=JSON.parse(localStorage.getItem(DRAFT)||'null')}catch(e){}
     if(draft&&draft.data&&draft.base===ROW.updated_at){S=normalize(draft.data);dirty=true}else S=fromRow;
     if(!S.event.name)S.event.name=ROW.name;
+    // Organiser preview: exactly what an anonymous guest would get, whether or not the page is published.
+    if(qs.get('preview')){
+      const pv=await SB.rpc('preview_public_plan',{p_event:ROW.id});
+      if(pv.error||!pv.data){logSafe('preview',pv.error);fatal(t('pvErr'));return}
+      PREVIEW=shareInfo().status;PREVIEW_ID=ROW.id;SLUG=ROW.slug;MODE='guest';readOnly=true;S=fromPublic(pv.data);
+      document.title=t('pvTitle')+' · '+(S.event.name||'Supra');
+    }
   }
   hintOpen=!hintSeen();
   if(S.tables.some(x=>x.x===undefined))autoArrange();
