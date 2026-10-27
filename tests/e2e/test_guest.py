@@ -186,3 +186,18 @@ def organiser_switches_to_table_only(pw, base):
     p.click('#undo'); p.wait_for_timeout(100)
     assert p.evaluate("window.__supraState().event.seatMode") in (None, 'seat')
     c.close()
+
+@test
+def table_only_mode_shows_guests_beside_their_table(pw, base):
+    plan = json.loads(json.dumps(PLAN)); plan['event']['seatMode'] = 'table'
+    ev = dict(id='ev1', owner='u1', name='x', slug='guestcode1', guest_page=True, data=plan, public_data={},
+              lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')
+    c = Ctx(pw, base, session=False, events=[ev])
+    p = c.goto('/e/guestcode1', wait='#gq')
+    search(p, 'ლუკა'); p.wait_for_selector('#gmap svg')
+    n_t2 = sum(1 for s in PLAN['tables'][2]['seats'] if s)
+    assert p.locator('#gmap .tgrp[data-tg=pt2] .standing').count() == n_t2
+    assert p.locator('#gmap .seat .ring[opacity="0.32"]').count() == 0, 'no chair is marked as theirs'
+    assert p.locator('#gmap .standing circle[opacity=".32"]').count() == 1, 'the guest is highlighted among the standing figures'
+    assert 'ლუკა' not in p.evaluate("JSON.stringify(window.__supraState().tables)")
+    c.close()

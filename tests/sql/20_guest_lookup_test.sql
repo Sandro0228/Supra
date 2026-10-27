@@ -20,7 +20,7 @@ begin
                         and (select array_agg(k order by k) from jsonb_object_keys(st) k) = array['kid','look']))), 'seat carries more than a drawing';
   assert not exists (select 1 from jsonb_array_elements(j->'tables') t, jsonb_array_elements(t->'seats') st, jsonb_object_keys(st->'look') k
                       where jsonb_typeof(st) = 'object' and k not in ('kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses')), 'unexpected drawing field';
-  assert (select array_agg(k order by k) from jsonb_object_keys(j->'tables'->0) k) = array['deco','name','rot','seats','shape','x','y'], 'unexpected table fields';
+  assert (select array_agg(k order by k) from jsonb_object_keys(j->'tables'->0) k) = array['deco','name','people','rot','seats','shape','x','y'], 'unexpected table fields';
   raise notice 'ok 1 public_plan has only layout';
 end $$;
 

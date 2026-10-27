@@ -319,6 +319,11 @@ function planSVG(opt={}){
       tb+=G&&G.ghost?chairM(p):G?person(G,p):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
       tb+=`</g></g>`;
     });
+    // "guests choose their seat": the table's guests stand just outside the empty chairs, in no particular seat order
+    if(x.people&&x.people.length){const n=g.seats.length||1;x.people.forEach((pp,i)=>{const st=g.seats[i%n];if(!st)return;
+      // upright, in the gap beside a chair (along the table edge), a little outward; a second lap goes further out
+      const lap=Math.floor(i/n),tx=-st.oy,ty=st.ox,out=14+lap*60,px=st.x+tx*SP/2+st.ox*out,py=st.y+ty*SP/2+st.oy*out,[rx,ry]=[px,py];
+      tb+=`<g class="standing" transform="translate(${rx.toFixed(1)} ${ry.toFixed(1)}) rotate(${(-R0).toFixed(1)})">${opt.hiPerson&&opt.hiPerson.t===x.id&&opt.hiPerson.i===i?`<circle r="34" cy="-4" fill="${p.accent}" opacity=".32"/>`:''}<g transform="scale(.7)">${person({look:pp.look,kid:pp.kid},p,false)}</g></g>`})}
     if(g.shape.type==='round'){const r=g.shape.r;
       tb+=`<g class="tbody" data-table="${x.id}"${tA}>`+clothRound(x.id,r,isSel,p);
       g.seats.forEach(st=>tb+=setting(st.ox*(r-24),st.oy*(r-24),Math.atan2(-st.oy,-st.ox)*180/Math.PI-90));
@@ -1101,7 +1106,8 @@ function guestShow(){
 function gTableName(m){const x=S.tables[m.table];return x?tName(x):(m.tableName||'')}
 function gMap(m){
   const x=S.tables[m.table];if(!x)return;const own=m.seat!=null&&seatMode()==='seat';
-  if(!own){const keepSel=sel;sel={kind:null};const{B,inner}=planSVG({guest:true,dim:x.id});sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
+  if(!own){const keepSel=sel;sel={kind:null};const same=(a,b)=>a&&b&&['kind','skin','hair','hairColor','outfit','outfitColor','beard','glasses','eye'].every(k=>b[k]===undefined||a[k]===b[k]);
+    const hp=(x.people||[]).findIndex(q=>same(q.look,m.look));const{B,inner}=planSVG({guest:true,dim:x.id,hiPerson:hp<0?undefined:{t:x.id,i:hp}});sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
   const keepSeat=x.seats[m.seat-1],keepSel=sel;
   S.guests.__hit={id:'__hit',name:m.name,look:m.look||randLook(guessKind(m.name)),kid:!!m.kid,side:'',group:'',meal:'',allergies:''};
   x.seats[m.seat-1]='__hit';sel={kind:null};
@@ -1164,7 +1170,7 @@ function fromPublic(d){
   const o={event:Object.assign({},d.event||{}),guests:{},waiting:[],rules:[],
     venue:(d.venue||[]).map((v,i)=>Object.assign({id:'pv'+i},v)),tables:[]};
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646};
-  o.tables=(d.tables||[]).map((x,ti)=>({id:'pt'+ti,name:x.name||'',shape:x.shape||'rect',deco:x.deco||'none',x:x.x,y:x.y,rot:x.rot||0,
+  o.tables=(d.tables||[]).map((x,ti)=>({id:'pt'+ti,people:Array.isArray(x.people)?x.people.filter(q=>q&&q.look&&q.look.kind).map(q=>({look:Object.assign(randLook(q.look.kind,rnd),q.look),kid:!!q.kid})):null,name:x.name||'',shape:x.shape||'rect',deco:x.deco||'none',x:x.x,y:x.y,rot:x.rot||0,
     seats:(x.seats||[]).map((on,si)=>{if(!on)return null;const id='po'+ti+'_'+si;
       // the organiser's drawing for this seat (no name); a plain stand-in only if the server sends just "taken"
       const real=on&&typeof on==='object'&&on.look&&on.look.kind;
