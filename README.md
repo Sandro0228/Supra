@@ -16,11 +16,12 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 | `config.js` | Your Supabase URL and public key |
 | `supabase/schema.sql` | Database table and access rules |
 | `supabase/002_guest_lookup.sql` | Private guest search (run after `schema.sql`) |
+| `supabase/003_public_looks.sql` | Guest page shows each seated guest's drawing (no names) |
 | `tests/` | Database tests (`tests/sql/run.sh`) and browser tests (`python3 tests/e2e/run_all.py`) |
 | `vercel.json` | Clean URLs for `/edit/…` and `/e/…` |
 
 ## One-time setup
-1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql`.
+1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql` and `supabase/003_public_looks.sql`.
 2. **Supabase → Authentication → URL Configuration**: set **Site URL** to your Vercel address (e.g. `https://supra.vercel.app`) and add `https://supra.vercel.app/**` to **Redirect URLs**.
 3. Put the **Project URL** and **anon public key** (Project Settings → API) in `config.js`.
 4. **Vercel**: Add New → Project → import this GitHub repo → Deploy. No settings needed.
@@ -28,7 +29,7 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 Optional: enable Google sign-in under Authentication → Providers, then set `googleSignIn: true` in `config.js`.
 
 ## Privacy
-Each plan is readable only by its owner (row-level security). The guest page never downloads the guest list. It gets the room layout (table names and which seats are taken, not by whom) and asks the server for one name at a time:
+Each plan is readable only by its owner (row-level security). The guest page never downloads the guest list. It gets the room layout: table names and each seated guest's drawing, without names and asks the server for one name at a time:
 
 - at least 3 letters, matching the start of a first or last name (or the full name only, if the owner chooses);
 - at most 5 matches, each with only the name, drawing, table and seat; tablemates' names only if the owner turns that on;

@@ -142,3 +142,17 @@ def share_panel_explains_public_data_and_saves_lookup(pw, base):
     p.check('#lk-mates'); p.wait_for_timeout(200)
     assert 'everyone else' in p.inner_text('#privacy-controls')
     c.close()
+
+@test
+def guest_page_shows_each_guests_own_drawing(pw, base):
+    c = Ctx(pw, base, session=False)
+    p = c.goto('/e/guestcode1', wait='#gq')
+    st = p.evaluate("JSON.parse(JSON.stringify(window.__supraState()))")
+    for ti, t in enumerate(PLAN['tables']):
+        for si, gid in enumerate(t['seats']):
+            if not gid: continue
+            want = PLAN['guests'][gid]['look']; got = st['guests']['po%d_%d' % (ti, si)]
+            for k in ('kind', 'skin', 'hair', 'hairColor', 'outfit', 'outfitColor', 'glasses', 'beard'):
+                assert got['look'][k] == want[k], (gid, k, got['look'][k], want[k])
+            assert got['name'] == '' and got['kid'] == PLAN['guests'][gid].get('kid', False)
+    c.close()

@@ -14,7 +14,12 @@ begin
   assert s not like '%SECRET_ALLERGY%' and s not like '%SECRET_GROUP%' and s not like '%"meal"%' and s not like '%allergies%', 'private field leaked';
   assert s not like '%g01%' and s not like '%"rules"%' and s not like '%"waiting"%', 'internal id or rules leaked';
   assert s not like '%aaaaaaaa%' and s not like '%1111111%', 'event or owner id leaked';
-  assert jsonb_typeof(j->'tables'->0->'seats'->0) = 'boolean', 'seats must be true/false only';
+  -- each seat: false, or only the drawing and the child flag
+  assert not exists (select 1 from jsonb_array_elements(j->'tables') t, jsonb_array_elements(t->'seats') st
+                      where not (st = 'false'::jsonb or (jsonb_typeof(st) = 'object'
+                        and (select array_agg(k order by k) from jsonb_object_keys(st) k) = array['kid','look']))), 'seat carries more than a drawing';
+  assert not exists (select 1 from jsonb_array_elements(j->'tables') t, jsonb_array_elements(t->'seats') st, jsonb_object_keys(st->'look') k
+                      where jsonb_typeof(st) = 'object' and k not in ('kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses')), 'unexpected drawing field';
   assert (select array_agg(k order by k) from jsonb_object_keys(j->'tables'->0) k) = array['deco','name','rot','seats','shape','x','y'], 'unexpected table fields';
   raise notice 'ok 1 public_plan has only layout';
 end $$;

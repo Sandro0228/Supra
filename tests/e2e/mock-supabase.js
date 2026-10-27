@@ -30,7 +30,7 @@ function q(table){let op='select',payload=null,filters=[],cols='*',single=false,
 // Mirrors supabase/002_guest_lookup.sql closely enough for UI tests (privacy itself is tested in SQL).
 const norm=s=>String(s||'').normalize('NFC').toLowerCase().replace(/\s+/g,' ').trim();
 function publicPlan(ev){const d=ev.data||{};return{event:{name:d.event?.name,date:d.event?.date,palette:d.event?.palette,lang:d.event?.lang,type:d.event?.type},
-  tables:(d.tables||[]).map(t=>({name:t.name,shape:t.shape,deco:t.deco,x:t.x,y:t.y,rot:t.rot,seats:(t.seats||[]).map(s=>typeof s==='string')})),
+  tables:(d.tables||[]).map(t=>({name:t.name,shape:t.shape,deco:t.deco,x:t.x,y:t.y,rot:t.rot,seats:(t.seats||[]).map(s=>{const g=typeof s==='string'&&d.guests[s];if(!g)return false;const L=g.look||{},k=['kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses'];return{look:Object.fromEntries(k.filter(x=>x in L).map(x=>[x,L[x]])),kid:!!g.kid}})})),
   venue:(d.venue||[]).map(v=>({type:v.type,label:v.label,x:v.x,y:v.y,w:v.w,h:v.h,rot:v.rot})),lookup:{mode:ev.lookup_mode||'prefix',pin:!!ev.lookup_pin_hash}}}
 function findSeat(ev,query,pin){const qn=norm(query);if(qn.replace(/ /g,'').length<3)return{status:'short',matches:[]};
   window.__mockCalls.push(['find_seat',query]);

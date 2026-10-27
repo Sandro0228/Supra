@@ -1152,13 +1152,16 @@ function measure(){const d=$('#gdefs');if(d)d.innerHTML=imageDefs()}
 function fatal(msg){$('#loading').hidden=true;document.title='Supra';document.body.classList.add('guestmode');$('#app').hidden=true;$('#guest').hidden=false;$('#guest').innerHTML=`<div class="gwrap"><h1>Supra</h1><p class="gnone">${esc(msg)}</p><a class="linkbtn" href="/">${t('goHome')}</a></div>`}
 function emptyPlan(row){return{event:{name:row.name||'',type:row.type||'wedding',date:row.event_date||'',palette:'blush',lang:(navigator.language||'').startsWith('ka')?'ka':'en'},guests:{},waiting:[],rules:[],
   venue:[{id:uid(),type:'dance',label:'',w:300,h:180}],tables:[{id:uid(),name:'Head table',shape:'head',deco:'flowers',seats:[null,null]},{id:uid(),name:'Table 1',shape:'rect',deco:'mixed',seats:Array(10).fill(null)},{id:uid(),name:'Table 2',shape:'round',deco:'flowers',seats:Array(8).fill(null)}]}}
-/* Turns the sanitized public layout into a drawable plan. Taken seats get a decorative stand-in, never a real guest. */
+/* Turns the sanitized public layout into a drawable plan. Taken seats show the guest's drawing, never their name. */
 function fromPublic(d){
   const o={event:Object.assign({},d.event||{}),guests:{},waiting:[],rules:[],
     venue:(d.venue||[]).map((v,i)=>Object.assign({id:'pv'+i},v)),tables:[]};
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646};
   o.tables=(d.tables||[]).map((x,ti)=>({id:'pt'+ti,name:x.name||'',shape:x.shape||'rect',deco:x.deco||'none',x:x.x,y:x.y,rot:x.rot||0,
-    seats:(x.seats||[]).map((on,si)=>{if(!on)return null;const id='po'+ti+'_'+si;o.guests[id]={id,name:'',anon:true,look:randLook(null,rnd),kid:false};return id})}));
+    seats:(x.seats||[]).map((on,si)=>{if(!on)return null;const id='po'+ti+'_'+si;
+      // the organiser's drawing for this seat (no name); a plain stand-in only if the server sends just "taken"
+      const real=on&&typeof on==='object'&&on.look&&on.look.kind;
+      o.guests[id]={id,name:'',anon:true,look:real?Object.assign(randLook(on.look.kind,rnd),on.look):randLook(null,rnd),kid:real?!!on.kid:false};return id})}));
   GL={mode:d.lookup?.mode==='exact'?'exact':'prefix',pin:!!d.lookup?.pin};
   return normalize(o);
 }
