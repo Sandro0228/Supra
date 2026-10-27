@@ -104,7 +104,7 @@ begin
            'name', m.gu->>'name', 'look', m.gu->'look', 'kid', coalesce((m.gu->>'kid')::boolean, false),
            'table', m.tidx, 'tableName', m.tname, 'seat', case when tbl_only then null else m.sidx + 1 end,
            'mates', case when e.show_tablemates then
-                      (select coalesce(jsonb_agg(o.gu->>'name' order by o.sidx), '[]'::jsonb)
+                      (select coalesce(jsonb_agg(o.gu->>'name' order by case when tbl_only then o.gu->>'name' end, o.sidx), '[]'::jsonb)
                          from _supra_seated o where o.tidx = m.tidx and o.sidx <> m.sidx)
                     else null end)
          order by m.nn, m.tidx), '[]'::jsonb)
