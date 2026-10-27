@@ -545,7 +545,9 @@ en:{
   "pubNoLayout":"the event name and date — no room plan",
   "privDetails":"Privacy details",
   "lkLayout":"Show the room plan with guests' drawings",
-  "fgPhFull":"Your first and last name"
+  "fgPhFull":"Your first and last name",
+  "rotView":"Rotate view",
+  "viewTurned":"View turned {n}°. Your plan itself hasn't changed."
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -1092,6 +1094,8 @@ ka:{
   "pubNoLayout":"ღონისძიების დასახელებას და თარიღს — დარბაზის გეგმის გარეშე",
   "privDetails":"კონფიდენციალურობის დეტალები",
   "lkLayout":"დარბაზის გეგმის ჩვენება სტუმრების ილუსტრაციებით",
-  "fgPhFull":"შენი სახელი და გვარი"
+  "fgPhFull":"შენი სახელი და გვარი",
+  "rotView":"ხედის შემობრუნება",
+  "viewTurned":"ხედი შემობრუნდა {n}°-ით. თავად გეგმა არ შეცვლილა."
 }
 };

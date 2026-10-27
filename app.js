@@ -213,6 +213,21 @@ function arrangePreview(o){const L=arrangeLayout(o),p=P();let x0=Infinity,y0=Inf
     s+=g.shape.type==='round'?`<circle cx="${q.x}" cy="${q.y}" r="${g.shape.r}" fill="${p.cloth}" stroke="${p.accent}" stroke-width="6"/>`
       :`<rect x="${-g.shape.w/2}" y="${-g.shape.h/2}" width="${g.shape.w}" height="${g.shape.h}" rx="10" transform="translate(${q.x} ${q.y}) rotate(${q.rot})" fill="${x.shape==='head'?p.accent:p.cloth}" fill-opacity="${x.shape==='head'?.35:1}" stroke="${p.accent}" stroke-width="6"/>`});
   const pad=40;return{svg:`<svg viewBox="${x0-pad} ${y0-pad} ${x1-x0+2*pad} ${y1-y0+2*pad}" role="img" aria-label="${esc(t('arrPreviewA11y',{rows:L.R,cols:L.C}))}" class="arrprev"><rect x="${x0-pad}" y="${y0-pad}" width="${x1-x0+2*pad}" height="${y1-y0+2*pad}" fill="${p.floor}"/>${s}</svg>`,R:L.R,C:L.C}}
+/* ---------------- view rotation ----------------
+   Turns the picture only, in 90° steps, for this viewer on this device. The saved plan keeps its own coordinates,
+   so downloads, the guest page for other people and every saved position stay exactly as they are. */
+let VROT=null;
+const vKey=()=>'supra.view.'+(ROW?.id||SLUG||'plan');
+function vrot(){if(VROT==null){let v=0;try{v=+localStorage.getItem(vKey())||0}catch(e){}VROT=[0,90,180,270].includes(v)?v:0}return VROT}
+function turnView(){VROT=(vrot()+90)%360;try{localStorage.setItem(vKey(),String(VROT))}catch(e){}return VROT}
+const r2=v=>Math.round(v*100)/100;
+function toView(x,y){const[a,b]=rot(x,y,vrot());return[r2(a),r2(b)]}
+function toWorld(x,y){const[a,b]=rot(x,y,-vrot());return[r2(a),r2(b)]}
+/* Runs fn with S.tables and S.venue swapped for turned copies (same ids and seat lists), then puts the real ones back. */
+function withView(fn){if(!vrot())return fn();const T0=S.tables,V0=S.venue;
+  S.tables=T0.map(x=>{const[a,b]=toView(x.x,x.y);return Object.assign({},x,{x:a,y:b,rot:((x.rot||0)+VROT)%360})});
+  S.venue=V0.map(v=>{const[a,b]=toView(v.x,v.y);return Object.assign({},v,{x:a,y:b,rot:((v.rot||0)+VROT)%360})});
+  try{return fn()}finally{S.tables=T0;S.venue=V0}}
 function rbox(w,h,deg){const a=(deg||0)*Math.PI/180,c=Math.abs(Math.cos(a)),n=Math.abs(Math.sin(a));return[w*c+h*n,w*n+h*c]}
 function rot(x,y,deg){const a=(deg||0)*Math.PI/180,c=Math.cos(a),n=Math.sin(a);return[x*c-y*n,x*n+y*c]}
 function dims(x){const g=geo(x);return rbox(g.w,g.h,x.rot)}
@@ -350,6 +365,7 @@ function planSVG(opt={}){
 /* ---------------- top bar ---------------- */
 let panel=null,FINDQ='',ARR=null,swapFrom=null;const OPEN=new Set();
 const ICON={
+  turn:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
@@ -390,7 +406,7 @@ function renderTop(){
   $('#help').setAttribute('aria-expanded',!hn.hidden);
   $('#quickadd').setAttribute('aria-label',t('addToRoom'));
   $('#quickadd').innerHTML=`<button type="button" class="btn" data-act="arr-open" aria-pressed="${panel==='arrange'}">${ICON.arrange}<span>${t('arrOpenShort')}</span></button><span class="tsep" aria-hidden="true"></span><button type="button" class="btn" data-act="addtable">${t('addTable')}</button>${['stage','bar','dance'].map(k=>`<button type="button" class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
-  [['zout','zoomOut'],['zin','zoomIn'],['zall','fitAll'],['zwidth','fitWidth'],['help','helpMove']].forEach(([id,k])=>{const b=$('#'+id);b.setAttribute('aria-label',t(k));b.title=t(k)});
+  [['zout','zoomOut'],['zin','zoomIn'],['zall','fitAll'],['zwidth','fitWidth'],['zrot','rotView'],['help','helpMove']].forEach(([id,k])=>{const b=$('#'+id);b.setAttribute('aria-label',t(k));b.title=t(k)});
   $('#zoombar').setAttribute('aria-label',t('zoom'));
   const swb=$('#swapbar'),sf=swapFrom&&T(swapFrom);swb.hidden=!sf;
   if(sf)swb.innerHTML=`<span>${esc(t('swapPick',{n:tName(sf)}))}</span><button type="button" class="btn sm" data-act="swap-cancel">${t('swapCancel')}</button>`;else swb.innerHTML='';
@@ -618,14 +634,15 @@ const focusKeyOf=el=>{if(!el||el===document.body)return null;if(el.id)return'#'+
   return el.tagName.toLowerCase()+ds.map(([k,v])=>`[data-${k.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())}="${CSS.escape(v)}"]`).join('')};
 
 /* ---------------- render ---------------- */
-function renderPlan(){const{B,inner}=planSVG();const svg=$('#plan');svg.setAttribute('viewBox',`${B.x} ${B.y} ${B.w} ${B.h}`);svg.dataset.w=B.w;svg.dataset.h=B.h;svg.innerHTML=inner;applyZoom()}
+function renderPlan(){const{B,inner}=withView(()=>planSVG());const svg=$('#plan');svg.setAttribute('viewBox',`${B.x} ${B.y} ${B.w} ${B.h}`);svg.dataset.w=B.w;svg.dataset.h=B.h;svg.innerHTML=inner;applyZoom()}
 /* View: `scale` is screen pixels per plan unit, so opening or closing a panel never changes the zoom.
    fitMode remembers a pressed Fit button so the view refits when the window changes size. */
 const isPhone=()=>matchMedia('(max-width:900px)').matches;
 function planWH(){const svg=$('#plan');return[+svg.dataset.w||1000,+svg.dataset.h||800]}
 function padOf(sc){const cs=getComputedStyle(sc);return{l:parseFloat(cs.paddingLeft),r:parseFloat(cs.paddingRight),t:parseFloat(cs.paddingTop),b:parseFloat(cs.paddingBottom)}}
 /* What is actually in the room, in plan units (bounds() adds a title band and a minimum width). */
-function contentBox(){let x0=Infinity,x1=-Infinity;
+function contentBox(){return withView(contentBox0)}
+function contentBox0(){let x0=Infinity,x1=-Infinity;
   S.tables.forEach(x=>{const[w]=dims(x);x0=Math.min(x0,x.x-w/2);x1=Math.max(x1,x.x+w/2)});
   S.venue.forEach(v=>{const[w]=rbox(v.w,v.h,v.rot);x0=Math.min(x0,v.x-w/2);x1=Math.max(x1,v.x+w/2)});
   if(!isFinite(x0))return null;return{x0:x0-30,x1:x1+30}}
@@ -655,7 +672,7 @@ function keepView(fn){const sc=$('#scroller'),svg=$('#plan');if(!svg.dataset.w||
   fn();
   const r2=sc.getBoundingClientRect(),b2=svg.getBoundingClientRect();sc.scrollLeft+=b2.left+fx*b2.width-(r2.left+r2.width/2);sc.scrollTop+=b2.top+fy*b2.height-(r2.top+r2.height/2)}
 /* Focused view of one table, for reading names on a phone. */
-function focusTable(x){const[w,h]=dims(x),sc=$('#scroller'),svg=$('#plan');
+function focusTable(x0){const x=withView(()=>T(x0.id)),[w,h]=dims(x),sc=$('#scroller'),svg=$('#plan');
   fitMode=null;scale=Math.min(ZMAX,Math.max(ZMIN,Math.min((sc.clientWidth-24)/(w+60),(sc.clientHeight-24)/(h+60))));applyZoom();
   const vb=svg.viewBox.baseVal,b=svg.getBoundingClientRect(),r=sc.getBoundingClientRect(),px=(x.x-vb.x)*scale,py=(x.y-vb.y)*scale;
   sc.scrollLeft+=b.left+px-(r.left+r.width/2);sc.scrollTop+=b.top+py-(r.top+r.height/2)}
@@ -825,7 +842,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='0'){e.preventDefault();setFit('all');return}
     const it=e.target.closest?.('.tbody,.venue');
     if(it&&e.key.startsWith('Arrow')){e.preventDefault();const o=it.dataset.table?T(it.dataset.table):V(it.dataset.v),st=e.shiftKey?50:10;
-      hist.push(JSON.stringify(S));o.x+=e.key==='ArrowLeft'?-st:e.key==='ArrowRight'?st:0;o.y+=e.key==='ArrowUp'?-st:e.key==='ArrowDown'?st:0;markDirty();renderPlan();
+      hist.push(JSON.stringify(S));{const[dx,dy]=toWorld(e.key==='ArrowLeft'?-st:e.key==='ArrowRight'?st:0,e.key==='ArrowUp'?-st:e.key==='ArrowDown'?st:0);o.x+=Math.round(dx);o.y+=Math.round(dy)}markDirty();renderPlan();
       document.querySelector(focusKeyOf(it))?.focus();return}
     if(it&&(e.key==='Enter'||e.key===' ')){e.preventDefault();it.dataset.table?selectItem('table',it.dataset.table):selectItem('venue',it.dataset.v);return}
   }
@@ -845,7 +862,7 @@ function scrollToSeat(){const el=document.querySelector(`.seat[data-t="${sel.t}"
 
 /* drag: seats swap, tables & venue move */
 let drag=null;
-function viewCenter(){const sc=$('#scroller'),r=sc.getBoundingClientRect();const p=svgPt({clientX:r.left+r.width/2,clientY:r.top+r.height/2});return[Math.round(p.x/10)*10,Math.round(p.y/10)*10]}
+function viewCenter(){const sc=$('#scroller'),r=sc.getBoundingClientRect();const p=wPt({clientX:r.left+r.width/2,clientY:r.top+r.height/2});return[Math.round(p.x/10)*10,Math.round(p.y/10)*10]}
 function freeSpot(w,h){const[cx,cy]=viewCenter(),pad=30,boxes=[];
   S.tables.forEach(x=>{const[bw,bh]=dims(x);boxes.push([x.x-bw/2,x.y-bh/2,x.x+bw/2,x.y+bh/2])});
   S.venue.forEach(v=>{const[bw,bh]=rbox(v.w,v.h,v.rot);boxes.push([v.x-bw/2,v.y-bh/2,v.x+bw/2,v.y+bh/2])});
@@ -853,25 +870,27 @@ function freeSpot(w,h){const[cx,cy]=viewCenter(),pad=30,boxes=[];
   for(let r=0;r<3000;r+=40){const steps=Math.max(1,Math.round(r/20));for(let i=0;i<steps;i++){const a=i/steps*Math.PI*2,x=Math.round((cx+r*Math.cos(a))/10)*10,y=Math.round((cy+r*Math.sin(a))/10)*10;if(free(x,y))return[x,y]}}
   return[cx,cy]}
 function svgPt(e){const svg=$('#plan'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
+/* The same point in saved-plan coordinates (undoes a turned view). */
+function wPt(e){const p=svgPt(e),[x,y]=toWorld(p.x,p.y);return{x,y}}
 $('#scroller').addEventListener('pointerdown',e=>{
   if(e.button>0)return;
   const rh=e.target.closest('.rothandle');if(rh){const it=rh.dataset.rk==='table'?T(rh.dataset.rid):V(rh.dataset.rid);hist.push(JSON.stringify(S));drag={kind:'rotate',it,x:e.clientX,y:e.clientY,moved:true};document.body.classList.add('dragging');e.preventDefault();return}
   const s=e.target.closest('.seat');if(s){drag={kind:'seat',t:s.dataset.t,i:+s.dataset.i,x:e.clientX,y:e.clientY,moved:false,el:s};return}
-  const tb=e.target.closest('.tbody');if(tb){const x=T(tb.dataset.table),p=svgPt(e);drag={kind:'table',id:x.id,x:e.clientX,y:e.clientY,ox:x.x-p.x,oy:x.y-p.y,moved:false,el:tb.closest('.tgrp')};return}
-  const v=e.target.closest('.venue');if(v){const it=V(v.dataset.v),p=svgPt(e);drag={kind:'venue',id:it.id,x:e.clientX,y:e.clientY,ox:it.x-p.x,oy:it.y-p.y,moved:false,el:v};return}
+  const tb=e.target.closest('.tbody');if(tb){const x=T(tb.dataset.table),p=wPt(e);drag={kind:'table',id:x.id,x:e.clientX,y:e.clientY,ox:x.x-p.x,oy:x.y-p.y,moved:false,el:tb.closest('.tgrp')};return}
+  const v=e.target.closest('.venue');if(v){const it=V(v.dataset.v),p=wPt(e);drag={kind:'venue',id:it.id,x:e.clientX,y:e.clientY,ox:it.x-p.x,oy:it.y-p.y,moved:false,el:v};return}
   const sc=$('#scroller');drag={kind:'pan',x:e.clientX,y:e.clientY,sl:sc.scrollLeft,st:sc.scrollTop,moved:false,mouse:e.pointerType==='mouse'};
 });
 let rotRAF=0;
 window.addEventListener('pointermove',e=>{if(!drag)return;
-  if(drag.kind==='rotate'){const p=svgPt(e),it=drag.it;let a=Math.atan2(p.x-it.x,-(p.y-it.y))*180/Math.PI;const snap=e.shiftKey?1:15;a=Math.round(a/snap)*snap;a=((a%360)+360)%360;
+  if(drag.kind==='rotate'){const p=wPt(e),it=drag.it;let a=Math.atan2(p.x-it.x,-(p.y-it.y))*180/Math.PI;const snap=e.shiftKey?1:15;a=Math.round(a/snap)*snap;a=((a%360)+360)%360;
     if(a!==it.rot){it.rot=a;if(!rotRAF)rotRAF=requestAnimationFrame(()=>{rotRAF=0;renderPlan()})}return}
   if(drag.kind==='pan'){if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5){drag.moved=true;$('#scroller').classList.add('panning')}
     if(drag.moved&&drag.mouse){const sc=$('#scroller');sc.scrollLeft=drag.sl-(e.clientX-drag.x);sc.scrollTop=drag.st-(e.clientY-drag.y)}return}
   if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>7){drag.moved=true;if(drag.kind!=='seat')hist.push(JSON.stringify(S));if(drag.kind==='seat')drag.el.style.opacity=.45;document.body.classList.add('dragging')}
   if(!drag.moved)return;
   if(drag.kind==='seat'){document.querySelectorAll('.seat .ring').forEach(r=>r.setAttribute('opacity',0));const o=document.elementFromPoint(e.clientX,e.clientY)?.closest('.seat');if(o&&o!==drag.el)o.querySelector('.ring').setAttribute('opacity',.35);return}
-  const p=svgPt(e),nx=Math.round((p.x+drag.ox)/10)*10,ny=Math.round((p.y+drag.oy)/10)*10;
-  const it=drag.kind==='table'?T(drag.id):V(drag.id);it.x=nx;it.y=ny;drag.el.setAttribute('transform',`translate(${nx} ${ny})`)});
+  const p=wPt(e),nx=Math.round((p.x+drag.ox)/10)*10,ny=Math.round((p.y+drag.oy)/10)*10;
+  const it=drag.kind==='table'?T(drag.id):V(drag.id);it.x=nx;it.y=ny;const[vx,vy]=toView(nx,ny);drag.el.setAttribute('transform',`translate(${vx} ${vy})`)});
 window.addEventListener('pointercancel',()=>{if(drag&&drag.kind==='pan'){drag=null;$('#scroller').classList.remove('panning')}});
 window.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;document.body.classList.remove('dragging');
   if(d.kind==='pan'){$('#scroller').classList.remove('panning');if(!d.moved&&(sel.kind||panel))closeDrawer();return}
@@ -887,6 +906,7 @@ $('#zin').onclick=()=>zoomTo(scale*1.25);
 $('#zout').onclick=()=>zoomTo(scale/1.25);
 $('#zall').onclick=()=>setFit('all');
 $('#zwidth').onclick=()=>setFit('width');
+$('#zrot').onclick=()=>{const n=turnView();renderPlan();setFit(fitMode||(isPhone()?'width':'all'));toast(t('viewTurned',{n}))};
 $('#help').onclick=()=>{hintOpen=!hintOpen;renderTop();if(hintOpen)$('#hint button')?.focus()};
 /* The window or full-screen changed size: a pressed Fit button refits, any other zoom stays put. */
 function onViewport(){if(guestMode)return;if(fitMode){applyZoom(true);centerContent()}else keepView(()=>{})}
@@ -1156,18 +1176,18 @@ function guestShow(){
 function gTableName(m){const x=S.tables[m.table];return x?tName(x):tName({shape:m.tableName==='Head table'?'head':'',name:m.tableName||''})}
 function gMap(m){
   const x=S.tables[m.table];if(!x)return;const own=m.seat!=null&&seatMode()==='seat';
-  if(!own){const keepSel=sel;sel={kind:null};const{B,inner}=planSVG({guest:true,dim:x.id});sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
+  if(!own){const keepSel=sel;sel={kind:null};const{B,inner}=withView(()=>planSVG({guest:true,dim:x.id}));sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
   const keepSeat=x.seats[m.seat-1],keepSel=sel;
   S.guests.__hit={id:'__hit',name:m.name,look:m.look||randLook(guessKind(m.name)),kid:!!m.kid,side:'',group:'',meal:'',allergies:''};
   x.seats[m.seat-1]='__hit';sel={kind:null};
-  const{B,inner}=planSVG({guest:true,dim:x.id,hi:'__hit'});
+  const{B,inner}=withView(()=>planSVG({guest:true,dim:x.id,hi:'__hit'}));
   x.seats[m.seat-1]=keepSeat;delete S.guests.__hit;sel=keepSel;
   gMapShow(x,B,inner,t('fgMapAlt',{table:tName(x),seat:m.seat}))}
-function gMapShow(x,B,inner,alt){
+function gMapShow(x0,B,inner,alt){const x=withView(()=>T(x0.id));
   // Start close on the guest's table so names stay readable on phones; the whole room is one tap away.
   const[w,h]=dims(x),pad=70,vb=GROOM?`${B.x} ${B.y} ${B.w} ${B.h}`:`${x.x-w/2-pad} ${x.y-h/2-pad} ${w+2*pad} ${h+2*pad}`;
   $('#gmap').innerHTML=`<svg viewBox="${vb}" role="img" aria-label="${esc(alt)}"><title>${esc(alt)}</title>${inner}</svg>
-    <button type="button" class="linkbtn" data-groom aria-pressed="${GROOM}">${GROOM?t('fgMyTable'):t('fgRoom')}</button>`;
+    <div class="gmapbtns"><button type="button" class="linkbtn" data-groom aria-pressed="${GROOM}">${GROOM?t('fgMyTable'):t('fgRoom')}</button><button type="button" class="linkbtn" data-grot>${ICON.turn}<span>${t('rotView')}</span></button></div>`;
 }
 /* Owner's preview (#find inside the editor) uses the same rules locally, without the PIN. */
 function findLocal(q){
@@ -1199,6 +1219,7 @@ async function guestSearch(){
 }
 function guestClick(e){const b=e.target.closest('button');if(!b)return;
   if(b.dataset.ghit!==undefined){GS.chosen=+b.dataset.ghit;guestShow();$('#gcard')?.focus();return}
+  if(b.dataset.grot!==undefined){const n=turnView();guestShow();$('[data-grot]')?.focus();return}
   if(b.dataset.groom!==undefined){GROOM=!GROOM;guestShow();$('[data-groom]')?.focus();return}
   if(b.dataset.gagain!==undefined){GQ='';GS={status:'idle',matches:[],chosen:-1};GROOM=false;const q=$('#gq');q.value='';guestShow();q.focus();return}
   if(b.dataset.gall!==undefined){GS.chosen=-1;guestShow();$('.ghit')?.focus();return}
