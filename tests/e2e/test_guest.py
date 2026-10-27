@@ -201,3 +201,14 @@ def table_only_mode_shows_guests_beside_their_table(pw, base):
     assert p.locator('#gmap .standing circle[opacity=".32"]').count() == 1, 'the guest is highlighted among the standing figures'
     assert 'ლუკა' not in p.evaluate("JSON.stringify(window.__supraState().tables)")
     c.close()
+
+@test
+def result_card_shows_the_guests_character(pw, base):
+    c = Ctx(pw, base, session=False)
+    p = c.goto('/e/guestcode1', wait='#gq')
+    search(p, 'მარიამ')
+    assert p.locator('.ghit .gportrait').count() == 4, 'each match shows its drawing so guests recognise themselves'
+    p.click('.ghit >> nth=0'); p.wait_for_selector('#gcard .gchar svg')
+    assert p.get_attribute('#gcard .gchar svg', 'aria-label') == 'Drawing of მარიამ ჯაფარიძე'
+    assert p.locator('#gcard .gchar use').count() > 3
+    c.close()

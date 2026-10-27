@@ -499,6 +499,12 @@ async function drawQR(){const box=$('#qr');if(!box)return;box.innerHTML='';const
 const SW_LBL={skin:'skin',hairColor:'hairColour',beardColor:'beardColour',eye:'eyes',outfitColor:'outfitColour'},LOOK_LBL={hair:'hairStyle',beard:'beard',outfit:'outfit',glasses:'glasses'};
 const sw=(key,list,val)=>radios(t(SW_LBL[key]||key),list.map((c,i)=>({cls:'sw',attr:`data-look="${key}" data-v="${c}"`,on:val===c,style:`background:${c}`,label:t('shadeN',{n:i+1,of:list.length})})));
 const lch=(key,list,val,map)=>radios(t(LOOK_LBL[key]||key),list.map(k=>({attr:`data-look="${key}" data-v="${k}"`,on:val===k,html:esc(t(map?.[k]||k))})));
+/* The guest's own character, for the guest page: their drawing on a little place-card-style frame. */
+let PCLIP=0;
+function portrait(m,size,label){const p=P(),cid='gpc'+(++PCLIP),G={look:m.look&&m.look.kind?Object.assign(randLook(m.look.kind,rng(m.name||'x')),m.look):randLook(guessKind(m.name),rng(m.name||'x')),kid:!!m.kid};
+  return`<svg class="gportrait" viewBox="-40 -54 80 80" width="${size}" height="${size}" ${label?`role="img" aria-label="${esc(label)}"`:'aria-hidden="true" focusable="false"'}>
+    <circle cx="0" cy="-14" r="38" fill="${p.floor}" stroke="${p.accent}" stroke-width="1.2"/><circle cx="0" cy="-14" r="34" fill="none" stroke="${p.accent}" stroke-width=".6" stroke-dasharray="2 2.5" opacity=".7"/>
+    <clipPath id="${cid}"><circle cx="0" cy="-14" r="38"/></clipPath><g clip-path="url(#${cid})"><g transform="translate(0 ${G.kid?2:-2})">${person(G,p,false)}</g></g></svg>`}
 function preview(G){return`<svg viewBox="-34 -50 68 84" width="130" height="161">${person(G,P())}</svg>`}
 const rotUI=it=>`<div class="field"><span class="lbl">${t('rotation')}</span><div class="stepper"><button type="button" class="btn sm" data-rot="-15" aria-label="${t('rotLeft')}">↺</button><output>${it.rot||0}°</output><button type="button" class="btn sm" data-rot="15" aria-label="${t('rotRight')}">↻</button></div><span class="muted small">${t('rotHint')}</span></div>`;
 function renderRight(){
@@ -1094,9 +1100,9 @@ function guestShow(){
   if(st!=='ok'){res.innerHTML=`<p class="gnone ${st==='searching'?'gwait':''}" ${['rate_limited','error','pin'].includes(st)?'role="alert"':''}>${esc(guestStatusMsg(st))}</p>`;return}
   if(!ms.length){res.innerHTML=`<div class="gempty"><p class="gnone">${esc(t('fgNone'))}</p></div>`;return}
   if(ms.length>1&&GS.chosen<0){
-    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}"><span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))}${m.seat!=null&&seatMode()==='seat'?` · ${esc(t('seatN',{number:m.seat}))}`:''}</span></button></li>`).join('')}</ul>`;return}
+    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}">${portrait(m,44)}<span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))}${m.seat!=null&&seatMode()==='seat'?` · ${esc(t('seatN',{number:m.seat}))}`:''}</span></button></li>`).join('')}</ul>`;return}
   const m=ms[Math.max(0,GS.chosen)],mates=Array.isArray(m.mates)?m.mates.filter(Boolean):[];
-  res.innerHTML=`<div class="gcard" tabindex="-1" id="gcard"><span class="lbl">${t('fgTable')}</span><div class="gbig">${esc(gTableName(m))}</div>
+  res.innerHTML=`<div class="gcard" tabindex="-1" id="gcard"><div class="gchar">${portrait(m,132,t('fgPortrait',{name:m.name}))}</div><span class="lbl">${t('fgTable')}</span><div class="gbig">${esc(gTableName(m))}</div>
     <div class="gname">${esc(m.name)}${m.seat!=null&&seatMode()==='seat'?` · <span class="gseat">${esc(t('seatN',{number:m.seat}))}</span>`:''}</div>
     ${m.seat==null||seatMode()==='table'?`<p class="gfree">${t('fgAnySeat')}</p>`:''}
     ${mates.length?`<h3 class="lbl">${t('fgWith')}</h3><p class="gwith">${mates.map(esc).join(' · ')}</p>`:''}
