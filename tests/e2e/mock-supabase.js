@@ -30,8 +30,8 @@ function q(table){let op='select',payload=null,filters=[],cols='*',single=false,
 // Mirrors supabase/002_guest_lookup.sql closely enough for UI tests (privacy itself is tested in SQL).
 const norm=s=>String(s||'').normalize('NFC').toLowerCase().replace(/\s+/g,' ').trim();
 function publicPlan(ev){const d=ev.data||{};return{event:{name:d.event?.name,date:d.event?.date,palette:d.event?.palette,lang:d.event?.lang,type:d.event?.type},
-  tables:(d.tables||[]).map(t=>({name:t.name,shape:t.shape,deco:t.deco,x:t.x,y:t.y,rot:t.rot,seats:(t.seats||[]).map(s=>{const g=typeof s==='string'&&d.guests[s];if(!g)return false;const L=g.look||{},k=['kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses'];return{look:Object.fromEntries(k.filter(x=>x in L).map(x=>[x,L[x]])),kid:!!g.kid}})})),
-  venue:(d.venue||[]).map(v=>({type:v.type,label:v.label,x:v.x,y:v.y,w:v.w,h:v.h,rot:v.rot})),lookup:{mode:ev.lookup_mode||'prefix',pin:!!ev.lookup_pin_hash}}}
+  tables:(d.tables||[]).map(t=>({name:t.name,shape:t.shape,deco:t.deco,x:t.x,y:t.y,rot:t.rot,seats:(t.seats||[]).map(s=>{const g=typeof s==='string'&&d.guests[s];if(!g)return false;if(d.event?.seatMode==='table')return true;const L=g.look||{},k=['kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses'];return{look:Object.fromEntries(k.filter(x=>x in L).map(x=>[x,L[x]])),kid:!!g.kid}})})),
+  venue:(d.venue||[]).map(v=>({type:v.type,label:v.label,x:v.x,y:v.y,w:v.w,h:v.h,rot:v.rot})),lookup:{mode:ev.lookup_mode||'prefix',pin:!!ev.lookup_pin_hash,seatMode:d.event?.seatMode==='table'?'table':'seat'}}}
 function findSeat(ev,query,pin){const qn=norm(query);if(qn.replace(/ /g,'').length<3)return{status:'short',matches:[]};
   window.__mockCalls.push(['find_seat',query]);
   if(ev.lookup_pin_hash&&String(pin||'').trim()!==ev.lookup_pin_hash)return{status:'pin',matches:[]};
@@ -39,7 +39,7 @@ function findSeat(ev,query,pin){const qn=norm(query);if(qn.replace(/ /g,'').leng
   const sw=qn.replace(/^(\S+) (.+)$/,'$2 $1');
   const hit=r=>ev.lookup_mode==='exact'?(r.nn===qn||r.nn===sw):(r.nn.startsWith(qn)||(' '+r.nn).includes(' '+qn));
   const ms=rows.filter(hit);if(ms.length>5)return{status:'many',matches:[]};
-  return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:!!r.g.kid,table:r.ti,tableName:r.t.name,seat:r.si+1,
+  return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:!!r.g.kid,table:r.ti,tableName:r.t.name,seat:d.event?.seatMode==='table'?null:r.si+1,
     mates:ev.show_tablemates?rows.filter(o=>o.ti===r.ti&&o.si!==r.si).map(o=>o.g.name):null}))}}
 window.supabase={createClient(){return{from:q,
   async rpc(fn,args){await sleep(cfg().rpcDelay||0);const evs=db().events;

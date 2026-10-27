@@ -156,3 +156,33 @@ def guest_page_shows_each_guests_own_drawing(pw, base):
                 assert got['look'][k] == want[k], (gid, k, got['look'][k], want[k])
             assert got['name'] == '' and got['kid'] == PLAN['guests'][gid].get('kid', False)
     c.close()
+
+@test
+def table_only_mode_hides_seats(pw, base):
+    plan = json.loads(json.dumps(PLAN)); plan['event']['seatMode'] = 'table'
+    ev = dict(id='ev1', owner='u1', name='x', slug='guestcode1', guest_page=True, data=plan, public_data={},
+              lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')
+    c = Ctx(pw, base, session=False, events=[ev])
+    p = c.goto('/e/guestcode1', wait='#gq')
+    st = p.evaluate("JSON.parse(JSON.stringify(window.__supraState()))")
+    assert all(g.get('ghost') for g in st['guests'].values()), 'no drawings at chairs in table-only mode'
+    search(p, 'მარიამ')
+    txt = p.inner_text('#gres')
+    assert 'Seat' not in txt and 'Table 1' in txt, txt
+    p.click('.ghit >> nth=0'); p.wait_for_selector('#gcard')
+    card = p.inner_text('#gcard')
+    assert 'Seat' not in card and 'Take any free seat' in card, card
+    assert 'Take any free seat' in p.get_attribute('#gmap svg', 'aria-label')
+    c.close()
+
+@test
+def organiser_switches_to_table_only(pw, base):
+    c = Ctx(pw, base, session=True)
+    p = c.goto('/edit/ev1', wait='#plan .tbody')
+    p.click('#tab-share'); p.wait_for_selector('[data-seatmode]')
+    p.click('[data-seatmode=table]'); p.wait_for_timeout(100)
+    assert p.evaluate("window.__supraState().event.seatMode") == 'table'
+    assert 'no seat' in p.inner_text('#privacy-controls')
+    p.click('#undo'); p.wait_for_timeout(100)
+    assert p.evaluate("window.__supraState().event.seatMode") in (None, 'seat')
+    c.close()

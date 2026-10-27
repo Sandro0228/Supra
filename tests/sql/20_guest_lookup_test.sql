@@ -91,7 +91,7 @@ set request.jwt.claim.sub = '';
 do $$
 declare r jsonb;
 begin
-  assert (public.public_plan('testslug01')->'lookup') = '{"mode":"exact","pin":true}'::jsonb, 'lookup policy not exposed correctly';
+  assert (public.public_plan('testslug01')->'lookup') = '{"mode":"exact","pin":true,"seatMode":"seat"}'::jsonb, 'lookup policy not exposed correctly';
   assert public.find_seat('testslug01', 'ქეთევან ლორთქიფანიძე')->>'status' = 'pin', 'PIN must be required';
   assert public.find_seat('testslug01', 'ქეთევან ლორთქიფანიძე', '0000')->>'status' = 'pin', 'wrong PIN accepted';
   r := public.find_seat('testslug01', 'ქეთევან ლორთქიფანიძე', ' 2810 ');

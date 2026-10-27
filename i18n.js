@@ -482,7 +482,15 @@ en:{
   "matchDone":"Redrew {n} guests to match their names. Undo brings the old drawings back.",
   "matchNone":"Every drawing already matches its name.",
   "relookF":"Drawn as a woman to match the name. Undo keeps the old drawing.",
-  "relookM":"Drawn as a man to match the name. Undo keeps the old drawing."
+  "relookM":"Drawn as a man to match the name. Undo keeps the old drawing.",
+  "smTitle":"What guests are told",
+  "smSeat":"Their table and seat",
+  "smTable":"Only their table — they choose a seat",
+  "smSeatHint":"Guests see their table and seat number, and the plan shows them at their chair.",
+  "smTableHint":"Guests see only their table and sit wherever they like at it. The guest page shows empty chairs, and the seat order in your plan stays private.",
+  "fgAnySeat":"Take any free seat at this table.",
+  "fgMapAltTable":"Seating plan with {table} highlighted. Take any free seat at this table.",
+  "pubMatchTable":"one guest's name, drawing and table (no seat), only after typing that name"
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -966,6 +974,14 @@ ka:{
   "matchDone":"{n} სტუმრის ილუსტრაცია შესწორდა სახელის მიხედვით. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“.",
   "matchNone":"ყველა ილუსტრაცია სახელს უკვე შეესაბამება.",
   "relookF":"სახელის მიხედვით დაიხატა ქალად. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“.",
-  "relookM":"სახელის მიხედვით დაიხატა კაცად. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“."
+  "relookM":"სახელის მიხედვით დაიხატა კაცად. ძველის დასაბრუნებლად — „ბოლო მოქმედების გაუქმება“.",
+  "smTitle":"რას ხედავს სტუმარი",
+  "smSeat":"თავის მაგიდას და ადგილს",
+  "smTable":"მხოლოდ თავის მაგიდას — ადგილს თვითონ ირჩევს",
+  "smSeatHint":"სტუმარი ხედავს თავის მაგიდას და ადგილის ნომერს, გეგმაზე კი თავის სკამზეა დახატული.",
+  "smTableHint":"სტუმარი ხედავს მხოლოდ თავის მაგიდას და ჯდება იქ, სადაც მოეწონება. სტუმრების გვერდზე სკამები ცარიელია, ადგილების რიგი კი მხოლოდ შენ ჩანს.",
+  "fgAnySeat":"დაიკავე ნებისმიერი თავისუფალი ადგილი ამ მაგიდასთან.",
+  "fgMapAltTable":"დარბაზის გეგმა, მონიშნულია {table}. დაიკავე ნებისმიერი თავისუფალი ადგილი ამ მაგიდასთან.",
+  "pubMatchTable":"ერთი სტუმრის სახელს, ილუსტრაციას და მაგიდას (ადგილის გარეშე) — მხოლოდ ამ სახელის აკრეფის შემდეგ"
 }
 };

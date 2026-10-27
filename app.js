@@ -56,6 +56,8 @@ function randLook(kind,r=Math.random){
     eye:pick(OPT.eye,r),outfit:pick(m?['suit','suit','shirt','sweater','tuxedo']:['dress','dress','dress','shirt','sweater'],r),
     outfitColor:pick(OPT.outfitColor,r),glasses:r()<.16?pick(['round','square','sun'],r):'none'};
 }
+/* 'seat': guests are told their table and seat; 'table': only their table, they pick a chair themselves. */
+const seatMode=()=>S?.event?.seatMode==='table'?'table':'seat';
 const guessKind=n=>window.SupraNames?.guess(n)||null;
 /* Redraw someone as a woman or a man, keeping skin, eyes, hair colour and glasses so they still look like themselves. */
 function relook(L,kind,r){const n=randLook(kind,r);return Object.assign(n,{skin:L.skin,eye:L.eye,hairColor:L.hairColor,beardColor:L.hairColor,glasses:L.glasses,outfitColor:L.outfitColor})}
@@ -314,7 +316,7 @@ function planSVG(opt={}){
       const on=(!opt.guest&&sel.kind==='seat'&&sel.t===x.id&&sel.i===i)||(opt.hi&&opt.hi===gid);
       tb+=`<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest?'':`role="button" tabindex="0" aria-label="${esc(seatLabel(x,i,G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb+=`<circle class="ring" r="40" fill="${p.accent}" opacity="${on?.32:0}"/>`;
-      tb+=G?person(G,p):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
+      tb+=G&&G.ghost?chairM(p):G?person(G,p):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
       tb+=`</g></g>`;
     });
     if(g.shape.type==='round'){const r=g.shape.r;
@@ -448,11 +450,12 @@ function renderLeft(){
       <div id="qr" class="qr" role="img" aria-label="${esc(t('qrAlt'))}"></div>
       <div class="row"><button type="button" class="btn sm" data-act="dlqr">${t('dlQR')}</button></div>
       <div class="field"><span class="lbl">${t('guestLang')}</span>${radios(t('guestLang'),[['en',t('lang_en')],['ka',t('lang_ka')]].map(([k,l])=>({attr:`data-glangset="${k}" lang="${k}"`,on:(S.event.lang||'en')===k,html:esc(l)})))}<span class="muted small">${t('guestLangHint')}</span></div>`:''}
+    <div class="field"><span class="lbl">${t('smTitle')}</span>${radios(t('smTitle'),[['seat','smSeat'],['table','smTable']].map(([k,l])=>({attr:`data-seatmode="${k}"`,on:seatMode()===k,html:esc(t(l))})))}<span class="muted small">${t(seatMode()==='table'?'smTableHint':'smSeatHint')}</span></div>
     <section class="pubbox" id="privacy-controls" aria-labelledby="pub-h">
       <h3 id="pub-h">${t('pubTitle')}</h3>
       <p class="small">${t('privacy')}</p>
       <p class="small">${t('pubSees')}</p>
-      <ul class="small publist"><li>${t('pubLayout')}</li><li>${t('pubMatch')}</li>${ROW?.show_tablemates?`<li>${t('pubMates')}</li>`:''}</ul>
+      <ul class="small publist"><li>${t('pubLayout')}</li><li>${t(seatMode()==='table'?'pubMatchTable':'pubMatch')}</li>${ROW?.show_tablemates?`<li>${t('pubMates')}</li>`:''}</ul>
       <p class="small muted">${t('pubNever')}</p>
       <fieldset class="field"><legend class="lbl">${t('lkMode')}</legend>
         <label class="check"><input type="radio" name="lk-mode" value="prefix" ${mode==='prefix'?'checked':''}> ${t('lkPrefix')}</label>
@@ -709,6 +712,7 @@ document.addEventListener('click',e=>{
   if(d.act)return act(d.act);
   if(d.panel){const k=d.panel;if(!drawerOpen)opener='#tab-'+k;panel=(panel===k&&!sel.kind)?null:k;sel={kind:null};confirmK=null;renderAll();return}
   if(d.lang){if(d.lang!==UL()){setLang(d.lang);renderAll()}return}
+  if(d.seatmode){if(seatMode()!==d.seatmode)commit(()=>S.event.seatMode=d.seatmode);return}
   if(d.glangset){if(S.event.lang!==d.glangset)commit(()=>S.event.lang=d.glangset);return}
   if(d.pal)return commit(()=>S.event.palette=d.pal);
   if(d.arrOrient){ARR.orient=d.arrOrient;renderLeft();return}
@@ -913,11 +917,11 @@ function listPages(){
   const colW=(W-2*M-60)/2,lh=96;page(t('pdfAZ'));
   rows.forEach(r=>{if(y+lh-40>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfAZ'))}
     c.fillStyle=p.ink;c.font=`34px ${F}`;c.fillText(fit(r.name,colW),x,y);
-    c.fillStyle=p.accent;c.font=`27px ${F}`;c.fillText(fit(`${r.table} · ${t('seatN',{number:r.seat})}`,colW),x,y+38);
+    c.fillStyle=p.accent;c.font=`27px ${F}`;c.fillText(fit(seatMode()==='table'?r.table:`${r.table} · ${t('seatN',{number:r.seat})}`,colW),x,y+38);
     c.strokeStyle='#E6E1DA';c.lineWidth=1;c.beginPath();c.moveTo(x,y+60);c.lineTo(x+colW,y+60);c.stroke();y+=lh});
   // by table: each table as a block; a block never splits across columns
   page(t('pdfByTable'));
-  S.tables.forEach(tb=>{const names=tb.seats.map((id,i)=>id&&S.guests[id]?`${i+1}. ${S.guests[id].name}`:null).filter(Boolean);if(!names.length)return;
+  S.tables.forEach(tb=>{const names=tb.seats.map((id,i)=>id&&S.guests[id]?(seatMode()==='table'?`• ${S.guests[id].name}`:`${i+1}. ${S.guests[id].name}`):null).filter(Boolean);if(!names.length)return;
     const need=70+names.length*50+40;if(y+need>H-M){if(col===0){col=1;x=M+colW+60;y=M+200}else page(t('pdfByTable'))}
     c.fillStyle=p.accent;c.font=`40px ${FD}`;c.fillText(fit(tName(tb),colW),x,y);
     c.font=`26px ${F}`;c.fillStyle='#8A8580';c.fillText(t('statSeats',{occupied:names.length,capacity:tb.seats.length}),x,y+40);y+=90;
@@ -1085,23 +1089,26 @@ function guestShow(){
   if(st!=='ok'){res.innerHTML=`<p class="gnone ${st==='searching'?'gwait':''}" ${['rate_limited','error','pin'].includes(st)?'role="alert"':''}>${esc(guestStatusMsg(st))}</p>`;return}
   if(!ms.length){res.innerHTML=`<div class="gempty"><p class="gnone">${esc(t('fgNone'))}</p></div>`;return}
   if(ms.length>1&&GS.chosen<0){
-    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}"><span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))} · ${esc(t('seatN',{number:m.seat}))}</span></button></li>`).join('')}</ul>`;return}
+    res.innerHTML=`<p class="gnone">${esc(t('fgPick'))}</p><ul class="ghits">${ms.map((m,i)=>`<li><button type="button" class="ghit" data-ghit="${i}"><span class="gname">${esc(m.name)}</span><span class="gtable">${esc(gTableName(m))}${m.seat!=null&&seatMode()==='seat'?` · ${esc(t('seatN',{number:m.seat}))}`:''}</span></button></li>`).join('')}</ul>`;return}
   const m=ms[Math.max(0,GS.chosen)],mates=Array.isArray(m.mates)?m.mates.filter(Boolean):[];
   res.innerHTML=`<div class="gcard" tabindex="-1" id="gcard"><span class="lbl">${t('fgTable')}</span><div class="gbig">${esc(gTableName(m))}</div>
-    <div class="gname">${esc(m.name)} · <span class="gseat">${esc(t('seatN',{number:m.seat}))}</span></div>
+    <div class="gname">${esc(m.name)}${m.seat!=null&&seatMode()==='seat'?` · <span class="gseat">${esc(t('seatN',{number:m.seat}))}</span>`:''}</div>
+    ${m.seat==null||seatMode()==='table'?`<p class="gfree">${t('fgAnySeat')}</p>`:''}
     ${mates.length?`<h3 class="lbl">${t('fgWith')}</h3><p class="gwith">${mates.map(esc).join(' · ')}</p>`:''}
     <div class="row gacts">${ms.length>1?`<button type="button" class="linkbtn" data-gall>${t('fgNotYou')}</button>`:''}<button type="button" class="linkbtn" data-gagain>${t('fgAgain')}</button></div></div>`;
   gMap(m);
 }
 function gTableName(m){const x=S.tables[m.table];return x?tName(x):(m.tableName||'')}
 function gMap(m){
-  const x=S.tables[m.table];if(!x)return;
+  const x=S.tables[m.table];if(!x)return;const own=m.seat!=null&&seatMode()==='seat';
+  if(!own){const keepSel=sel;sel={kind:null};const{B,inner}=planSVG({guest:true,dim:x.id});sel=keepSel;return gMapShow(x,B,inner,t('fgMapAltTable',{table:tName(x)}))}
   const keepSeat=x.seats[m.seat-1],keepSel=sel;
   S.guests.__hit={id:'__hit',name:m.name,look:m.look||randLook(guessKind(m.name)),kid:!!m.kid,side:'',group:'',meal:'',allergies:''};
   x.seats[m.seat-1]='__hit';sel={kind:null};
   const{B,inner}=planSVG({guest:true,dim:x.id,hi:'__hit'});
   x.seats[m.seat-1]=keepSeat;delete S.guests.__hit;sel=keepSel;
-  const alt=t('fgMapAlt',{table:tName(x),seat:m.seat});
+  gMapShow(x,B,inner,t('fgMapAlt',{table:tName(x),seat:m.seat}))}
+function gMapShow(x,B,inner,alt){
   // Start close on the guest's table so names stay readable on phones; the whole room is one tap away.
   const[w,h]=dims(x),pad=70,vb=GROOM?`${B.x} ${B.y} ${B.w} ${B.h}`:`${x.x-w/2-pad} ${x.y-h/2-pad} ${w+2*pad} ${h+2*pad}`;
   $('#gmap').innerHTML=`<svg viewBox="${vb}" role="img" aria-label="${esc(alt)}"><title>${esc(alt)}</title>${inner}</svg>
@@ -1114,7 +1121,7 @@ function findLocal(q){
   S.tables.forEach((x,ti)=>x.seats.forEach((id,si)=>{const g=id&&S.guests[id];if(g&&!g.anon)rows.push({g,ti,si,nn:gnorm(g.name)})}));
   const hit=r=>GL.mode==='exact'?(r.nn===qn||r.nn===sw):(r.nn.startsWith(qn)||(' '+r.nn).includes(' '+qn));
   const ms=rows.filter(hit);if(ms.length>5)return{status:'many',matches:[]};
-  return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:r.g.kid,table:r.ti,tableName:S.tables[r.ti].name,seat:r.si+1,
+  return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:r.g.kid,table:r.ti,tableName:S.tables[r.ti].name,seat:seatMode()==='table'?null:r.si+1,
     mates:ROW?.show_tablemates?rows.filter(o=>o.ti===r.ti&&o.si!==r.si).map(o=>o.g.name):null}))}}
 async function guestSearch(now){
   GQ=$('#gq')?.value||'';GPIN=$('#gpin')?.value||'';clearTimeout(gT);
@@ -1161,8 +1168,9 @@ function fromPublic(d){
     seats:(x.seats||[]).map((on,si)=>{if(!on)return null;const id='po'+ti+'_'+si;
       // the organiser's drawing for this seat (no name); a plain stand-in only if the server sends just "taken"
       const real=on&&typeof on==='object'&&on.look&&on.look.kind;
+      if(d.lookup?.seatMode==='table'){o.guests[id]={id,name:'',anon:true,ghost:true,look:randLook('m',rnd),kid:false};return id}
       o.guests[id]={id,name:'',anon:true,look:real?Object.assign(randLook(on.look.kind,rnd),on.look):randLook(null,rnd),kid:real?!!on.kid:false};return id})}));
-  GL={mode:d.lookup?.mode==='exact'?'exact':'prefix',pin:!!d.lookup?.pin};
+  GL={mode:d.lookup?.mode==='exact'?'exact':'prefix',pin:!!d.lookup?.pin};o.event.seatMode=d.lookup?.seatMode==='table'?'table':'seat';
   return normalize(o);
 }
 async function boot(){
