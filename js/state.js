@@ -1,39 +1,27 @@
-'use strict';
+import { PALETTES, appState, guessKind, randLook, rng, t, uid } from './core.js';
+import { autoArrange, resolveOverlaps } from './layout.js';
+import { renderTop } from './panels.js';
+import { renderAll } from './actions.js';
+import { savePlan } from './files.js';
 /* The plan in memory (S), selection, undo history and drafts. Part of the planner (app.html); see js/README.md. */
 /* ---------------- state ---------------- */
-let DRAFT = 'supra.draft';
+
 const CFG = window.SUPRA_CONFIG || {};
-let SB = null,
-  ROW = null,
-  MODE = 'edit',
-  SLUG = '',
-  saveT = 0,
-  PREVIEW = null,
-  PREVIEW_ID = null;
-let S = null,
-  PUB = null,
+
+let PUB = null,
   hist = [],
-  sel = { kind: null },
-  scale = null,
-  fitMode = null,
-  waitSel = null,
-  confirmK = null,
-  dirty = false,
-  saveState = 'idle',
   ART = undefined,
-  DL = undefined,
-  readOnly = false,
-  guestMode = false;
+  DL = undefined;
 function mkGuest(name, look, extra) {
   const id = uid();
-  S.guests[id] = Object.assign(
+  appState.S.guests[id] = Object.assign(
     { id, name, group: '', side: '', kid: false, meal: '', allergies: '', look: look || randLook(guessKind(name)) },
     extra || {}
   );
   return id;
 }
 function sample() {
-  S = {
+  appState.S = {
     event: { name: 'Sandro & Tamta', type: 'wedding', date: '2026-10-31', palette: 'blush', lang: 'en', shareLink: '' },
     guests: {},
     waiting: [],
@@ -75,17 +63,17 @@ function sample() {
     'ირაკლი შალამბერიძე|შალვა ომანაძე|თიკო ომანაძე|დიმიტრი ილურიძე|ნანა კენჭიაშვილი|ალექს კაპატაძე|საბა ლურსმანაშვილი|გოგა ძაძუა|ირაკლი ჟორჟოლიანი|სალომე გაბელია'
       .split('|')
       .map(n => mk(n));
-  S.tables = [
+  appState.S.tables = [
     { id: uid(), name: 'Head table', shape: 'head', deco: 'flowers', seats: head },
     { id: uid(), name: 'Table 1', shape: 'rect', deco: 'mixed', seats: t1 },
     { id: uid(), name: 'Table 2', shape: 'rect', deco: 'greenery', seats: t2 }
   ];
   autoArrange();
-  const ht = S.tables[0];
-  S.venue.push({ id: uid(), type: 'dance', label: '', x: ht.x, y: ht.y + 250, w: 300, h: 180 });
-  S.tables.slice(1).forEach(x => (x.y += 260));
-  S.venue.push({ id: uid(), type: 'cake', label: '', x: ht.x + 390, y: ht.y, w: 110, h: 110 });
-  return S;
+  const ht = appState.S.tables[0];
+  appState.S.venue.push({ id: uid(), type: 'dance', label: '', x: ht.x, y: ht.y + 250, w: 300, h: 180 });
+  appState.S.tables.slice(1).forEach(x => (x.y += 260));
+  appState.S.venue.push({ id: uid(), type: 'cake', label: '', x: ht.x + 390, y: ht.y, w: 110, h: 110 });
+  return appState.S;
 }
 function normalize(o) {
   o.waiting = o.waiting || [];
@@ -103,25 +91,25 @@ function normalize(o) {
 }
 function saveDraft() {
   try {
-    localStorage.setItem(DRAFT, JSON.stringify({ base: ROW?.updated_at || null, data: S }));
+    localStorage.setItem(appState.DRAFT, JSON.stringify({ base: appState.ROW?.updated_at || null, data: appState.S }));
   } catch (e) {}
 }
 function clearDraft() {
   try {
-    localStorage.removeItem(DRAFT);
+    localStorage.removeItem(appState.DRAFT);
   } catch (e) {}
 }
 function markDirty() {
-  if (MODE !== 'edit') return;
-  dirty = true;
-  if (saveState !== 'saving') saveState = 'idle';
+  if (appState.MODE !== 'edit') return;
+  appState.dirty = true;
+  if (appState.saveState !== 'saving') appState.saveState = 'idle';
   saveDraft();
   renderTop();
-  clearTimeout(saveT);
-  saveT = setTimeout(savePlan, 1500);
+  clearTimeout(appState.saveT);
+  appState.saveT = setTimeout(savePlan, 1500);
 }
 function commit(fn) {
-  hist.push(JSON.stringify(S));
+  hist.push(JSON.stringify(appState.S));
   if (hist.length > 80) hist.shift();
   fn();
   resolveOverlaps();
@@ -130,9 +118,9 @@ function commit(fn) {
 }
 function undo() {
   if (!hist.length) return;
-  S = JSON.parse(hist.pop());
+  appState.S = JSON.parse(hist.pop());
   markDirty();
-  sel = { kind: null };
+  appState.sel = { kind: null };
   renderAll();
   toast(t('undone'));
 }
@@ -144,18 +132,20 @@ function toast(m) {
   (document.fullscreenElement || document.body).appendChild(d);
   setTimeout(() => d.remove(), 2200);
 }
-const P = () => PALETTES[S.event.palette] || PALETTES.blush;
-const T = id => S.tables.find(x => x.id === id);
-const V = id => S.venue.find(x => x.id === id);
+const P = () => PALETTES[appState.S.event.palette] || PALETTES.blush;
+const T = id => appState.S.tables.find(x => x.id === id);
+const V = id => appState.S.venue.find(x => x.id === id);
 function where(gid) {
-  for (const x of S.tables) {
+  for (const x of appState.S.tables) {
     const i = x.seats.indexOf(gid);
     if (i >= 0) return { t: x, i };
   }
   return null;
 }
-const headName = () => t(S.event.type === 'wedding' || !S.event.type ? 'headTable' : 'headTableMain');
+const headName = () => t(appState.S.event.type === 'wedding' || !appState.S.event.type ? 'headTable' : 'headTableMain');
 const tName = x =>
   x.shape === 'head' && x.name === 'Head table'
     ? headName()
     : x.name.replace(/^Table (\d+)$/, (m, n) => t('table') + ' ' + n);
+
+export { CFG, P, T, V, clearDraft, commit, headName, hist, markDirty, mkGuest, normalize, tName, toast, undo, where };

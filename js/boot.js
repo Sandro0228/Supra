@@ -1,4 +1,12 @@
-'use strict';
+import { $, appState, esc, imageDefs, L10N, loadImages, lookImages, randLook, t, uid, UL } from './core.js';
+import { CFG, normalize } from './state.js';
+import { autoArrange, resolveOverlaps } from './layout.js';
+import { hintSeen, logSafe, portraitLook, shareInfo } from './panels.js';
+import { renderPlan } from './actions.js';
+import { savePlan } from './files.js';
+import { route } from './guest.js';
+import { rsvpDraftFrom } from './rsvp.js';
+import { invRefresh } from './invites.js';
 /* Startup: decides the page (planner, guest page or RSVP) and loads its data. Part of the planner (app.html); see js/README.md. */
 /* ---------------- boot ---------------- */
 function measure() {
@@ -86,7 +94,7 @@ function fromPublic(d) {
       })
     };
   });
-  GL = { mode: d.lookup?.mode === 'exact' ? 'exact' : 'prefix', pin: !!d.lookup?.pin };
+  appState.GL = { mode: d.lookup?.mode === 'exact' ? 'exact' : 'prefix', pin: !!d.lookup?.pin };
   o.event.seatMode = d.lookup?.seatMode === 'table' ? 'table' : 'seat';
   return normalize(o);
 }
@@ -98,7 +106,7 @@ async function boot() {
     $('#loadingtxt').textContent =
       (L10N[l] || L10N.en)[location.pathname.startsWith('/r/') ? 'rsvpLoading' : 'loadingPlan'] || 'Loading…';
   }
-  S = { event: { lang: (navigator.language || '').startsWith('ka') ? 'ka' : 'en' }, tables: [], guests: {} };
+  appState.S = { event: { lang: (navigator.language || '').startsWith('ka') ? 'ka' : 'en' }, tables: [], guests: {} };
   const path = location.pathname,
     qs = new URLSearchParams(location.search);
   const gm = path.match(/^\/e\/([\w-]+)/),
@@ -109,15 +117,15 @@ async function boot() {
     fatal('Supra is not connected to its database yet. Fill in config.js.');
     return;
   }
-  SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+  appState.SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
   const rm = path.match(/^\/r\/([\w-]+)/);
   if (rm) {
-    MODE = 'rsvp';
-    RTOK = rm[1];
-    readOnly = true;
+    appState.MODE = 'rsvp';
+    appState.RTOK = rm[1];
+    appState.readOnly = true;
     let r;
     try {
-      const { data, error } = await SB.rpc('rsvp_get', { p_token: RTOK });
+      const { data, error } = await appState.SB.rpc('rsvp_get', { p_token: appState.RTOK });
       if (error) throw error;
       r = data;
     } catch (e) {
@@ -129,9 +137,11 @@ async function boot() {
       fatal(t('rsvpUnavailable'));
       return;
     }
-    R = r;
-    RD = rsvpDraftFrom(R.invite.answer);
-    S = {
+    appState.R = r;
+    appState.RD = rsvpDraftFrom(appState.R.invite.answer);
+    // only this household's drawings
+    await loadImages(r.invite.members.flatMap(m => lookImages(portraitLook(m))));
+    appState.S = {
       event: {
         name: r.event.name || '',
         date: r.event.date || '',
@@ -146,23 +156,25 @@ async function boot() {
       venue: []
     };
     route();
-    window.__supraState = () => ({ R, RD });
+    window.__supraState = () => ({ R: appState.R, RD: appState.RD });
     return;
   }
+  // The planner and the guest page draw everything; start loading now, alongside the data.
+  const allImages = loadImages();
   if (slug) {
-    MODE = 'guest';
-    SLUG = slug;
-    const { data, error } = await SB.rpc('public_plan', { p_slug: slug });
+    appState.MODE = 'guest';
+    appState.SLUG = slug;
+    const { data, error } = await appState.SB.rpc('public_plan', { p_slug: slug });
     if (error || !data || !data.event) {
       fatal(t('fgUnavailable'));
       return;
     }
-    S = fromPublic(data);
-    readOnly = true;
+    appState.S = fromPublic(data);
+    appState.readOnly = true;
   } else {
     const {
       data: { session }
-    } = await SB.auth.getSession();
+    } = await appState.SB.auth.getSession();
     if (!session) {
       location.replace('/?next=' + encodeURIComponent(path + location.search));
       return;
@@ -171,52 +183,55 @@ async function boot() {
       location.replace('/');
       return;
     }
-    const { data, error } = await SB.from('events').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await appState.SB.from('events').select('*').eq('id', id).maybeSingle();
     if (error || !data) {
       fatal(t('notFound'));
       return;
     }
-    ROW = data;
-    DRAFT = 'supra.draft.' + ROW.id;
+    appState.ROW = data;
+    appState.DRAFT = 'supra.draft.' + appState.ROW.id;
     const fromRow = data.data && data.data.tables ? normalize(data.data) : normalize(emptyPlan(data));
     let draft = null;
     try {
-      draft = JSON.parse(localStorage.getItem(DRAFT) || 'null');
+      draft = JSON.parse(localStorage.getItem(appState.DRAFT) || 'null');
     } catch (e) {}
-    if (draft && draft.data && draft.base === ROW.updated_at) {
-      S = normalize(draft.data);
-      dirty = true;
-    } else S = fromRow;
-    if (!S.event.name) S.event.name = ROW.name;
+    if (draft && draft.data && draft.base === appState.ROW.updated_at) {
+      appState.S = normalize(draft.data);
+      appState.dirty = true;
+    } else appState.S = fromRow;
+    if (!appState.S.event.name) appState.S.event.name = appState.ROW.name;
     // Organiser preview: exactly what an anonymous guest would get, whether or not the page is published.
     if (qs.get('preview')) {
-      const pv = await SB.rpc('preview_public_plan', { p_event: ROW.id });
+      const pv = await appState.SB.rpc('preview_public_plan', { p_event: appState.ROW.id });
       if (pv.error || !pv.data) {
         logSafe('preview', pv.error);
         fatal(t('pvErr'));
         return;
       }
-      PREVIEW = shareInfo().status;
-      PREVIEW_ID = ROW.id;
-      SLUG = ROW.slug;
-      MODE = 'guest';
-      readOnly = true;
-      S = fromPublic(pv.data);
-      document.title = t('pvTitle') + ' · ' + (S.event.name || 'Supra');
+      appState.PREVIEW = shareInfo().status;
+      appState.PREVIEW_ID = appState.ROW.id;
+      appState.SLUG = appState.ROW.slug;
+      appState.MODE = 'guest';
+      appState.readOnly = true;
+      appState.S = fromPublic(pv.data);
+      document.title = t('pvTitle') + ' · ' + (appState.S.event.name || 'Supra');
     }
   }
-  hintOpen = !hintSeen();
-  if (S.tables.some(x => x.x === undefined)) autoArrange();
+  appState.hintOpen = !hintSeen();
+  // The guest page shows its search box at once; results wait for the drawings (guestSearch). The planner waits here.
+  if (appState.MODE === 'edit') await allImages;
+  if (appState.S.tables.some(x => x.x === undefined)) autoArrange();
   resolveOverlaps();
   route();
   document.fonts?.ready.then(() => {
-    if (!guestMode) renderPlan();
+    if (!appState.guestMode) renderPlan();
   });
-  if (MODE === 'edit' && (dirty || !(ROW.data && ROW.data.tables))) {
-    dirty = true;
+  if (appState.MODE === 'edit' && (appState.dirty || !(appState.ROW.data && appState.ROW.data.tables))) {
+    appState.dirty = true;
     savePlan();
   }
-  if (MODE === 'edit' && !readOnly) invRefresh();
-  window.__supraState = () => S;
+  if (appState.MODE === 'edit' && !appState.readOnly) invRefresh();
+  window.__supraState = () => appState.S;
 }
-boot();
+
+export { boot, fatal };

@@ -1,52 +1,58 @@
-'use strict';
+import { $, MEALS, MEAL_LBL, SIDE_COL, UL, allDefs, appState, esc, person, seatMode, shade, t, uid } from './core.js';
+import { P, clearDraft, commit, mkGuest, tName, toast } from './state.js';
+import { autoArrange } from './layout.js';
+import { BODYFONT, NAMEFONT, planSVG } from './draw.js';
+import { PDFLIB, XLSXLIB, loadScript, logSafe, renderTop } from './panels.js';
+import { gDate } from './guest.js';
+import { INV, eventCols } from './invites.js';
 /* Saving, downloads (PNG, PDF, place cards, caterer list, CSV) and the modal. Part of the planner (app.html); see js/README.md. */
 /* ---------------- saving ---------------- */
 let savingNow = false,
   saveAgain = false;
 async function savePlan() {
-  clearTimeout(saveT);
-  if (!SB || !ROW || readOnly) return;
+  clearTimeout(appState.saveT);
+  if (!appState.SB || !appState.ROW || appState.readOnly) return;
   if (savingNow) {
     saveAgain = true;
     return;
   }
   savingNow = true;
-  saveState = 'saving';
+  appState.saveState = 'saving';
   renderTop();
-  const snapshot = JSON.stringify(S);
+  const snapshot = JSON.stringify(appState.S);
   try {
-    const { data, error } = await SB.from('events')
+    const { data, error } = await appState.SB.from('events')
       .update({
-        data: S,
-        name: S.event.name || '',
-        event_date: S.event.date || null,
-        type: S.event.type,
+        data: appState.S,
+        name: appState.S.event.name || '',
+        event_date: appState.S.event.date || null,
+        type: appState.S.event.type,
         ...eventCols()
       })
-      .eq('id', ROW.id)
+      .eq('id', appState.ROW.id)
       .select('updated_at')
       .single();
     if (error) throw error;
-    ROW.updated_at = data.updated_at;
-    if (JSON.stringify(S) === snapshot) {
-      dirty = false;
+    appState.ROW.updated_at = data.updated_at;
+    if (JSON.stringify(appState.S) === snapshot) {
+      appState.dirty = false;
       clearDraft();
     }
-    saveState = 'idle';
+    appState.saveState = 'idle';
   } catch (err) {
-    saveState = 'error';
+    appState.saveState = 'error';
     logSafe('save', err);
     toast(t('couldntSave'));
   }
   savingNow = false;
   renderTop();
-  if (saveAgain || (dirty && saveState !== 'error')) {
+  if (saveAgain || (appState.dirty && appState.saveState !== 'error')) {
     saveAgain = false;
-    if (dirty) saveT = setTimeout(savePlan, 800);
+    if (appState.dirty) appState.saveT = setTimeout(savePlan, 800);
   }
 }
 window.addEventListener('beforeunload', e => {
-  if (dirty && MODE === 'edit') {
+  if (appState.dirty && appState.MODE === 'edit') {
     savePlan();
     e.preventDefault();
     e.returnValue = '';
@@ -82,15 +88,15 @@ function svgToPng(inner, vb, W, H, scale = 2) {
   });
 }
 const fname = s =>
-  (S.event.name || t('fileBase'))
+  (appState.S.event.name || t('fileBase'))
     .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-|-$/g, '')
     .toLowerCase() + s;
 async function planImage() {
-  const keep = sel;
-  sel = { kind: null };
+  const keep = appState.sel;
+  appState.sel = { kind: null };
   const { B, inner } = planSVG();
-  sel = keep;
+  appState.sel = keep;
   try {
     const r = await svgToPng(allDefs() + inner, `${B.x} ${B.y} ${B.w} ${B.h}`, B.w, B.h, 2);
     offerFile(fname('-' + t('fileSeating') + '.png'), r.blob, r.url);
@@ -140,9 +146,9 @@ function listPages() {
     FD = "Marcellus, 'Noto Serif Georgian', Georgia, serif",
     p = P();
   const rows = [];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach((id, i) => {
-      const g = id && S.guests[id];
+      const g = id && appState.S.guests[id];
       if (g) rows.push({ name: g.name, table: tName(x), seat: i + 1 });
     })
   );
@@ -160,7 +166,7 @@ function listPages() {
     c.fillStyle = p.ink;
     c.font = `56px ${FD}`;
     c.textBaseline = 'alphabetic';
-    c.fillText(S.event.name || 'Supra', M, M + 40);
+    c.fillText(appState.S.event.name || 'Supra', M, M + 40);
     c.fillStyle = p.accent;
     c.font = `30px ${F}`;
     c.fillText([gDate(), heading].filter(Boolean).join('  ·  '), M, M + 96);
@@ -183,17 +189,17 @@ function listPages() {
   // by table first (for the venue staff): head table(s), then Table 1, 2, … 10 in number order; a block never splits across columns
   const colW = (W - 2 * M - 60) / 2,
     num = new Intl.Collator(UL() === 'ka' ? 'ka' : 'en', { numeric: true, sensitivity: 'base' });
-  const ordered = [...S.tables].sort(
+  const ordered = [...appState.S.tables].sort(
     (a, b) => (b.shape === 'head') - (a.shape === 'head') || num.compare(tName(a), tName(b))
   );
   page(t('pdfByTable'));
   ordered.forEach(tb => {
     const names = tb.seats
       .map((id, i) =>
-        id && S.guests[id]
+        id && appState.S.guests[id]
           ? seatMode() === 'table'
-            ? `• ${S.guests[id].name}`
-            : `${i + 1}. ${S.guests[id].name}`
+            ? `• ${appState.S.guests[id].name}`
+            : `${i + 1}. ${appState.S.guests[id].name}`
           : null
       )
       .filter(Boolean);
@@ -270,15 +276,15 @@ async function planPdf() {
   toast(t('pdfMaking'));
   try {
     await document.fonts?.ready;
-    const keep = sel;
-    sel = { kind: null };
+    const keep = appState.sel;
+    appState.sel = { kind: null };
     const { B, inner } = planSVG();
-    sel = keep;
+    appState.sel = keep;
     const r = await svgToPng(allDefs() + inner, `${B.x} ${B.y} ${B.w} ${B.h}`, B.w, B.h, 2);
     await savePdf(
       [{ url: r.url, w: B.w, h: B.h }, ...listPages()],
       fname('-' + t('fileSeating') + '.pdf'),
-      (S.event.name || 'Supra') + ' · ' + t('planLabel')
+      (appState.S.event.name || 'Supra') + ' · ' + t('planLabel')
     );
   } catch (e) {
     logSafe('pdf', e);
@@ -309,9 +315,9 @@ async function dlQR() {
 /* place cards */
 async function placeCards() {
   const list = [];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach(id => {
-      if (id) list.push({ G: S.guests[id], x });
+      if (id) list.push({ G: appState.S.guests[id], x });
     })
   );
   const per = 10,
@@ -380,10 +386,10 @@ async function placeCards() {
 /* caterer */
 function catererData() {
   const rows = [];
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const c = { table: tName(x), total: 0, kids: 0, meals: {} };
     x.seats.forEach(id => {
-      const g = id && S.guests[id];
+      const g = id && appState.S.guests[id];
       if (!g) return;
       c.total++;
       if (g.kid) c.kids++;
@@ -403,9 +409,9 @@ function catererModal() {
     for (const m in r.meals) tot.meals[m] = (tot.meals[m] || 0) + r.meals[m];
   });
   const al = [];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach(id => {
-      const g = id && S.guests[id];
+      const g = id && appState.S.guests[id];
       if (g && g.allergies.trim()) al.push(`<li><b>${esc(g.name)}</b> · ${esc(tName(x))} · ${esc(g.allergies)}</li>`);
     })
   );
@@ -425,9 +431,9 @@ function catererModal() {
     const L = [
       ['colTable', 'colSeat', 'colName', 'colMeal', 'colChild', 'colAllergies', 'colSide', 'colGroup'].map(k => t(k))
     ];
-    S.tables.forEach(x =>
+    appState.S.tables.forEach(x =>
       x.seats.forEach((id, i) => {
-        const g = id && S.guests[id];
+        const g = id && appState.S.guests[id];
         if (g)
           L.push([
             tName(x),
@@ -467,14 +473,14 @@ async function exportX() {
     g.kid ? t('yes') : '',
     g.allergies
   ];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach((id, i) => {
-      const g = id && S.guests[id];
+      const g = id && appState.S.guests[id];
       if (g) L.push(row(g, tName(x), i + 1));
     })
   );
-  S.waiting.forEach(id => {
-    const g = S.guests[id];
+  appState.S.waiting.forEach(id => {
+    const g = appState.S.guests[id];
     if (g) L.push(row(g, '', ''));
   });
   const wb = XLSX.utils.book_new();
@@ -574,13 +580,13 @@ function importModal() {
     const mode = document.querySelector('input[name=xmode]:checked').value;
     commit(() => {
       if (mode === 'replace') {
-        const keep = new Set(S.tables.filter(x => x.shape === 'head').flatMap(x => x.seats.filter(Boolean)));
-        Object.keys(S.guests).forEach(id => {
-          if (!keep.has(id)) delete S.guests[id];
+        const keep = new Set(appState.S.tables.filter(x => x.shape === 'head').flatMap(x => x.seats.filter(Boolean)));
+        Object.keys(appState.S.guests).forEach(id => {
+          if (!keep.has(id)) delete appState.S.guests[id];
         });
-        S.waiting = [];
-        S.rules = S.rules.filter(r => keep.has(r.a) && keep.has(r.b));
-        S.tables = S.tables.filter(x => x.shape === 'head');
+        appState.S.waiting = [];
+        appState.S.rules = appState.S.rules.filter(r => keep.has(r.a) && keep.has(r.b));
+        appState.S.tables = appState.S.tables.filter(x => x.shape === 'head');
       }
       const byTable = {};
       parsed.forEach(r => {
@@ -592,19 +598,19 @@ function importModal() {
         const list = byTable[k];
         if (k === '') {
           list.forEach(r =>
-            S.waiting.push(
+            appState.S.waiting.push(
               mkGuest(r.name, null, { group: r.group, side: r.side, meal: r.meal, kid: r.kid, allergies: r.allergies })
             )
           );
           continue;
         }
         const nm = /^\d+$/.test(k) ? 'Table ' + k : k;
-        let x = S.tables.find(
+        let x = appState.S.tables.find(
           y => y.name.toLowerCase() === nm.toLowerCase() || tName(y).toLowerCase() === nm.toLowerCase()
         );
         if (!x) {
           x = { id: uid(), name: nm, shape: 'rect', deco: 'flowers', seats: [] };
-          S.tables.push(x);
+          appState.S.tables.push(x);
           newT.push(x);
         }
         list.forEach(r => {
@@ -677,3 +683,5 @@ function modal(html) {
   };
   r.querySelector('.box').focus();
 }
+
+export { catererModal, dlQR, exportX, fname, importModal, offerFile, placeCards, planImage, planPdf, savePlan };

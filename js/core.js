@@ -1,4 +1,3 @@
-'use strict';
 /* Shared helpers, text (t/tn), name matching, choices and the character drawing. Part of the planner (app.html); see js/README.md. */
 const $ = s => document.querySelector(s);
 const esc = s =>
@@ -37,7 +36,48 @@ function skel(x) {
     r = r.split(a).join(b);
   return r.replace(/h/g, '').replace(/(.)\1+/g, '$1');
 }
-const IMG = window.SUPRA_IMG || {};
+// Drawings: key -> data: URL. Filled by loadImages() from img/*.webp, kept as embedded data so PNG/PDF exports
+// (an SVG drawn into a canvas can't fetch files) work as before.
+const IMG = {};
+const IMG_FILES = window.SUPRA_IMG_FILES || {};
+const IMG_WAIT = {};
+let imgFailed = false;
+/* Loads the drawings a page needs (all of them by default) and adds each to the shared SVG defs as it arrives.
+   Never rejects: a drawing that can't load is left out, like a missing file was before. */
+function loadImages(keys = Object.keys(IMG_FILES)) {
+  return Promise.all(
+    [...new Set(keys)]
+      .filter(k => IMG_FILES[k] && !IMG[k])
+      .map(
+        k =>
+          IMG_WAIT[k] ||
+          (IMG_WAIT[k] = fetch(IMG_FILES[k])
+            .then(r => {
+              if (!r.ok) throw new Error('image ' + k + ': ' + r.status);
+              return r.blob();
+            })
+            .then(
+              b =>
+                new Promise((ok, no) => {
+                  const fr = new FileReader();
+                  fr.onload = () => ok(fr.result);
+                  fr.onerror = no;
+                  fr.readAsDataURL(b);
+                })
+            )
+            .then(u => {
+              IMG[k] = u;
+              const d = document.getElementById('gdefs');
+              if (d && !d.querySelector('#I_' + k)) d.insertAdjacentHTML('beforeend', imageDef(k));
+            })
+            .catch(e => {
+              delete IMG_WAIT[k];
+              if (!imgFailed) console.warn('Supra: some drawings did not load', e && e.message);
+              imgFailed = true;
+            }))
+      )
+  );
+}
 const L10N = window.SUPRA_I18N;
 /* Interface language: the visitor's own choice (shared by dashboard, planner and guest page), else the event's, else the browser's. */
 const storedLang = () => {
@@ -48,10 +88,11 @@ const storedLang = () => {
     return null;
   }
 };
-let LANG = storedLang();
-const UL = () => LANG || S?.event?.lang || ((navigator.language || '').startsWith('ka') ? 'ka' : 'en');
+
+const UL = () =>
+  appState.LANG || appState.S?.event?.lang || ((navigator.language || '').startsWith('ka') ? 'ka' : 'en');
 function setLang(l) {
-  LANG = l;
+  appState.LANG = l;
   try {
     localStorage.setItem('supra.lang', l);
   } catch (e) {}
@@ -88,6 +129,39 @@ function shade(hex, p) {
   const f = v => Math.max(0, Math.min(255, Math.round(v + ((p < 0 ? v : 255 - v) * p) / 100)));
   return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
+
+/* State that several files change (one object, because modules can't reassign each other's variables). */
+const appState = {
+  ARR: null,
+  DRAFT: 'supra.draft',
+  FINDQ: '',
+  GL: { mode: 'prefix', pin: false },
+  LANG: storedLang(),
+  MODE: 'edit',
+  PREVIEW: null,
+  PREVIEW_ID: null,
+  R: null,
+  RD: null,
+  ROW: null,
+  RTOK: '',
+  S: null,
+  SB: null,
+  SLUG: '',
+  confirmK: null,
+  dirty: false,
+  drawerOpener: null,
+  fitMode: null,
+  guestMode: false,
+  hintOpen: false, // boot() sets it from hintSeen()
+  panel: null,
+  readOnly: false,
+  saveState: 'idle',
+  saveT: 0,
+  scale: null,
+  sel: { kind: null },
+  swapFrom: null,
+  waitSel: null
+};
 
 /* ---------------- options ---------------- */
 const OPT = {
@@ -223,7 +297,7 @@ function randLook(kind, r = Math.random) {
   };
 }
 /* 'seat': guests are told their table and seat; 'table': only their table, they pick a chair themselves. */
-const seatMode = () => (S?.event?.seatMode === 'table' ? 'table' : 'seat');
+const seatMode = () => (appState.S?.event?.seatMode === 'table' ? 'table' : 'seat');
 const guessKind = n => window.SupraNames?.guess(n) || null;
 /* Redraw someone as a woman or a man, keeping skin, eyes, hair colour and glasses so they still look like themselves. */
 function relook(L, kind, r) {
@@ -267,15 +341,17 @@ function tint(hex) {
   }
   return `url(#${id})`;
 }
+function imageDef(k) {
+  const f = FIT[k],
+    n = NAT[k];
+  const box = f || (n && [0, 0, n[0], n[1]]);
+  return box && IMG[k]
+    ? `<image id="I_${k}" href="${IMG[k]}" x="${box[0]}" y="${box[1]}" width="${box[2]}" height="${box[3]}" preserveAspectRatio="none"/>`
+    : '';
+}
 function imageDefs() {
   let s = '';
-  for (const k in IMG) {
-    const f = FIT[k],
-      n = NAT[k];
-    const box = f || (n && [0, 0, n[0], n[1]]);
-    if (box)
-      s += `<image id="I_${k}" href="${IMG[k]}" x="${box[0]}" y="${box[1]}" width="${box[2]}" height="${box[3]}" preserveAspectRatio="none"/>`;
-  }
+  for (const k in IMG) s += imageDef(k);
   return (
     s +
     `<clipPath id="cHead" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="1254" height="828"/></clipPath><clipPath id="cBody" clipPathUnits="userSpaceOnUse"><rect x="-300" y="-400" width="1854" height="1615"/></clipPath>`
@@ -305,19 +381,30 @@ function skinIdx(hex) {
   });
   return bi;
 }
+const OUTFIT_IMG = {
+  suit: 'out_suit',
+  tuxedo: 'out_tuxedo',
+  shirt: 'out_shirt',
+  sweater: 'out_sweater',
+  dress: 'out_dress',
+  gown: 'out_gown'
+};
+/* The drawings one character needs (so a page can load just those). */
+function lookImages(L) {
+  const k = ['base' + skinIdx(L.skin), 'chair'];
+  if (OUTFIT_IMG[L.outfit]) k.push(OUTFIT_IMG[L.outfit]);
+  if (L.outfit === 'suit') k.push('out_suit_fixed');
+  if (L.hair && L.hair !== 'bald') k.push('hair_' + L.hair);
+  if (L.beard && L.beard !== 'none') k.push('beard_' + L.beard);
+  if (L.glasses && L.glasses !== 'none') k.push('gl_' + L.glasses);
+  return k;
+}
 function fig(L) {
   const base = 'base' + skinIdx(L.skin),
     h = L.hairColor,
     bc = L.beardColor || h;
   let g = use(base);
-  const ok = {
-    suit: 'out_suit',
-    tuxedo: 'out_tuxedo',
-    shirt: 'out_shirt',
-    sweater: 'out_sweater',
-    dress: 'out_dress',
-    gown: 'out_gown'
-  }[L.outfit];
+  const ok = OUTFIT_IMG[L.outfit];
   if (ok) {
     if (L.outfit === 'tuxedo' || L.outfit === 'gown') g += use(ok);
     else {
@@ -348,3 +435,44 @@ function chairM() {
 function person(G, P, withChair = true) {
   return `${withChair ? chairM() : ''}<g transform="translate(0 ${G.kid ? 3 : 0}) scale(${G.kid ? 0.8 : 1})">${fig(G.look)}</g>`;
 }
+
+export {
+  $,
+  loadImages,
+  lookImages,
+  BEARD_LBL,
+  DECOS,
+  DECO_LBL,
+  EVENT_TYPES,
+  GL_LBL,
+  L10N,
+  MEALS,
+  MEAL_LBL,
+  NAT,
+  OPT,
+  PALETTES,
+  SHAPES,
+  SIDES,
+  SIDE_COL,
+  UL,
+  VENUE,
+  allDefs,
+  appState,
+  chairM,
+  esc,
+  guessKind,
+  imageDefs,
+  lookMismatch,
+  person,
+  randLook,
+  relook,
+  rng,
+  seatMode,
+  setLang,
+  shade,
+  skel,
+  t,
+  tn,
+  uid,
+  use
+};

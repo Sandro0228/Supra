@@ -1,4 +1,39 @@
-'use strict';
+import { $, UL, VENUE, appState, lookMismatch, randLook, relook, seatMode, setLang, t, uid } from './core.js';
+import { T, V, commit, hist, markDirty, mkGuest, tName, toast, undo } from './state.js';
+import {
+  applyArrangement,
+  arrangeDefaults,
+  autoArrange,
+  bounds,
+  dims,
+  geo,
+  rbox,
+  resolveOverlaps,
+  toView,
+  toWorld,
+  turnView,
+  withView
+} from './layout.js';
+import { planSVG } from './draw.js';
+import {
+  OPEN,
+  curTheme,
+  doFind,
+  drawerOpen,
+  focusKeyOf,
+  guestUrl,
+  renderDrawer,
+  renderLeft,
+  renderRight,
+  renderTop,
+  setLookup,
+  shareCall,
+  shareInfo
+} from './panels.js';
+import { catererModal, dlQR, exportX, importModal, placeCards, planImage, planPdf, savePlan } from './files.js';
+import { GERR, guestClick, setGuestErr } from './guest.js';
+import { rsvpClick, rsvpInput } from './rsvp.js';
+import { invClick, invInput, invSettingChange } from './invites.js';
 /* Rendering everything, and every click, key and input in the planner. Part of the planner (app.html); see js/README.md. */
 /* ---------------- render ---------------- */
 function renderPlan() {
@@ -33,12 +68,12 @@ function contentBox() {
 function contentBox0() {
   let x0 = Infinity,
     x1 = -Infinity;
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const [w] = dims(x);
     x0 = Math.min(x0, x.x - w / 2);
     x1 = Math.max(x1, x.x + w / 2);
   });
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const [w] = rbox(v.w, v.h, v.rot);
     x0 = Math.min(x0, v.x - w / 2);
     x1 = Math.max(x1, v.x + w / 2);
@@ -63,10 +98,10 @@ const ZMIN = 0.08,
 function sizePlan() {
   const svg = $('#plan'),
     [W, H] = planWH();
-  svg.style.width = Math.round(W * scale) + 'px';
-  svg.style.height = Math.round(H * scale) + 'px';
+  svg.style.width = Math.round(W * appState.scale) + 'px';
+  svg.style.height = Math.round(H * appState.scale) + 'px';
   const z = $('#zpct');
-  if (z) z.textContent = Math.round((scale / fitScale('all')) * 100) + '%';
+  if (z) z.textContent = Math.round((appState.scale / fitScale('all')) * 100) + '%';
 }
 /* Scrolls so the occupied part of the room is centred, top first. */
 function centerContent() {
@@ -77,21 +112,21 @@ function centerContent() {
   const vb = svg.viewBox.baseVal,
     b = svg.getBoundingClientRect(),
     r = sc.getBoundingClientRect(),
-    cx = ((cb.x0 + cb.x1) / 2 - vb.x) * scale;
+    cx = ((cb.x0 + cb.x1) / 2 - vb.x) * appState.scale;
   sc.scrollLeft += b.left + cx - (r.left + r.width / 2);
   sc.scrollTop = 0;
 }
 function applyZoom(refit) {
   const svg = $('#plan');
   if (!svg.dataset.w) return;
-  if (scale == null) {
-    fitMode = isPhone() ? 'width' : 'all';
-    scale = fitScale(fitMode);
+  if (appState.scale == null) {
+    appState.fitMode = isPhone() ? 'width' : 'all';
+    appState.scale = fitScale(appState.fitMode);
     sizePlan();
     centerContent();
     return;
   }
-  if (refit && fitMode) scale = fitScale(fitMode);
+  if (refit && appState.fitMode) appState.scale = fitScale(appState.fitMode);
   sizePlan();
 }
 /* Zoom keeping the plan point under (cx,cy) — or the view centre — still. */
@@ -105,16 +140,16 @@ function zoomTo(ns, cx, cy) {
   const b0 = svg.getBoundingClientRect(),
     fx = (ox + r.left - b0.left) / b0.width,
     fy = (oy + r.top - b0.top) / b0.height;
-  fitMode = null;
-  scale = ns;
+  appState.fitMode = null;
+  appState.scale = ns;
   applyZoom();
   const b = svg.getBoundingClientRect();
   sc.scrollLeft += b.left + fx * b.width - (r.left + ox);
   sc.scrollTop += b.top + fy * b.height - (r.top + oy);
 }
 function setFit(kind) {
-  fitMode = kind;
-  scale = Math.min(ZMAX, fitScale(kind));
+  appState.fitMode = kind;
+  appState.scale = Math.min(ZMAX, fitScale(kind));
   sizePlan();
   centerContent();
 }
@@ -122,7 +157,7 @@ function setFit(kind) {
 function keepView(fn) {
   const sc = $('#scroller'),
     svg = $('#plan');
-  if (!svg.dataset.w || guestMode) return fn();
+  if (!svg.dataset.w || appState.guestMode) return fn();
   const r = sc.getBoundingClientRect(),
     b = svg.getBoundingClientRect(),
     fx = (r.left + r.width / 2 - b.left) / b.width,
@@ -139,14 +174,17 @@ function focusTable(x0) {
     [w, h] = dims(x),
     sc = $('#scroller'),
     svg = $('#plan');
-  fitMode = null;
-  scale = Math.min(ZMAX, Math.max(ZMIN, Math.min((sc.clientWidth - 24) / (w + 60), (sc.clientHeight - 24) / (h + 60))));
+  appState.fitMode = null;
+  appState.scale = Math.min(
+    ZMAX,
+    Math.max(ZMIN, Math.min((sc.clientWidth - 24) / (w + 60), (sc.clientHeight - 24) / (h + 60)))
+  );
   applyZoom();
   const vb = svg.viewBox.baseVal,
     b = svg.getBoundingClientRect(),
     r = sc.getBoundingClientRect(),
-    px = (x.x - vb.x) * scale,
-    py = (x.y - vb.y) * scale;
+    px = (x.x - vb.x) * appState.scale,
+    py = (x.y - vb.y) * appState.scale;
   sc.scrollLeft += b.left + px - (r.left + r.width / 2);
   sc.scrollTop += b.top + py - (r.top + r.height / 2);
 }
@@ -163,8 +201,8 @@ function renderAll() {
     return;
   }
   if (st.closed) {
-    const back = drawerOpener && document.querySelector(drawerOpener);
-    drawerOpener = null;
+    const back = appState.drawerOpener && document.querySelector(appState.drawerOpener);
+    appState.drawerOpener = null;
     (back || $('#scroller')).focus({ preventScroll: true });
     return;
   }
@@ -176,8 +214,8 @@ function renderAll() {
 
 /* ---------------- actions ---------------- */
 function curGuest() {
-  const x = T(sel.t);
-  return x && S.guests[x.seats[sel.i]];
+  const x = T(appState.sel.t);
+  return x && appState.S.guests[x.seats[appState.sel.i]];
 }
 function placeNames(names, tid) {
   names.forEach(n => {
@@ -185,12 +223,12 @@ function placeNames(names, tid) {
     let x = tid && tid !== '__wait' ? T(tid) : null,
       i = -1;
     if (tid === '__wait') {
-      S.waiting.push(id);
+      appState.S.waiting.push(id);
       return;
     }
     if (x) i = x.seats.indexOf(null);
     if (i < 0 && !tid)
-      for (const y of S.tables) {
+      for (const y of appState.S.tables) {
         i = y.seats.indexOf(null);
         if (i >= 0) {
           x = y;
@@ -198,7 +236,7 @@ function placeNames(names, tid) {
         }
       }
     if (i >= 0) x.seats[i] = id;
-    else S.waiting.push(id);
+    else appState.S.waiting.push(id);
   });
 }
 function shuffle(a) {
@@ -209,21 +247,23 @@ function shuffle(a) {
   return a;
 }
 function autoSeat() {
-  const tables = S.tables.filter(x => x.shape !== 'head');
-  const pool = [...S.waiting, ...tables.flatMap(x => x.seats.filter(Boolean))];
+  const tables = appState.S.tables.filter(x => x.shape !== 'head');
+  const pool = [...appState.S.waiting, ...tables.flatMap(x => x.seats.filter(Boolean))];
   tables.forEach(x => (x.seats = x.seats.map(() => null)));
-  S.waiting = [];
+  appState.S.waiting = [];
   const parent = {};
   const f = a => (parent[a] === a ? a : (parent[a] = f(parent[a])));
   pool.forEach(id => (parent[id] = id));
-  S.rules.filter(r => r.type === 'together' && parent[r.a] && parent[r.b]).forEach(r => (parent[f(r.a)] = f(r.b)));
+  appState.S.rules
+    .filter(r => r.type === 'together' && parent[r.a] && parent[r.b])
+    .forEach(r => (parent[f(r.a)] = f(r.b)));
   const clusters = {};
   pool.forEach(id => {
     (clusters[f(id)] = clusters[f(id)] || []).push(id);
   });
   const units = {};
   Object.values(clusters).forEach(c => {
-    const g = S.guests[c[0]];
+    const g = appState.S.guests[c[0]];
     const key = g.group || (g.side ? 'side:' + g.side : 'zz');
     (units[key] = units[key] || []).push(...c);
   });
@@ -231,7 +271,7 @@ function autoSeat() {
     .sort((a, b) => b[1].length - a[1].length)
     .map(e => e[1]);
   const apart = (id, x) =>
-    S.rules.some(
+    appState.S.rules.some(
       r => r.type === 'apart' && ((r.a === id && x.seats.includes(r.b)) || (r.b === id && x.seats.includes(r.a)))
     );
   const freeN = x => x.seats.filter(v => !v).length;
@@ -253,16 +293,16 @@ function autoSeat() {
     }
     unit.forEach(id => {
       const c = tables.filter(x => freeN(x) > 0).sort((a, b) => apart(id, a) - apart(id, b) || freeN(b) - freeN(a));
-      if (!c[0] || !place(id, c[0])) S.waiting.push(id);
+      if (!c[0] || !place(id, c[0])) appState.S.waiting.push(id);
     });
   });
 }
 function act(a) {
-  const x = sel.t && T(sel.t);
+  const x = appState.sel.t && T(appState.sel.t);
   switch (a) {
     case 'addtable':
       commit(() => {
-        const n = S.tables.length;
+        const n = appState.S.tables.length;
         const nt = {
           id: uid(),
           name: 'Table ' + n,
@@ -276,8 +316,8 @@ function act(a) {
           const g = geo(nt);
           [nt.x, nt.y] = freeSpot(g.w, g.h);
         }
-        S.tables.push(nt);
-        sel = { kind: 'table', t: nt.id };
+        appState.S.tables.push(nt);
+        appState.sel = { kind: 'table', t: nt.id };
       });
       toast(t('tableAdded'));
       break;
@@ -285,29 +325,29 @@ function act(a) {
       commit(() => autoArrange());
       break;
     case 'arr-open':
-      if (!drawerOpen) drawerOpener = '#quickadd [data-act="arr-open"]';
-      ARR = arrangeDefaults();
-      sel = { kind: null };
-      swapFrom = null;
-      panel = panel === 'arrange' ? null : 'arrange';
+      if (!drawerOpen) appState.drawerOpener = '#quickadd [data-act="arr-open"]';
+      appState.ARR = arrangeDefaults();
+      appState.sel = { kind: null };
+      appState.swapFrom = null;
+      appState.panel = appState.panel === 'arrange' ? null : 'arrange';
       renderAll();
       break;
     case 'arr-rows-':
     case 'arr-rows+': {
-      const n = S.tables.filter(x => x.shape !== 'head').length;
-      ARR.rows = Math.min(Math.max(1, ARR.rows + (a === 'arr-rows+' ? 1 : -1)), Math.max(1, n));
-      ARR.rowAisles = ARR.rowAisles.filter(i => i < ARR.rows - 1);
-      const C = Math.ceil(n / ARR.rows);
-      ARR.colAisles = ARR.colAisles.filter(i => i < C - 1);
+      const n = appState.S.tables.filter(x => x.shape !== 'head').length;
+      appState.ARR.rows = Math.min(Math.max(1, appState.ARR.rows + (a === 'arr-rows+' ? 1 : -1)), Math.max(1, n));
+      appState.ARR.rowAisles = appState.ARR.rowAisles.filter(i => i < appState.ARR.rows - 1);
+      const C = Math.ceil(n / appState.ARR.rows);
+      appState.ARR.colAisles = appState.ARR.colAisles.filter(i => i < C - 1);
       renderLeft();
       $(`[data-act="${a}"]`)?.focus();
       break;
     }
     case 'arr-apply': {
-      const o = ARR;
+      const o = appState.ARR;
       commit(() => applyArrangement(o));
-      panel = null;
-      ARR = null;
+      appState.panel = null;
+      appState.ARR = null;
       renderAll();
       requestAnimationFrame(() => setFit(isPhone() ? 'width' : 'all'));
       toast(t('arrDone'));
@@ -315,15 +355,15 @@ function act(a) {
     }
     case 'swap':
       if (x) {
-        swapFrom = x.id;
-        sel = { kind: null };
-        panel = null;
+        appState.swapFrom = x.id;
+        appState.sel = { kind: null };
+        appState.panel = null;
         renderAll();
         $('#swapbar button')?.focus();
       }
       break;
     case 'swap-cancel':
-      swapFrom = null;
+      appState.swapFrom = null;
       renderAll();
       break;
     case 'bulk': {
@@ -342,7 +382,7 @@ function act(a) {
     }
     case 'randall':
       commit(() =>
-        Object.values(S.guests).forEach(g => {
+        Object.values(appState.S.guests).forEach(g => {
           if (!['gown', 'tuxedo'].includes(g.look.outfit)) g.look = randLook(g.look.kind);
         })
       );
@@ -350,30 +390,30 @@ function act(a) {
       break;
     case 'shuffleall':
       commit(() => {
-        const tb = S.tables.filter(y => y.shape !== 'head');
+        const tb = appState.S.tables.filter(y => y.shape !== 'head');
         const ids = shuffle(tb.flatMap(y => y.seats.filter(Boolean)));
         tb.forEach(y => (y.seats = y.seats.map(v => (v ? ids.shift() : null))));
       });
       toast(t('shuffled'));
       break;
     case 'autoseat':
-      confirmK = 'autoseat';
+      appState.confirmK = 'autoseat';
       renderLeft();
       break;
     case 'autoseat-yes':
-      confirmK = null;
+      appState.confirmK = null;
       commit(autoSeat);
       toast(t('autoDone'));
       break;
     case 'reset':
-      confirmK = 'reset';
+      appState.confirmK = 'reset';
       renderLeft();
       break;
     case 'reset-yes':
-      confirmK = null;
+      appState.confirmK = null;
       commit(() => {
-        S = {
-          event: { ...S.event },
+        appState.S = {
+          event: { ...appState.S.event },
           guests: {},
           waiting: [],
           rules: [],
@@ -382,11 +422,11 @@ function act(a) {
             { id: uid(), name: 'Table 1', shape: 'rect', deco: 'flowers', seats: Array(10).fill(null), x: 0, y: 0 }
           ]
         };
-        sel = { kind: null };
+        appState.sel = { kind: null };
       });
       break;
     case 'cancel':
-      confirmK = null;
+      appState.confirmK = null;
       renderLeft();
       renderRight();
       break;
@@ -394,7 +434,7 @@ function act(a) {
       closeDrawer();
       break;
     case 'focustable': {
-      const tb = T(sel.t);
+      const tb = T(appState.sel.t);
       if (tb) {
         if (isPhone()) closeDrawer();
         requestAnimationFrame(() => focusTable(tb));
@@ -405,7 +445,7 @@ function act(a) {
       try {
         localStorage.setItem('supra.hint', '1');
       } catch (e) {}
-      hintOpen = false;
+      appState.hintOpen = false;
       renderTop();
       $('#help').focus();
       break;
@@ -417,13 +457,16 @@ function act(a) {
         return;
       }
       commit(() => {
-        x.seats[sel.i] = mkGuest(n);
+        x.seats[appState.sel.i] = mkGuest(n);
       });
       break;
     }
     case 'addrandom':
       commit(() => {
-        x.seats[sel.i] = mkGuest(t('guestWord') + ' ' + (Object.keys(S.guests).length + 1), randLook());
+        x.seats[appState.sel.i] = mkGuest(
+          t('guestWord') + ' ' + (Object.keys(appState.S.guests).length + 1),
+          randLook()
+        );
       });
       break;
     case 'rnd':
@@ -443,7 +486,7 @@ function act(a) {
       break;
     case 'matchlooks': {
       let n = 0;
-      const fix = Object.values(S.guests).filter(lookMismatch);
+      const fix = Object.values(appState.S.guests).filter(lookMismatch);
       if (!fix.length) {
         toast(t('matchNone'));
         break;
@@ -459,22 +502,22 @@ function act(a) {
     }
     case 'unseat':
       commit(() => {
-        S.waiting.push(x.seats[sel.i]);
-        x.seats[sel.i] = null;
+        appState.S.waiting.push(x.seats[appState.sel.i]);
+        x.seats[appState.sel.i] = null;
       });
       toast(t('movedWaiting'));
       break;
     case 'delguest':
-      confirmK = 'guest';
+      appState.confirmK = 'guest';
       renderRight();
       break;
     case 'delguest-yes':
-      confirmK = null;
+      appState.confirmK = null;
       commit(() => {
-        const id = x.seats[sel.i];
-        delete S.guests[id];
-        S.rules = S.rules.filter(r => r.a !== id && r.b !== id);
-        x.seats[sel.i] = null;
+        const id = x.seats[appState.sel.i];
+        delete appState.S.guests[id];
+        appState.S.rules = appState.S.rules.filter(r => r.a !== id && r.b !== id);
+        x.seats[appState.sel.i] = null;
       });
       break;
     case 'addrule': {
@@ -484,7 +527,7 @@ function act(a) {
         return;
       }
       const g = curGuest();
-      commit(() => S.rules.push({ id: uid(), type: $('#r-type').value, a: g.id, b }));
+      commit(() => appState.S.rules.push({ id: uid(), type: $('#r-type').value, a: g.id, b }));
       break;
     }
     case 'seat+':
@@ -496,7 +539,7 @@ function act(a) {
           const i = x.seats.lastIndexOf(null);
           if (i >= 0) x.seats.splice(i, 1);
           else {
-            S.waiting.push(x.seats.pop());
+            appState.S.waiting.push(x.seats.pop());
             toast(t('movedWaiting'));
           }
         });
@@ -504,7 +547,7 @@ function act(a) {
     case 'fillgroup': {
       const g = ($('#grp').value || '').trim() || 'Guest';
       commit(() => {
-        let k = Object.values(S.guests).filter(v => v.group === g).length;
+        let k = Object.values(appState.S.guests).filter(v => v.group === g).length;
         x.seats = x.seats.map(v => v || mkGuest(`${g} ${++k}`, randLook(), { group: g }));
       });
       toast(t('filledWith', { g }));
@@ -516,7 +559,7 @@ function act(a) {
     case 'restyle':
       commit(() =>
         x.seats.forEach(id => {
-          const g = id && S.guests[id];
+          const g = id && appState.S.guests[id];
           if (g && !['gown', 'tuxedo'].includes(g.look.outfit)) g.look = randLook(g.look.kind);
         })
       );
@@ -532,26 +575,26 @@ function act(a) {
           x: x.x + 60,
           y: x.y + geo(x).h
         };
-        S.tables.splice(S.tables.indexOf(x) + 1, 0, nt);
-        sel = { kind: 'table', t: nt.id };
+        appState.S.tables.splice(appState.S.tables.indexOf(x) + 1, 0, nt);
+        appState.sel = { kind: 'table', t: nt.id };
       });
       break;
     case 'deltable':
-      confirmK = 'table';
+      appState.confirmK = 'table';
       renderRight();
       break;
     case 'deltable-yes':
-      confirmK = null;
+      appState.confirmK = null;
       commit(() => {
-        S.waiting.push(...x.seats.filter(Boolean));
-        S.tables = S.tables.filter(y => y !== x);
-        sel = { kind: null };
+        appState.S.waiting.push(...x.seats.filter(Boolean));
+        appState.S.tables = appState.S.tables.filter(y => y !== x);
+        appState.sel = { kind: null };
       });
       break;
     case 'delvenue':
       commit(() => {
-        S.venue = S.venue.filter(v => v.id !== sel.v);
-        sel = { kind: null };
+        appState.S.venue = appState.S.venue.filter(v => v.id !== appState.sel.v);
+        appState.sel = { kind: null };
       });
       break;
     case 'copylink': {
@@ -580,7 +623,7 @@ function act(a) {
       shareCall('unpublish_guest_page', {}, t('shUnpublished'), '#sh-status');
       break;
     case 'rotate':
-      confirmK = 'rotate';
+      appState.confirmK = 'rotate';
       renderLeft();
       $('[data-act="rotate-yes"]')?.focus();
       break;
@@ -588,7 +631,7 @@ function act(a) {
       shareCall('rotate_guest_link', {}, t('shRotated'), '#sh-status');
       break;
     case 'revoke':
-      confirmK = 'revoke';
+      appState.confirmK = 'revoke';
       renderLeft();
       $('[data-act="revoke-yes"]')?.focus();
       break;
@@ -645,7 +688,7 @@ function act(a) {
   }
 }
 document.addEventListener('click', e => {
-  if (guestMode) return MODE === 'rsvp' ? rsvpClick(e) : guestClick(e);
+  if (appState.guestMode) return appState.MODE === 'rsvp' ? rsvpClick(e) : guestClick(e);
   const b = e.target.closest('button');
   if (!b) return;
   const d = b.dataset;
@@ -653,10 +696,10 @@ document.addEventListener('click', e => {
   if (d.act) return act(d.act);
   if (d.panel) {
     const k = d.panel;
-    if (!drawerOpen) drawerOpener = '#tab-' + k;
-    panel = panel === k && !sel.kind ? null : k;
-    sel = { kind: null };
-    confirmK = null;
+    if (!drawerOpen) appState.drawerOpener = '#tab-' + k;
+    appState.panel = appState.panel === k && !appState.sel.kind ? null : k;
+    appState.sel = { kind: null };
+    appState.confirmK = null;
     renderAll();
     return;
   }
@@ -677,33 +720,33 @@ document.addEventListener('click', e => {
       shareCall('apply_privacy_preset', { p_preset: 'strict' }, t('lkSaved'), '[data-preset=strict]');
       return;
     }
-    confirmK = k;
+    appState.confirmK = k;
     renderLeft();
     (k === 'strict' ? $('#pr-pin') : $('[data-act="open-yes"]'))?.focus();
     return;
   }
   if (d.seatmode) {
-    if (seatMode() !== d.seatmode) commit(() => (S.event.seatMode = d.seatmode));
+    if (seatMode() !== d.seatmode) commit(() => (appState.S.event.seatMode = d.seatmode));
     return;
   }
   if (d.glangset) {
-    if (S.event.lang !== d.glangset) commit(() => (S.event.lang = d.glangset));
+    if (appState.S.event.lang !== d.glangset) commit(() => (appState.S.event.lang = d.glangset));
     return;
   }
-  if (d.pal) return commit(() => (S.event.palette = d.pal));
+  if (d.pal) return commit(() => (appState.S.event.palette = d.pal));
   if (d.arrOrient) {
-    ARR.orient = d.arrOrient;
+    appState.ARR.orient = d.arrOrient;
     renderLeft();
     return;
   }
   if (d.arrAisle) {
-    ARR.aisle = d.arrAisle;
+    appState.ARR.aisle = d.arrAisle;
     renderLeft();
     return;
   }
   if (d.aisle) {
     const [k, i] = d.aisle.split(':'),
-      list = k === 'row' ? ARR.rowAisles : ARR.colAisles,
+      list = k === 'row' ? appState.ARR.rowAisles : appState.ARR.colAisles,
       n = +i,
       j = list.indexOf(n);
     j < 0 ? list.push(n) : list.splice(j, 1);
@@ -712,27 +755,28 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.seltable) {
-    if (!drawerOpen) drawerOpener = focusKeyOf(b);
-    sel = { kind: 'table', t: d.seltable };
-    confirmK = null;
+    if (!drawerOpen) appState.drawerOpener = focusKeyOf(b);
+    appState.sel = { kind: 'table', t: d.seltable };
+    appState.confirmK = null;
     renderAll();
     return;
   }
-  if (d.shape) return commit(() => (T(sel.t).shape = d.shape));
-  if (d.deco) return commit(() => (T(sel.t).deco = d.deco));
+  if (d.shape) return commit(() => (T(appState.sel.t).shape = d.shape));
+  if (d.deco) return commit(() => (T(appState.sel.t).deco = d.deco));
   if (d.addvenue) {
     const k = d.addvenue;
     commit(() => {
       const B = bounds();
       const v = { id: uid(), type: k, label: '', w: VENUE[k].w, h: VENUE[k].h, x: 0, y: 0 };
       [v.x, v.y] = freeSpot(v.w, v.h);
-      S.venue.push(v);
-      sel = { kind: 'venue', v: v.id };
+      appState.S.venue.push(v);
+      appState.sel = { kind: 'venue', v: v.id };
     });
     return;
   }
   if (d.rot || d.rotset) {
-    const it = sel.kind === 'table' ? T(sel.t) : sel.kind === 'venue' ? V(sel.v) : null;
+    const it =
+      appState.sel.kind === 'table' ? T(appState.sel.t) : appState.sel.kind === 'venue' ? V(appState.sel.v) : null;
     if (it)
       commit(() => {
         it.rot = d.rotset !== undefined ? +d.rotset : ((((it.rot || 0) + +d.rot) % 360) + 360) % 360;
@@ -742,7 +786,7 @@ document.addEventListener('click', e => {
   if (d.vsize) {
     const [k, n] = d.vsize.split(':');
     commit(() => {
-      const v = V(sel.v);
+      const v = V(appState.sel.v);
       v[k] = Math.max(40, v[k] + +n);
     });
     return;
@@ -756,58 +800,58 @@ document.addEventListener('click', e => {
   if (d.gside !== undefined) return commit(() => (curGuest().side = d.gside));
   if (d.tside !== undefined)
     return commit(() =>
-      T(sel.t).seats.forEach(id => {
-        if (id) S.guests[id].side = d.tside;
+      T(appState.sel.t).seats.forEach(id => {
+        if (id) appState.S.guests[id].side = d.tside;
       })
     );
-  if (d.delrule) return commit(() => (S.rules = S.rules.filter(r => r.id !== d.delrule)));
+  if (d.delrule) return commit(() => (appState.S.rules = appState.S.rules.filter(r => r.id !== d.delrule)));
   if (d.goto) {
     const [tt, i] = d.goto.split(':');
-    sel = { kind: 'seat', t: tt, i: +i };
+    appState.sel = { kind: 'seat', t: tt, i: +i };
     renderAll();
     scrollToSeat();
     return;
   }
   if (d.wait) {
-    waitSel = waitSel === d.wait ? null : d.wait;
+    appState.waitSel = appState.waitSel === d.wait ? null : d.wait;
     renderLeft();
-    if (waitSel) toast(t('tapEmpty'));
+    if (appState.waitSel) toast(t('tapEmpty'));
     return;
   }
   if (d.seatwait) {
     const w = d.seatwait;
     commit(() => {
-      T(sel.t).seats[sel.i] = w;
-      S.waiting = S.waiting.filter(v => v !== w);
+      T(appState.sel.t).seats[appState.sel.i] = w;
+      appState.S.waiting = appState.S.waiting.filter(v => v !== w);
     });
     return;
   }
 });
 document.addEventListener('input', e => {
-  if (guestMode) {
-    if (MODE === 'rsvp') return rsvpInput(e);
+  if (appState.guestMode) {
+    if (appState.MODE === 'rsvp') return rsvpInput(e);
     if (e.target.id === 'gq' && GERR) setGuestErr('');
     return;
   }
   if (invInput(e)) return;
   const id = e.target.id;
   if (id === 'find') {
-    FINDQ = e.target.value;
+    appState.FINDQ = e.target.value;
     return doFind();
   }
   const live = {
-    'ev-name': v => (S.event.name = v),
+    'ev-name': v => (appState.S.event.name = v),
     'g-name': v => {
       curGuest().name = v;
     },
     'g-group': v => (curGuest().group = v),
     'g-allergies': v => (curGuest().allergies = v),
-    't-name': v => (T(sel.t).name = v),
-    'v-label': v => (V(sel.v).label = v)
+    't-name': v => (T(appState.sel.t).name = v),
+    'v-label': v => (V(appState.sel.v).label = v)
   };
   if (live[id]) {
     if (!e.target.dataset.h) {
-      hist.push(JSON.stringify(S));
+      hist.push(JSON.stringify(appState.S));
       e.target.dataset.h = 1;
     }
     live[id](e.target.value);
@@ -816,28 +860,28 @@ document.addEventListener('input', e => {
   }
 });
 document.addEventListener('change', e => {
-  if (guestMode) {
-    if (MODE === 'rsvp') rsvpInput(e);
+  if (appState.guestMode) {
+    if (appState.MODE === 'rsvp') rsvpInput(e);
     return;
   }
   const id = e.target.id;
   if (invInput(e) || invSettingChange(e)) return;
   if (id === 'ev-time') {
-    commit(() => (S.event.time = e.target.value));
+    commit(() => (appState.S.event.time = e.target.value));
     return;
   }
   if (id === 'ev-venue') {
-    commit(() => (S.event.venue = e.target.value.trim()));
+    commit(() => (appState.S.event.venue = e.target.value.trim()));
     return;
   }
   if (id === 'ev-map') {
     const v = e.target.value.trim();
-    commit(() => (S.event.mapUrl = v));
+    commit(() => (appState.S.event.mapUrl = v));
     $('#ev-map')?.focus();
     return;
   }
-  if (id === 'ev-type') commit(() => (S.event.type = e.target.value));
-  if (id === 'ev-date') commit(() => (S.event.date = e.target.value));
+  if (id === 'ev-type') commit(() => (appState.S.event.type = e.target.value));
+  if (id === 'ev-date') commit(() => (appState.S.event.date = e.target.value));
   if (id === 'g-meal') commit(() => (curGuest().meal = e.target.value));
   if (id === 'g-kid') commit(() => (curGuest().kid = e.target.checked));
   if (e.target.name === 'lk-mode') {
@@ -859,7 +903,7 @@ document.addEventListener('change', e => {
     return;
   }
   if (id === 'arr-venue') {
-    ARR.venue = e.target.checked;
+    appState.ARR.venue = e.target.checked;
     renderLeft();
     $('#arr-venue')?.focus();
     return;
@@ -909,9 +953,9 @@ document.addEventListener('keydown', e => {
   }
 });
 document.addEventListener('keydown', e => {
-  if (guestMode) return;
+  if (appState.guestMode) return;
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
-  if (e.key === 'Escape' && swapFrom) {
+  if (e.key === 'Escape' && appState.swapFrom) {
     e.preventDefault();
     act('swap-cancel');
     return;
@@ -945,12 +989,12 @@ document.addEventListener('keydown', e => {
   if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
     if (e.key === '+' || e.key === '=') {
       e.preventDefault();
-      zoomTo(scale * 1.25);
+      zoomTo(appState.scale * 1.25);
       return;
     }
     if (e.key === '-' || e.key === '_') {
       e.preventDefault();
-      zoomTo(scale / 1.25);
+      zoomTo(appState.scale / 1.25);
       return;
     }
     if (e.key === '0') {
@@ -963,7 +1007,7 @@ document.addEventListener('keydown', e => {
       e.preventDefault();
       const o = it.dataset.table ? T(it.dataset.table) : V(it.dataset.v),
         st = e.shiftKey ? 50 : 10;
-      hist.push(JSON.stringify(S));
+      hist.push(JSON.stringify(appState.S));
       {
         const [dx, dy] = toWorld(
           e.key === 'ArrowLeft' ? -st : e.key === 'ArrowRight' ? st : 0,
@@ -998,21 +1042,21 @@ document.addEventListener('keydown', e => {
   }
 });
 function clickSeat(tid, i) {
-  if (swapFrom) return selectItem('table', tid);
+  if (appState.swapFrom) return selectItem('table', tid);
   const x = T(tid);
-  if (!drawerOpen) drawerOpener = `.seat[data-t="${tid}"][data-i="${i}"]`;
-  if (waitSel && !x.seats[i]) {
-    const w = waitSel;
-    waitSel = null;
+  if (!drawerOpen) appState.drawerOpener = `.seat[data-t="${tid}"][data-i="${i}"]`;
+  if (appState.waitSel && !x.seats[i]) {
+    const w = appState.waitSel;
+    appState.waitSel = null;
     commit(() => {
       x.seats[i] = w;
-      S.waiting = S.waiting.filter(v => v !== w);
-      sel = { kind: 'seat', t: tid, i };
+      appState.S.waiting = appState.S.waiting.filter(v => v !== w);
+      appState.sel = { kind: 'seat', t: tid, i };
     });
     return;
   }
-  sel = { kind: 'seat', t: tid, i };
-  confirmK = null;
+  appState.sel = { kind: 'seat', t: tid, i };
+  appState.confirmK = null;
   renderAll();
 }
 function swapTables(a, b) {
@@ -1027,32 +1071,32 @@ function swapTables(a, b) {
   toast(t('swapDone', { a: tName(A), b: tName(B) }));
 }
 function selectItem(kind, id) {
-  if (swapFrom) {
-    if (kind === 'table' && id !== swapFrom) {
-      const f = swapFrom;
-      swapFrom = null;
+  if (appState.swapFrom) {
+    if (kind === 'table' && id !== appState.swapFrom) {
+      const f = appState.swapFrom;
+      appState.swapFrom = null;
       swapTables(f, id);
       return;
     }
-    if (kind === 'table' && id === swapFrom) {
-      swapFrom = null;
+    if (kind === 'table' && id === appState.swapFrom) {
+      appState.swapFrom = null;
       renderAll();
       return;
     }
   }
-  if (!drawerOpen) drawerOpener = kind === 'table' ? `.tbody[data-table="${id}"]` : `.venue[data-v="${id}"]`;
-  sel = kind === 'table' ? { kind, t: id } : { kind, v: id };
-  confirmK = null;
+  if (!drawerOpen) appState.drawerOpener = kind === 'table' ? `.tbody[data-table="${id}"]` : `.venue[data-v="${id}"]`;
+  appState.sel = kind === 'table' ? { kind, t: id } : { kind, v: id };
+  appState.confirmK = null;
   renderAll();
 }
 function closeDrawer() {
-  sel = { kind: null };
-  panel = null;
-  confirmK = null;
+  appState.sel = { kind: null };
+  appState.panel = null;
+  appState.confirmK = null;
   renderAll();
 }
 function scrollToSeat() {
-  const el = document.querySelector(`.seat[data-t="${sel.t}"][data-i="${sel.i}"]`);
+  const el = document.querySelector(`.seat[data-t="${appState.sel.t}"][data-i="${appState.sel.i}"]`);
   el && el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
 }
 
@@ -1068,11 +1112,11 @@ function freeSpot(w, h) {
   const [cx, cy] = viewCenter(),
     pad = 30,
     boxes = [];
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const [bw, bh] = dims(x);
     boxes.push([x.x - bw / 2, x.y - bh / 2, x.x + bw / 2, x.y + bh / 2]);
   });
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const [bw, bh] = rbox(v.w, v.h, v.rot);
     boxes.push([v.x - bw / 2, v.y - bh / 2, v.x + bw / 2, v.y + bh / 2]);
   });
@@ -1109,7 +1153,7 @@ $('#scroller').addEventListener('pointerdown', e => {
   const rh = e.target.closest('.rothandle');
   if (rh) {
     const it = rh.dataset.rk === 'table' ? T(rh.dataset.rid) : V(rh.dataset.rid);
-    hist.push(JSON.stringify(S));
+    hist.push(JSON.stringify(appState.S));
     drag = { kind: 'rotate', it, x: e.clientX, y: e.clientY, moved: true };
     document.body.classList.add('dragging');
     e.preventDefault();
@@ -1197,7 +1241,7 @@ window.addEventListener('pointermove', e => {
   }
   if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 7) {
     drag.moved = true;
-    if (drag.kind !== 'seat') hist.push(JSON.stringify(S));
+    if (drag.kind !== 'seat') hist.push(JSON.stringify(appState.S));
     if (drag.kind === 'seat') drag.el.style.opacity = 0.45;
     document.body.classList.add('dragging');
   }
@@ -1230,7 +1274,7 @@ window.addEventListener('pointerup', e => {
   document.body.classList.remove('dragging');
   if (d.kind === 'pan') {
     $('#scroller').classList.remove('panning');
-    if (!d.moved && (sel.kind || panel)) closeDrawer();
+    if (!d.moved && (appState.sel.kind || appState.panel)) closeDrawer();
     return;
   }
   if (d.kind === 'rotate') {
@@ -1264,30 +1308,30 @@ window.addEventListener('pointerup', e => {
       tmp = A.seats[d.i];
     A.seats[d.i] = Bt.seats[bi];
     Bt.seats[bi] = tmp;
-    sel = { kind: 'seat', t: o.dataset.t, i: bi };
+    appState.sel = { kind: 'seat', t: o.dataset.t, i: bi };
   });
   toast(t('swapped'));
 });
 
-$('#zin').onclick = () => zoomTo(scale * 1.25);
-$('#zout').onclick = () => zoomTo(scale / 1.25);
+$('#zin').onclick = () => zoomTo(appState.scale * 1.25);
+$('#zout').onclick = () => zoomTo(appState.scale / 1.25);
 $('#zall').onclick = () => setFit('all');
 $('#zwidth').onclick = () => setFit('width');
 $('#zrot').onclick = () => {
   const n = turnView();
   renderPlan();
-  setFit(fitMode || (isPhone() ? 'width' : 'all'));
+  setFit(appState.fitMode || (isPhone() ? 'width' : 'all'));
   toast(t('viewTurned', { n }));
 };
 $('#help').onclick = () => {
-  hintOpen = !hintOpen;
+  appState.hintOpen = !appState.hintOpen;
   renderTop();
-  if (hintOpen) $('#hint button')?.focus();
+  if (appState.hintOpen) $('#hint button')?.focus();
 };
 /* The window or full-screen changed size: a pressed Fit button refits, any other zoom stays put. */
 function onViewport() {
-  if (guestMode) return;
-  if (fitMode) {
+  if (appState.guestMode) return;
+  if (appState.fitMode) {
     applyZoom(true);
     centerContent();
   } else keepView(() => {});
@@ -1299,7 +1343,7 @@ $('#scroller').addEventListener(
   e => {
     if (!(e.ctrlKey || e.metaKey)) return;
     e.preventDefault();
-    zoomTo(scale * Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY);
+    zoomTo(appState.scale * Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY);
   },
   { passive: false }
 );
@@ -1307,7 +1351,7 @@ $('#scroller').addEventListener(
 let gs0 = null;
 $('#scroller').addEventListener('gesturestart', e => {
   e.preventDefault();
-  gs0 = scale;
+  gs0 = appState.scale;
 });
 $('#scroller').addEventListener('gesturechange', e => {
   e.preventDefault();
@@ -1322,7 +1366,7 @@ $('#scroller').addEventListener(
   'touchstart',
   e => {
     if (e.touches.length === 2) {
-      pinch = { d: tdist(e.touches), s: scale };
+      pinch = { d: tdist(e.touches), s: appState.scale };
       drag = null;
       document.body.classList.remove('dragging');
     }
@@ -1399,3 +1443,5 @@ document.addEventListener(
 $('#undo').onclick = undo;
 $('#backdrop').onclick = () => closeDrawer();
 $('#save').onclick = () => savePlan();
+
+export { isPhone, keepView, renderAll, renderPlan };

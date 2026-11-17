@@ -70,7 +70,7 @@ def cant_come_is_shown_on_the_seat_and_can_be_unseated(pw, base):
     t1, i1 = seat_of(p, 'g01')
     assert p.locator('.seat[data-t="%s"][data-i="%d"] .rsvpbadge' % (t1, i1)).count() == 0
     # never in exported or printed plans
-    assert 'rsvpbadge' not in p.evaluate("planSVG().inner")
+    assert 'rsvpbadge' not in p.evaluate("window.__supra.planSVG().inner")
     # the guest's panel names the invitation and its answer
     seat.click(); p.wait_for_selector('#right .invg')
     assert 'Invitation: Beridze family' in p.inner_text('#right .invg') and "Can't come" in p.inner_text('#right .invg')
@@ -89,7 +89,7 @@ def household_allergies_reach_the_caterer(pw, base):
                    answer={'members': {'g10': {'coming': False}, 'g11': {'coming': False}}, 'allergies': 'gluten'}, state='declined',
                    answered_at='2026-11-15T10:00:00Z')])
     wait_applied(p)
-    p.evaluate("catererModal()"); p.wait_for_selector('.al')
+    p.evaluate("window.__supra.catererModal()"); p.wait_for_selector('.al')
     body = p.inner_text('body')
     assert 'Allergies from invitations' in body and 'Beridze family · peanuts (Nika)' in body
     assert 'gluten' not in body                                  # nobody from that household is coming
