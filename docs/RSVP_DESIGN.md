@@ -1,6 +1,6 @@
 # RSVP: design
 
-Status: **agreed** (2026-11-17). Building M1.
+Status: **agreed** (2026-11-17). M1 (database, `supabase/008_rsvp.sql`) is built and tested; next is M2.
 
 ## Goal
 The couple sends each invited family a personal link by WhatsApp, Viber, SMS or email. On that link the family says who is coming, plus meal choices, allergies and a message. They can change their answer as often as they like until the deadline, which defaults to 24 hours before the wedding. The couple sees live totals and every change, and the answers flow into the seating plan.
@@ -109,14 +109,14 @@ invite_log                                -- every answer and change, for "Recen
 
 **Functions:**
 - **For guests (anon):**
-  - `rsvp_get(token)` returns only that household: the couple's names, date, time, venue, deadline, the members' first names and drawings, and their current answer. Nothing about other guests, and no phone or email.
+  - `rsvp_get(token)` returns only that household: the couple's names, date, time, venue, deadline, the members' names and drawings, and their current answer. Nothing about other guests, and no phone or email.
   - `rsvp_answer(token, answer)` validates the shape: members must belong to the invitation, extras ≤ `extra_allowed`, meal from the allowed list, text lengths capped. It rejects answers after the deadline, when RSVP is closed, or when the invitation is revoked. It's rate-limited per link and per network address.
 - **For the owner (each checks `owner = auth.uid()`):** create, update and delete an invitation; rotate its link; mark one as sent; `rsvp_summary(event)`; `invite_changes(event)`.
 - **Tests:** guests see only their own household; no phone or email leaks; the deadline is enforced on the server; answers can't add members or exceed extras; other users are blocked; rate limits work.
 
 ## 4. Privacy
 - Phone numbers and emails are personal data. Only the couple can read them; they are never sent to any guest page, and they are deleted automatically 90 days after the event (plus a "Delete contact details now" button).
-- The guest page shows members' **first names** and drawings only for that household.
+- The RSVP page shows the names and drawings of that household's own members only.
 - The privacy policy (roadmap P0B) has to mention RSVP contact data before launch.
 
 ## 5. Build order (each one is a separate pull request with tests)
