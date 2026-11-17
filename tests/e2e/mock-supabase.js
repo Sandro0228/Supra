@@ -20,11 +20,17 @@ function q(table){let op='select',payload=null,filters=[],cols='*',single=false,
   function run(){const d=db();const rs=d[table]||[];const m=r=>filters.every(([k,v])=>r[k]===v);
     if(!localStorage.getItem('mocksess'))return{data:op==='select'?[]:null,error:op==='select'?null:{message:'not signed in'}};
     // mirrors migration 006: the server picks the token and new events start as private drafts (Balanced)
+    if(op==='insert'&&table==='invites'){if(cfg().invFail)return{data:null,error:{message:'network'}};
+      // mirrors migration 008: server-made token, pending state, cleaned members
+      const out=(Array.isArray(payload)?payload:[payload]).map(p=>invDerive(Object.assign({id:'inv'+Math.random().toString(36).slice(2,8),members:[],extra_allowed:0,lang:'ka',sent:[],answer:null,
+        revoked:false,phone:null,email:null,created_at:new Date().toISOString()},JSON.parse(JSON.stringify(p)),{token:newToken()})));
+      d.invites=(d.invites||[]).concat(out);put(d);window.__mockCalls.push(['insert:invites',payload]);return{data:single||maybe?out[0]:out,error:null}}
     if(op==='insert'){const r=Object.assign({id:Math.random().toString(36).slice(2),owner:'u1',data:{},public_data:{},updated_at:new Date().toISOString()},payload,
         {slug:newToken(),share_status:'draft',guest_page:false,share_expires_at:null,lookup_mode:'exact',lookup_pin_hash:null,show_tablemates:false,show_layout:false});
       rs.push(r);d[table]=rs;put(d);return{data:r,error:null}}
-    if(op==='update'){let out=null;const p=JSON.parse(JSON.stringify(payload));['slug','lookup_pin_hash','share_status','share_expires_at','guest_page'].forEach(k=>delete p[k]);
-      rs.forEach(r=>{if(m(r)){Object.assign(r,p,{updated_at:new Date().toISOString()});out=r}});put(d);window.__mockCalls.push(['update',payload]);return{data:out,error:null}}
+    if(op==='update'){if(table==='invites'&&cfg().invFail)return{data:null,error:{message:'network'}};
+      let out=null;const p=JSON.parse(JSON.stringify(payload));['slug','lookup_pin_hash','share_status','share_expires_at','guest_page','token'].forEach(k=>delete p[k]);
+      rs.forEach(r=>{if(m(r)){Object.assign(r,p,{updated_at:new Date().toISOString()});if(table==='invites')invDerive(r);out=r}});put(d);window.__mockCalls.push([table==='invites'?'update:invites':'update',payload]);return{data:out,error:null}}
     if(op==='delete'){d[table]=rs.filter(r=>!m(r));put(d);return{error:null}}
     let out=rs.filter(m);if(cols!=='*'){out=out.map(r=>{const o={};cols.split(',').forEach(c=>{const[al,src]=c.includes(':')?c.split(':'):[c,c];o[al]=get(r,src)})
       ;return o})}
@@ -56,6 +62,10 @@ function findSeat(ev,query,pin){const qn=norm(query);if(qn.replace(/ /g,'').leng
   const ms=rows.filter(hit);if(!ms.length)return{status:'none',matches:[]};if(ms.length>5)return{status:'many',matches:[]};
   return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:!!r.g.kid,table:r.ti,tableName:r.t.name,seat:d.event?.seatMode==='table'?null:r.si+1,
     mates:ev.show_tablemates?rows.filter(o=>o.ti===r.ti&&o.si!==r.si).map(o=>o.g.name):null}))}}
+function invDerive(i){const ids=[...new Set((i.members||[]).filter(Boolean))];i.members=ids;
+  if(i.answer){const m={};ids.forEach(id=>{const v=i.answer.members&&i.answer.members[id];if(v&&typeof v.coming==='boolean')m[id]=v});i.answer=Object.assign({},i.answer,{members:m,extras:(i.answer.extras||[]).slice(0,i.extra_allowed||0)})}
+  i.coming_count=i.answer?Object.values(i.answer.members).filter(v=>v.coming).length+(i.answer.extras||[]).length:0;
+  i.state=!i.answer?'pending':i.coming_count>0?'coming':'declined';return i}
 // RSVP (migration 008): one household per token; strict answers; deadline 24 h before starts_at unless set or switched off.
 const RMEALS=['','meat','fish','veg','vegan','kids'],LOOK=['kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses'];
 const strip=o=>JSON.parse(JSON.stringify(o,(k,v)=>v===null?undefined:v));
@@ -82,10 +92,14 @@ function rsvpRpc(fn,args){const d=db(),inv=(d.invites||[]).find(i=>i.token===arg
   if(cfg().rsvp==='rate')return{data:{status:'rate_limited',retry_after:3600},error:null};
   if(cfg().rsvp==='net')return{data:null,error:{message:'network'}};
   try{inv.answer=rsvpClean(inv,args.p_answer)}catch(e){return{data:null,error:e}}
-  inv.answered_at=new Date().toISOString();put(d);return{data:rsvpPayload(inv,ev),error:null}}
+  inv.answered_at=new Date().toISOString();const before=inv.state;invDerive(inv);
+  (d.invite_log=d.invite_log||[]).unshift({id:Date.now(),invite_id:inv.id,event_id:inv.event_id,at:inv.answered_at,by:'guest',state_before:before,state_after:inv.state,coming_after:inv.coming_count});
+  put(d);return{data:rsvpPayload(inv,ev),error:null}}
 window.supabase={createClient(){return{from:q,
   async rpc(fn,args){await sleep(cfg().rpcDelay||0);const evs=db().events;
     if(fn==='rsvp_get'||fn==='rsvp_answer')return rsvpRpc(fn,args);
+    if(fn==='rotate_invite_link'){const d=db(),i=(d.invites||[]).find(x=>x.id===args.p_invite);if(!i)return{data:null,error:{message:'not found',code:'42501'}};i.token=newToken();put(d);window.__mockCalls.push([fn,args]);return{data:i.token,error:null}}
+    if(fn==='clear_rsvp_contacts'){const d=db();let n=0;(d.invites||[]).forEach(i=>{if(i.event_id===args.p_event&&(i.phone||i.email)){i.phone=null;i.email=null;n++}});put(d);window.__mockCalls.push([fn,args]);return{data:n,error:null}}
     if(fn==='public_plan'){const ev=evs.find(e=>e.slug===args.p_slug&&live(e));return{data:ev?publicPlan(ev):null,error:null}}
     if(fn==='find_seat'){if(norm(args.p_query).replace(/ /g,'').length<3)return{data:{status:'short',matches:[]},error:null};
       const ev=evs.find(e=>e.slug===args.p_slug&&live(e));if(!ev)return{data:{status:'unavailable',matches:[]},error:null};

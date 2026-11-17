@@ -7,7 +7,7 @@ async function savePlan(){
   if(savingNow){saveAgain=true;return}
   savingNow=true;saveState='saving';renderTop();
   const snapshot=JSON.stringify(S);
-  try{const{data,error}=await SB.from('events').update({data:S,name:S.event.name||'',event_date:S.event.date||null,type:S.event.type}).eq('id',ROW.id).select('updated_at').single();
+  try{const{data,error}=await SB.from('events').update({data:S,name:S.event.name||'',event_date:S.event.date||null,type:S.event.type,...eventCols()}).eq('id',ROW.id).select('updated_at').single();
     if(error)throw error;ROW.updated_at=data.updated_at;
     if(JSON.stringify(S)===snapshot){dirty=false;clearDraft()}saveState='idle'}
   catch(err){saveState='error';logSafe('save',err);toast(t('couldntSave'))}

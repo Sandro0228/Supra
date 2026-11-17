@@ -143,6 +143,7 @@ function act(a){
 document.addEventListener('click',e=>{
   if(guestMode)return MODE==='rsvp'?rsvpClick(e):guestClick(e);
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(invClick(b))return;
   if(d.act)return act(d.act);
   if(d.panel){const k=d.panel;if(!drawerOpen)drawerOpener='#tab-'+k;panel=(panel===k&&!sel.kind)?null:k;sel={kind:null};confirmK=null;renderAll();return}
   if(d.lang){if(d.lang!==UL()){setLang(d.lang);renderAll()}return}
@@ -171,12 +172,17 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(guestMode){if(MODE==='rsvp')return rsvpInput(e);if(e.target.id==='gq'&&GERR)setGuestErr('');return}
+  if(invInput(e))return;
   const id=e.target.id;
   if(id==='find'){FINDQ=e.target.value;return doFind()}
   const live={'ev-name':v=>S.event.name=v,'g-name':v=>{curGuest().name=v},'g-group':v=>curGuest().group=v,'g-allergies':v=>curGuest().allergies=v,'t-name':v=>T(sel.t).name=v,'v-label':v=>V(sel.v).label=v};
   if(live[id]){if(!e.target.dataset.h){hist.push(JSON.stringify(S));e.target.dataset.h=1}live[id](e.target.value);markDirty();renderPlan()}
 });
 document.addEventListener('change',e=>{if(guestMode){if(MODE==='rsvp')rsvpInput(e);return}const id=e.target.id;
+  if(invInput(e)||invSettingChange(e))return;
+  if(id==='ev-time'){commit(()=>S.event.time=e.target.value);return}
+  if(id==='ev-venue'){commit(()=>S.event.venue=e.target.value.trim());return}
+  if(id==='ev-map'){const v=e.target.value.trim();commit(()=>S.event.mapUrl=v);$('#ev-map')?.focus();return}
   if(id==='ev-type')commit(()=>S.event.type=e.target.value);
   if(id==='ev-date')commit(()=>S.event.date=e.target.value);
   if(id==='g-meal')commit(()=>curGuest().meal=e.target.value);

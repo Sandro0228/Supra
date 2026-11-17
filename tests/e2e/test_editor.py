@@ -15,7 +15,7 @@ def active(p):
 def panels_are_tabs_with_arrow_keys(pw, base):
     c, p = editor(pw, base)
     assert p.get_attribute('#nav', 'role') == 'tablist'
-    assert p.locator('#nav [role=tab]').count() == 3
+    assert p.locator('#nav [role=tab]').count() == 4
     p.focus('#tab-event'); p.keyboard.press('ArrowRight'); assert active(p) == 'tab-guests'
     p.keyboard.press('End'); assert active(p) == 'tab-share'
     p.keyboard.press('ArrowRight'); assert active(p) == 'tab-event'

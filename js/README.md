@@ -13,6 +13,7 @@ The planner, the public "find my seat" page and the RSVP page are one program sp
 | `files.js` | Saving (`savePlan`), downloads (PNG, PDF, place cards, caterer list, CSV), the modal |
 | `guest.js` | Public "find my seat" page (`/e/<token>`) |
 | `rsvp.js` | Household RSVP page (`/r/<token>`) |
+| `invites.js` | Invitations tab: households, contacts, send links, answers, recent changes, RSVP settings; `eventCols()` (start time, venue, deadline columns saved with the plan) |
 | `boot.js` | Startup: picks the page (planner, guest page or RSVP) and loads its data |
 
 ## How the files share code

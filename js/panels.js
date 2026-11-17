@@ -25,7 +25,7 @@ function renderTop(){
   const nb=S.rules.filter(ruleBroken).length;
   $('#evname').textContent=S.event.name||'Supra';if(!guestMode)document.title=t('editTitle',{event:S.event.name||'Supra'});
   $('#stats').innerHTML=`<span>${esc(t('statSeats',{occupied:seated,capacity:cap}))}${S.waiting.length?` · ${esc(tn('nUnseated',S.waiting.length))}`:''}</span>${sides.bride||sides.groom?`<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>`:''}${nb?`<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>`:''}`;
-  const cur=!sel.kind&&panel,tabs=[['event','event'],['guests','tabGuests'],['share','tabShare']];
+  const cur=!sel.kind&&panel,tabs=[['event','event'],['guests','tabGuests'],['invites','tabInvites'],['share','tabShare']];
   $('#nav').setAttribute('aria-label',t('panels'));
   $('#nav').innerHTML=tabs.map(([k,l],i)=>`<button type="button" role="tab" id="tab-${k}" data-panel="${k}" aria-selected="${cur===k}" aria-controls="left" tabindex="${(cur?cur===k:i===0)?0:-1}">${ICON[k]}<span>${esc(t(l))}</span></button>`).join('');
   $('#lang').setAttribute('aria-label',t('language'));
@@ -66,6 +66,9 @@ function renderLeft(){
     <label class="field"><span class="lbl">${t('eventName')}</span><input id="ev-name" class="inp" value="${esc(e.name)}"></label>
     <div class="row2"><div class="field"><span class="lbl">${t('eventType')}</span>${EVENT_TYPES.filter(([,on])=>on).length>1?`<select id="ev-type" aria-label="${esc(t('eventType'))}">${EVENT_TYPES.filter(([,on])=>on).map(([k])=>`<option value="${k}" ${e.type===k?'selected':''}>${t(k)}</option>`).join('')}</select>`:`<p class="static">${esc(t(e.type||'wedding'))}</p>`}</div>
     <label class="field"><span class="lbl">${t('date')}</span><input id="ev-date" class="inp" type="date" value="${esc(e.date)}" aria-describedby="ev-date-txt"><span class="muted small" id="ev-date-txt">${esc(fmtDate(e.date))}</span></label></div>
+    <div class="row2 top"><label class="field"><span class="lbl">${t('evTime')}</span><input id="ev-time" class="inp" type="time" value="${esc(e.time||'')}" aria-describedby="ev-time-h"><span class="muted small" id="ev-time-h">${t('evTimeHint')}</span></label>
+      <label class="field"><span class="lbl">${t('evVenue')}</span><input id="ev-venue" class="inp" maxlength="200" value="${esc(e.venue||'')}" placeholder="${esc(t('evVenuePh'))}"></label></div>
+    <label class="field"><span class="lbl">${t('evMap')}</span><input id="ev-map" class="inp" type="url" inputmode="url" maxlength="500" value="${esc(e.mapUrl||'')}" placeholder="https://maps.app.goo.gl/…" aria-describedby="ev-map-h"${okMapUrl(e.mapUrl)?'':' aria-invalid="true"'}><span class="muted small${okMapUrl(e.mapUrl)?'':' err'}" id="ev-map-h">${okMapUrl(e.mapUrl)?t('evMapHint'):t('evMapBad')}</span></label>
     <p class="muted small">${t('soonLine')} ${EVENT_TYPES.filter(([,on])=>!on).map(([k])=>t(k)).join(', ')}.</p>
     <div class="field"><span class="lbl">${t('arrTitle')}</span><p class="muted small">${t('arrHint')}</p><div class="row"><button type="button" class="btn" data-act="arr-open">${t('arrOpen')}</button></div></div>
     <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal',Object.keys(PALETTES),e.palette,k=>t('pal_'+k),t('style'))}</div>
@@ -94,6 +97,7 @@ function renderLeft(){
     ${det('tools',t('tools'),`<div class="row"><button type="button" class="btn sm" data-act="matchlooks">${t('matchBtn')}</button><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
       ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
       ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}`)}`}
+  else if(panel==='invites'){h=invPanel();if(INV.list===null&&!INV.busy&&!INV.err)setTimeout(invLoad)}
   else{const sh=shareInfo(),u=guestUrl(),pre=presetOf(sh),st=sh.status,pv=`/edit/${encodeURIComponent(ROW?.id||'')}?preview=1`;
     const btn=(act,label,cls='')=>`<button type="button" class="btn ${cls}" data-act="${act}">${label}</button>`;
     const conf=(k,text,yes,cls='primary')=>confirmK===k?`<div class="confirm ${cls==='danger'?'danger':''}" role="group" aria-label="${esc(text)}"><span>${text}</span><div class="row">${btn(k+'-yes',yes,'sm '+cls)}${btn('cancel',t('keepIt'),'sm')}</div></div>`:'';
@@ -263,7 +267,7 @@ let drawerOpen=false,drawerOpener=null;
 function renderDrawer(){const open=!!sel.kind||!!panel,d=$('#drawer'),modal=open&&isPhone(),was=drawerOpen;
   keepView(()=>{d.hidden=!open});drawerOpen=open;
   $('#left').hidden=!!sel.kind||!panel;$('#right').hidden=!sel.kind;
-  const L=$('#left');if(panel&&!sel.kind&&['event','guests','share'].includes(panel)){L.setAttribute('role','tabpanel');L.setAttribute('aria-labelledby','tab-'+panel)}else{L.removeAttribute('role');L.removeAttribute('aria-labelledby')}
+  const L=$('#left');if(panel&&!sel.kind&&['event','guests','invites','share'].includes(panel)){L.setAttribute('role','tabpanel');L.setAttribute('aria-labelledby','tab-'+panel)}else{L.removeAttribute('role');L.removeAttribute('aria-labelledby')}
   if(modal){d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','dtitle')}
   else{d.removeAttribute('aria-modal');d.setAttribute('role','complementary');d.setAttribute('aria-label',t('details'));d.removeAttribute('aria-labelledby')}
   $('#backdrop').hidden=!modal;
