@@ -2,3 +2,7 @@ tests/
 supabase/
 docs/
 README.md
+tools/
+.prettierrc.json
+.prettierignore
+CLAUDE.md
