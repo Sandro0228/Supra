@@ -28,7 +28,7 @@ Couples sign in, draw their hall, seat guests (each guest is an illustrated char
 
 ## Rules
 - Every user-visible string goes through `t()` and gets **both** `en` and `ka` entries with the same `{placeholders}` (test `every_key_translated_with_same_placeholders`). Write natural Georgian.
-- Keep the existing compact code style in `js/*.js` unless we are deliberately refactoring.
+- Code is formatted with Prettier 3.3.3 (`.prettierrc.json`: 120 columns, single quotes, quoted keys kept). Before committing JavaScript: `npx prettier@3.3.3 --write js/*.js dash.js i18n.js names.js brand.js config.js tests/e2e/mock-supabase.js`. `assets.js` is never formatted.
 - Database changes: new numbered migration file (`007_…sql`), additive (`if not exists`, `create or replace`), with rollback notes and SQL tests in `tests/sql/`. Owner functions must check `owner = auth.uid()`.
 - Accessibility is tested: buttons need `type` and an accessible name, panels are tabs with arrow keys, and phone sheets are modal.
 - Never touch the live Supabase project from tests or scripts. Use the mock or a separate dev project.
