@@ -65,6 +65,13 @@ Each stage is one reviewable commit (or a few), tests included.
 8. **P1D** — explicit save states, version history + restore points, optimistic concurrency (`updated_at` precondition + merge prompt).
 9. **P2** — WCAG 2.2 AA pass, non-colour category labels, mobile organiser priorities, full device/AT matrix.
 
+## 4b. Deferred code work (agreed 2026-11-17, do when no feature is in progress)
+Do these between features, not during one, because each touches almost every line:
+1. **ES modules.** Turn `js/*.js` (plain scripts sharing one scope) into real modules with explicit `import`/`export`, so each file declares what it uses. Shared mutable state (`S`, `sel`, `MODE`, …) moves into one state object.
+2. **Readable formatting.** Reformat the dense one-line code (e.g. with Prettier) so diffs and reviews are easier. Do it in its own commit with no other change.
+3. **Lighter guest pages.** `assets.js` (1.1 MB of embedded images) loads on the guest and RSVP pages too. Serve the images as separate cached files and load only what a page needs (risk R9-adjacent; matters for guests on phones at the venue).
+Good moments: after RSVP M4, or before the launch work (pricing, payments).
+
 ## 5. Test matrix (P0A)
 
 | Scenario | SQL | E2E |

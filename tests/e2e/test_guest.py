@@ -223,3 +223,30 @@ def result_card_shows_the_guests_character(pw, base):
     assert p.get_attribute('#gcard .gchar svg', 'aria-label') == 'Drawing of მარიამ ჯაფარიძე'
     assert p.locator('#gcard .gchar use').count() > 3
     c.close()
+
+@test
+def latin_letters_find_georgian_names(pw, base):
+    """Guests who type their Georgian name in Latin letters (or a foreign guest) still find their seat."""
+    ev = dict(id='ev1', owner='u1', name='x', slug='guestcode1', guest_page=True, data=PLAN, public_data={},
+              lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')
+    c = Ctx(pw, base, session=False, events=[ev])
+    p = c.goto('/e/guestcode1', wait='#gq')
+    for q, name in [('Nino', 'ნინო კაპანაძე'), ('Ketevan', 'ქეთევან ლორთქიფანიძე'), ('Qetevan', 'ქეთევან ლორთქიფანიძე'),
+                    ('Chkheidze', 'მარიამ ჩხეიძე'), ('Machavariani', 'ზურაბ მაჭავარიანი')]:
+        search(p, q)
+        card = p.inner_text('#gcard')
+        assert name in card, (q, card)
+        assert 'SECRET' not in page_dump(p)
+    c.close()
+
+@test
+def exact_mode_accepts_full_name_in_latin(pw, base):
+    ev = dict(id='ev1', owner='u1', name='x', slug='guestcode1', guest_page=True, data=PLAN, public_data={},
+              lookup_mode='exact', lookup_pin_hash=None, show_tablemates=False, updated_at='seed')
+    c = Ctx(pw, base, session=False, events=[ev])
+    p = c.goto('/e/guestcode1', wait='#gq')
+    search(p, 'Luka')
+    assert p.locator('#gcard').count() == 0 or 'ლუკა' not in p.inner_text('#gcard')
+    search(p, 'Luka Janashia')
+    assert 'ლუკა ჯანაშია' in p.inner_text('#gcard')
+    c.close()

@@ -8,6 +8,10 @@
     {
       "source": "/e/:slug",
       "destination": "/app"
+    },
+    {
+      "source": "/r/:token",
+      "destination": "/app"
     }
   ],
   "headers": [

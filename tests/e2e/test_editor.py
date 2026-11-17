@@ -15,7 +15,7 @@ def active(p):
 def panels_are_tabs_with_arrow_keys(pw, base):
     c, p = editor(pw, base)
     assert p.get_attribute('#nav', 'role') == 'tablist'
-    assert p.locator('#nav [role=tab]').count() == 3
+    assert p.locator('#nav [role=tab]').count() == 4
     p.focus('#tab-event'); p.keyboard.press('ArrowRight'); assert active(p) == 'tab-guests'
     p.keyboard.press('End'); assert active(p) == 'tab-share'
     p.keyboard.press('ArrowRight'); assert active(p) == 'tab-event'
@@ -155,4 +155,16 @@ def editor_dark_reduced_motion_and_200_percent(pw, base):
     assert p.evaluate("getComputedStyle(document.body).backgroundColor") != 'rgb(238, 240, 234)'
     p.click('#tab-share'); p.wait_for_selector('#privacy-controls')
     w = p.evaluate('document.documentElement.scrollWidth'); assert w <= 720, w
+    c.close()
+
+@test
+def organiser_search_matches_latin_and_georgian(pw, base):
+    c, p = editor(pw, base)
+    p.click('#tab-guests')
+    p.fill('#find', 'khutsishvili'); p.wait_for_timeout(200)
+    assert 'ანა ხუციშვილი' in p.inner_text('#findres')
+    p.fill('#find', 'tsereteli'); p.wait_for_timeout(200)
+    assert 'ირაკლი წერეთელი' in p.inner_text('#findres')
+    p.fill('#find', 'მარ'); p.wait_for_timeout(200)
+    assert p.inner_text('#findres').count('მარიამ') == 4
     c.close()
