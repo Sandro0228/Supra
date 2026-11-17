@@ -8,7 +8,7 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 | File | What it is |
 |---|---|
 | `index.html`, `dash.js` | Landing page, sign-in, and "My events" |
-| `app.html`, `app.js` | The planner (`/edit/<id>`) and the public guest page (`/e/<code>`) |
+| `app.html`, `js/*.js` | The planner (`/edit/<id>`), the public guest page (`/e/<code>`) and the RSVP page (`/r/<token>`). See `js/README.md` |
 | `assets.js` | All illustrations, embedded |
 | `brand/`, `brand.js`, `brand.css` | Supra logo (light and dark-surface versions), emblem, favicon PNGs; the shared logo helper and theme switching |
 | `favicon.svg`, `favicon.ico` | Browser icon (emblem on warm ivory) |

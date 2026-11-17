@@ -383,6 +383,16 @@ textarea.ginput{min-height:64px;resize:vertical;line-height:1.45}
 <script src="/names.js"></script>
 <script src="/i18n.js"></script>
 <script src="/brand.js"></script>
-<script src="/app.js"></script>
+<!-- The planner, in load order (they share one scope; see js/README.md) -->
+<script src="/js/core.js"></script>
+<script src="/js/state.js"></script>
+<script src="/js/layout.js"></script>
+<script src="/js/draw.js"></script>
+<script src="/js/panels.js"></script>
+<script src="/js/actions.js"></script>
+<script src="/js/files.js"></script>
+<script src="/js/guest.js"></script>
+<script src="/js/rsvp.js"></script>
+<script src="/js/boot.js"></script>
 </body>
 </html>
