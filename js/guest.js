@@ -1,4 +1,4 @@
-import { $, UL, appState, esc, guessKind, randLook, seatMode, setLang, t } from './core.js';
+import { $, appState, esc, guessKind, loadImages, randLook, seatMode, setLang, t, UL } from './core.js';
 import { T, tName } from './state.js';
 import { dims, turnView, withView } from './layout.js';
 import { planSVG } from './draw.js';
@@ -270,6 +270,7 @@ async function guestSearch() {
     logSafe('lookup', e);
     r = { status: 'error', matches: [] };
   }
+  if (r.status === 'ok' && (r.matches || []).length) await loadImages(); // usually done long before
   if (my !== gseq) return; // a newer search is on its way
   if (r.status === 'ok' && !(r.matches || []).length) r.status = 'none';
   GS = {

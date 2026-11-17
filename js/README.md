@@ -5,7 +5,7 @@ The planner, the public "find my seat" page and the RSVP page are one program ma
 | File | What it holds |
 |---|---|
 | `main.js` | Entry point: imports every module, exposes `window.__supra` for tests, calls `boot()` |
-| `core.js` | Shared helpers (`$`, `esc`, `uid`), text (`t`, `tn`, `UL`), name matching (`skel`), choices (`OPT`, meals, palettes), the character drawing, and **`appState`** |
+| `core.js` | Shared helpers (`$`, `esc`, `uid`), text (`t`, `tn`, `UL`), name matching (`skel`), choices (`OPT`, meals, palettes), the character drawing, drawings loading (`loadImages`, `lookImages`), and **`appState`** |
 | `state.js` | Plan helpers: `mkGuest`, `normalize`, `markDirty`, `commit`, `undo`, drafts, toasts |
 | `layout.js` | Table geometry, "Arrange tables", view rotation, seating rules |
 | `draw.js` | Drawing the plan as SVG (`planSVG`) |

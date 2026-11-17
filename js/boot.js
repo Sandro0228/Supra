@@ -1,7 +1,7 @@
-import { $, L10N, UL, appState, esc, imageDefs, randLook, t, uid } from './core.js';
+import { $, appState, esc, imageDefs, L10N, loadImages, lookImages, randLook, t, uid, UL } from './core.js';
 import { CFG, normalize } from './state.js';
 import { autoArrange, resolveOverlaps } from './layout.js';
-import { hintSeen, logSafe, shareInfo } from './panels.js';
+import { hintSeen, logSafe, portraitLook, shareInfo } from './panels.js';
 import { renderPlan } from './actions.js';
 import { savePlan } from './files.js';
 import { route } from './guest.js';
@@ -139,6 +139,8 @@ async function boot() {
     }
     appState.R = r;
     appState.RD = rsvpDraftFrom(appState.R.invite.answer);
+    // only this household's drawings
+    await loadImages(r.invite.members.flatMap(m => lookImages(portraitLook(m))));
     appState.S = {
       event: {
         name: r.event.name || '',
@@ -157,6 +159,8 @@ async function boot() {
     window.__supraState = () => ({ R: appState.R, RD: appState.RD });
     return;
   }
+  // The planner and the guest page draw everything; start loading now, alongside the data.
+  const allImages = loadImages();
   if (slug) {
     appState.MODE = 'guest';
     appState.SLUG = slug;
@@ -214,6 +218,8 @@ async function boot() {
     }
   }
   appState.hintOpen = !hintSeen();
+  // The guest page shows its search box at once; results wait for the drawings (guestSearch). The planner waits here.
+  if (appState.MODE === 'edit') await allImages;
   if (appState.S.tables.some(x => x.x === undefined)) autoArrange();
   resolveOverlaps();
   route();

@@ -598,16 +598,16 @@ const lch = (key, list, val, map) =>
   );
 /* The guest's own character, for the guest page: their drawing on a little place-card-style frame. */
 let PCLIP = 0;
+/* The look a portrait shows: the guest's own drawing, or a steady stand-in made from the name. */
+function portraitLook(m) {
+  return m.look && m.look.kind
+    ? Object.assign(randLook(m.look.kind, rng(m.name || 'x')), m.look)
+    : randLook(guessKind(m.name), rng(m.name || 'x'));
+}
 function portrait(m, size, label) {
   const p = P(),
     cid = 'gpc' + ++PCLIP,
-    G = {
-      look:
-        m.look && m.look.kind
-          ? Object.assign(randLook(m.look.kind, rng(m.name || 'x')), m.look)
-          : randLook(guessKind(m.name), rng(m.name || 'x')),
-      kid: !!m.kid
-    };
+    G = { look: portraitLook(m), kid: !!m.kid };
   return `<svg class="gportrait" viewBox="-40 -54 80 80" width="${size}" height="${size}" ${label ? `role="img" aria-label="${esc(label)}"` : 'aria-hidden="true" focusable="false"'}>
     <circle cx="0" cy="-14" r="38" fill="${p.floor}" stroke="${p.accent}" stroke-width="1.2"/><circle cx="0" cy="-14" r="34" fill="none" stroke="${p.accent}" stroke-width=".6" stroke-dasharray="2 2.5" opacity=".7"/>
     <clipPath id="${cid}"><circle cx="0" cy="-14" r="38"/></clipPath><g clip-path="url(#${cid})"><g transform="translate(0 ${G.kid ? 2 : -2})">${person(G, p, false)}</g></g></svg>`;
@@ -810,6 +810,7 @@ const focusKeyOf = el => {
 };
 
 export {
+  portraitLook,
   ICON,
   OPEN,
   PDFLIB,
