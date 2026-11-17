@@ -3,6 +3,11 @@
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
+/* Name matching across scripts (same as supra_skel in migration 007): "Khatia", "Xatia" and "ხატია" all become "xatia". */
+const GEO='აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ',LAT='abgdevztiklmnopjrstupkgkscczccxjh';
+function skel(x){let r=[...String(x||'').normalize('NFC').toLowerCase().replace(/\s+/g,' ').trim()].map(c=>{const i=GEO.indexOf(c);return i<0?c:LAT[i]}).join('').replace(/['`’ʼ]/g,'').replace(/[qwy]/g,c=>({q:'k',w:'v',y:'i'})[c]);
+  for(const[a,b]of[['kh','x'],['gh','g'],['sh','s'],['ch','c'],['zh','j'],['tz','c'],['ts','c'],['dz','z'],['ph','p'],['th','t']])r=r.split(a).join(b);
+  return r.replace(/h/g,'').replace(/(.)\1+/g,'$1')}
 const IMG=window.SUPRA_IMG||{};
 const L10N=window.SUPRA_I18N;
 /* Interface language: the visitor's own choice (shared by dashboard, planner and guest page), else the event's, else the browser's. */
@@ -511,8 +516,9 @@ function renderLeft(){
   if(panel==='share')drawQR();
 }
 function doFind(){const q=($('#find')?.value||'').trim().toLowerCase(),box=$('#findres');if(!box)return;if(!q){box.innerHTML='';return}
-  const res=[];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const G=id&&S.guests[id];if(G&&(G.name.toLowerCase().includes(q)||G.group.toLowerCase().includes(q)))res.push(`<button type="button" data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i+1}</small></button>`)}));
-  S.waiting.forEach(id=>{const G=S.guests[id];if(G&&G.name.toLowerCase().includes(q))res.push(`<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`)});
+  const qk=skel(q),has=v=>{v=String(v||'');return v.toLowerCase().includes(q)||qk.length>=2&&skel(v).includes(qk)};
+  const res=[];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const G=id&&S.guests[id];if(G&&(has(G.name)||has(G.group)))res.push(`<button type="button" data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i+1}</small></button>`)}));
+  S.waiting.forEach(id=>{const G=S.guests[id];if(G&&has(G.name))res.push(`<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`)});
   box.innerHTML=res.join('')||`<span class="muted">${t('noOne')}</span>`}
 function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector(`script[src="${src}"]`)&&window.__loaded?.[src])return ok();const s=document.createElement('script');s.src=src;s.onload=()=>{(window.__loaded=window.__loaded||{})[src]=1;ok()};s.onerror=no;document.head.appendChild(s)})}
 const QRLIB='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',XLSXLIB='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',PDFLIB='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';

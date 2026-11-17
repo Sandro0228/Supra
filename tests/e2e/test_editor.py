@@ -156,3 +156,15 @@ def editor_dark_reduced_motion_and_200_percent(pw, base):
     p.click('#tab-share'); p.wait_for_selector('#privacy-controls')
     w = p.evaluate('document.documentElement.scrollWidth'); assert w <= 720, w
     c.close()
+
+@test
+def organiser_search_matches_latin_and_georgian(pw, base):
+    c, p = editor(pw, base)
+    p.click('#tab-guests')
+    p.fill('#find', 'khutsishvili'); p.wait_for_timeout(200)
+    assert 'ანა ხუციშვილი' in p.inner_text('#findres')
+    p.fill('#find', 'tsereteli'); p.wait_for_timeout(200)
+    assert 'ირაკლი წერეთელი' in p.inner_text('#findres')
+    p.fill('#find', 'მარ'); p.wait_for_timeout(200)
+    assert p.inner_text('#findres').count('მარიამ') == 4
+    c.close()
