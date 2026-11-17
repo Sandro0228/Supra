@@ -1,6 +1,6 @@
 # RSVP: design
 
-Status: **draft for review** (2026-11-17). Nothing here is built yet.
+Status: **agreed** (2026-11-17). Building M1.
 
 ## Goal
 The couple sends each invited family a personal link by WhatsApp, Viber, SMS or email. On that link the family says who is coming, plus meal choices, allergies and a message. They can change their answer as often as they like until the deadline, which defaults to 24 hours before the wedding. The couple sees live totals and every change, and the answers flow into the seating plan.
@@ -131,8 +131,8 @@ invite_log                                -- every answer and change, for "Recen
 
 At about 2 h/day this is roughly 3 weeks. M1–M4 work with no paid services and no domain.
 
-## Open questions for Sandro
-1. Should the couple be able to move the deadline (default 24 h before) or switch it off? **Proposed: yes.**
-2. Extra unnamed people ("+1"): allowed per invitation, set by the couple? **Proposed: yes, 0 by default.**
-3. Guests who say "can't come": flag them only, or remove them from their seats automatically? **Proposed: flag, with a one-click "move to waiting list".**
-4. Email domain for M5: buy something like `supra.ge`? It's needed before automatic emails.
+## Decided on 2026-11-17
+1. The deadline defaults to 24 h before the start; the couple can move it or switch it off.
+2. Extra unnamed people: set per invitation (0–5, 0 by default); the family types their names and they go to the waiting list.
+3. "Can't come" guests are flagged on their seat; one button moves them all to the waiting list.
+4. Email domain: decided before M5. M1–M4 do not need one.
