@@ -1,4 +1,9 @@
-'use strict';
+import { $, L10N, appState, esc, skel, t, tn } from './core.js';
+import { commit, mkGuest, toast } from './state.js';
+import { det, dhead, focusKeyOf, logSafe, radios, renderLeft, renderRight } from './panels.js';
+import { renderPlan } from './actions.js';
+import { fmtDate } from './guest.js';
+import { fmtWhen } from './rsvp.js';
 /* Invitations tab (RSVP M3): households, contacts, sending links, answers, recent changes and RSVP settings.
    Invitations live in their own table (public.invites, migration 008), not in the plan, so they are saved
    right away and are not part of undo. Part of the planner (app.html); see js/README.md. */
@@ -16,8 +21,6 @@ let INV = {
   plan: null
 };
 const INV_GROUP_MAX = 12; // a guest group bigger than this is not a household: one invitation per person
-ICON.invites =
-  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
 
 /* ---------- event columns saved with the plan (starts_at, venue, RSVP settings) ---------- */
 // Tbilisi is UTC+4 all year (no daylight saving), so local wedding times convert without a time-zone library.
@@ -33,7 +36,7 @@ function rsvpOf(e) {
   };
 }
 function eventCols() {
-  const e = S.event,
+  const e = appState.S.event,
     r = rsvpOf(e);
   return {
     starts_at: tbIso(e.date, e.time),
@@ -52,13 +55,17 @@ function invDeadline() {
 
 /* ---------- loading and saving ---------- */
 async function invLoad() {
-  if (!SB || !ROW || INV.busy) return;
+  if (!appState.SB || !appState.ROW || INV.busy) return;
   INV.busy = true;
   INV.err = '';
   try {
     const [a, b] = await Promise.all([
-      SB.from('invites').select('*').eq('event_id', ROW.id).order('created_at'),
-      SB.from('invite_log').select('*').eq('event_id', ROW.id).order('at', { ascending: false }).limit(30)
+      appState.SB.from('invites').select('*').eq('event_id', appState.ROW.id).order('created_at'),
+      appState.SB.from('invite_log')
+        .select('*')
+        .eq('event_id', appState.ROW.id)
+        .order('at', { ascending: false })
+        .limit(30)
     ]);
     if (a.error) throw a.error;
     if (b.error) throw b.error;
@@ -73,7 +80,7 @@ async function invLoad() {
   invRender();
 }
 function invRender(focus) {
-  if (panel !== 'invites' || sel.kind) return;
+  if (appState.panel !== 'invites' || appState.sel.kind) return;
   const fk = focus || focusKeyOf(document.activeElement);
   renderLeft();
   const el = fk && document.querySelector(fk);
@@ -90,7 +97,7 @@ function invPut(row) {
 /* ---------- message and send links ---------- */
 const invLink = i => `${location.origin}/r/${i.token}`;
 function invMessage(i) {
-  const e = S.event,
+  const e = appState.S.event,
     lang = i.lang === 'en' ? 'en' : 'ka',
     own = (rsvpOf(e).msg[lang] || '').trim();
   const tpl = own || (L10N[lang] || L10N.en).invMsgDefault,
@@ -107,12 +114,12 @@ function invMessage(i) {
 }
 // Dates in the invitation's own language, whatever language the couple is using.
 function withLang(lang, fn) {
-  const keep = LANG;
-  LANG = lang;
+  const keep = appState.LANG;
+  appState.LANG = lang;
   try {
     return fn();
   } finally {
-    LANG = keep;
+    appState.LANG = keep;
   }
 }
 const fmtDateIn = (d, lang) => withLang(lang, () => fmtDate(d)),
@@ -131,7 +138,7 @@ function sendHref(i, via) {
   if (via === 'wa') return `https://wa.me/${ph}?text=${m}`;
   if (via === 'viber') return `viber://forward?text=${m}`;
   if (via === 'sms') return `sms:${ph ? '+' + ph : ''}?&body=${m}`;
-  return `mailto:${encodeURIComponent(i.email || '')}?subject=${encodeURIComponent((L10N[i.lang === 'en' ? 'en' : 'ka'] || L10N.en).invMailSubject.split('{event}').join(S.event.name || ''))}&body=${m}`;
+  return `mailto:${encodeURIComponent(i.email || '')}?subject=${encodeURIComponent((L10N[i.lang === 'en' ? 'en' : 'ka'] || L10N.en).invMailSubject.split('{event}').join(appState.S.event.name || ''))}&body=${m}`;
 }
 async function invMarkSent(id, via) {
   const i = invById(id);
@@ -139,7 +146,7 @@ async function invMarkSent(id, via) {
   const sent = [...(i.sent || []), { via, at: new Date().toISOString() }].slice(-10);
   i.sent = sent;
   invRender();
-  const { data, error } = await SB.from('invites').update({ sent }).eq('id', id).select().single();
+  const { data, error } = await appState.SB.from('invites').update({ sent }).eq('id', id).select().single();
   if (error) {
     logSafe('invsent', error);
     return;
@@ -150,7 +157,7 @@ async function invMarkSent(id, via) {
 /* ---------- invitations from guest groups ---------- */
 function invUncovered() {
   const has = new Set((INV.list || []).filter(i => !i.revoked).flatMap(i => i.members || []));
-  return Object.values(S.guests).filter(g => g && !g.anon && g.name && !has.has(g.id));
+  return Object.values(appState.S.guests).filter(g => g && !g.anon && g.name && !has.has(g.id));
 }
 function invGroupPlan() {
   const by = new Map(),
@@ -170,9 +177,9 @@ function invGroupPlan() {
   return out.sort((a, b) => b.members.length - a.members.length || a.name.localeCompare(b.name));
 }
 async function invCreate(rows) {
-  const lang = S.event.lang === 'en' ? 'en' : 'ka';
-  const { data, error } = await SB.from('invites')
-    .insert(rows.map(r => ({ event_id: ROW.id, lang, ...r })))
+  const lang = appState.S.event.lang === 'en' ? 'en' : 'ka';
+  const { data, error } = await appState.SB.from('invites')
+    .insert(rows.map(r => ({ event_id: appState.ROW.id, lang, ...r })))
     .select();
   if (error) {
     logSafe('invcreate', error);
@@ -184,7 +191,7 @@ async function invCreate(rows) {
 }
 
 /* ---------- the panel ---------- */
-const invMembers = i => (i.members || []).map(id => S.guests[id]?.name).filter(Boolean);
+const invMembers = i => (i.members || []).map(id => appState.S.guests[id]?.name).filter(Boolean);
 function invTotals() {
   const L = (INV.list || []).filter(i => !i.revoked);
   return {
@@ -238,7 +245,7 @@ function invForm() {
   (INV.list || []).forEach(i => {
     if (i.id !== f.id && !i.revoked) (i.members || []).forEach(m => other.set(m, i.name));
   });
-  const gs = Object.values(S.guests)
+  const gs = Object.values(appState.S.guests)
     .filter(g => g && !g.anon && g.name)
     .sort((a, b) => own.has(b.id) - own.has(a.id) || a.name.localeCompare(b.name));
   const shown = gs
@@ -273,7 +280,7 @@ function invForm() {
 function invPanel() {
   const L = INV.list,
     tt = invTotals(),
-    e = S.event,
+    e = appState.S.event,
     r = rsvpOf(e);
   let h = dhead(t('tabInvites'), L ? esc(tn('invPeopleComing', tt.people)) : '');
   if (INV.err)
@@ -302,7 +309,7 @@ function invPanel() {
   else {
     const n = invGroupPlan().length;
     h += `<div class="row">${n ? `<button type="button" class="btn primary" data-inv="groups">${esc(tn('invFromGroups', n))}</button>` : ''}<button type="button" class="btn" data-inv="new">${t('invNewBtn')}</button></div>
-      ${n ? '' : `<p class="small muted">${Object.keys(S.guests).length ? t('invAllCovered') : t('invNoGuestsYet')}</p>`}`;
+      ${n ? '' : `<p class="small muted">${Object.keys(appState.S.guests).length ? t('invAllCovered') : t('invNoGuestsYet')}</p>`}`;
   }
   if (L.length) {
     const q = skel(INV.q),
@@ -377,7 +384,7 @@ function invOpenForm(i) {
         extra: 0,
         phone: '',
         email: '',
-        lang: S.event.lang === 'en' ? 'en' : 'ka',
+        lang: appState.S.event.lang === 'en' ? 'en' : 'ka',
         revoked: false
       };
 }
@@ -394,7 +401,7 @@ async function invSaveForm() {
     name: (
       f.name.trim() ||
       f.members
-        .map(id => S.guests[id]?.name)
+        .map(id => appState.S.guests[id]?.name)
         .filter(Boolean)
         .join(', ')
     ).slice(0, 120),
@@ -405,8 +412,8 @@ async function invSaveForm() {
     lang: f.lang
   };
   const q = f.id
-    ? SB.from('invites').update(row).eq('id', f.id)
-    : SB.from('invites').insert({ event_id: ROW.id, ...row });
+    ? appState.SB.from('invites').update(row).eq('id', f.id)
+    : appState.SB.from('invites').insert({ event_id: appState.ROW.id, ...row });
   const { data, error } = await q.select().single();
   if (error) {
     logSafe('invsave', error);
@@ -482,7 +489,7 @@ async function invAct(k, id) {
       return;
     case 'rotate-yes': {
       INV.confirm = null;
-      const { data, error } = await SB.rpc('rotate_invite_link', { p_invite: f.id });
+      const { data, error } = await appState.SB.rpc('rotate_invite_link', { p_invite: f.id });
       if (error) {
         logSafe('invrotate', error);
         toast(t('invSaveErr'));
@@ -501,7 +508,7 @@ async function invAct(k, id) {
     case 'unrevoke': {
       INV.confirm = null;
       const off = k === 'revoke-yes',
-        { data, error } = await SB.from('invites').update({ revoked: off }).eq('id', f.id).select().single();
+        { data, error } = await appState.SB.from('invites').update({ revoked: off }).eq('id', f.id).select().single();
       if (error) {
         logSafe('invrevoke', error);
         toast(t('invSaveErr'));
@@ -515,7 +522,7 @@ async function invAct(k, id) {
     }
     case 'del-yes': {
       INV.confirm = null;
-      const { error } = await SB.from('invites').delete().eq('id', f.id);
+      const { error } = await appState.SB.from('invites').delete().eq('id', f.id);
       if (error) {
         logSafe('invdel', error);
         toast(t('invSaveErr'));
@@ -529,7 +536,7 @@ async function invAct(k, id) {
     }
     case 'clear-yes': {
       INV.confirm = null;
-      const { error } = await SB.rpc('clear_rsvp_contacts', { p_event: ROW.id });
+      const { error } = await appState.SB.rpc('clear_rsvp_contacts', { p_event: appState.ROW.id });
       if (error) {
         logSafe('invclear', error);
         toast(t('invSaveErr'));
@@ -616,8 +623,8 @@ function invSettingChange(e) {
     id = el.id || '';
   const set = fn =>
     commit(() => {
-      S.event.rsvp = rsvpOf(S.event);
-      fn(S.event.rsvp);
+      appState.S.event.rsvp = rsvpOf(appState.S.event);
+      fn(appState.S.event.rsvp);
     });
   if (id === 'rs-open') {
     set(r => (r.open = el.checked));
@@ -642,7 +649,7 @@ function invSettingChange(e) {
   return false;
 }
 document.addEventListener('click', e => {
-  if (guestMode) return;
+  if (appState.guestMode) return;
   const a = e.target.closest('a[data-send]');
   if (a) invMarkSent(a.dataset.id, a.dataset.send);
 });
@@ -654,7 +661,7 @@ document.addEventListener('click', e => {
 let INV_AT = 0;
 function invGuestStatus(gid) {
   if (!INV.list) return null;
-  const x = S.rsvpExtra && S.rsvpExtra[gid];
+  const x = appState.S.rsvpExtra && appState.S.rsvpExtra[gid];
   if (x) {
     const i = invById(x.inv);
     if (!i || i.revoked || !i.answer) return null;
@@ -668,12 +675,12 @@ function invGuestStatus(gid) {
   return null;
 }
 const invOfGuest = gid => {
-  const x = S.rsvpExtra && S.rsvpExtra[gid];
+  const x = appState.S.rsvpExtra && appState.S.rsvpExtra[gid];
   return x ? invById(x.inv) : (INV.list || []).find(i => !i.revoked && (i.members || []).includes(gid));
 };
 function invSeatedNo() {
   const out = [];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach(id => {
       if (id && invGuestStatus(id) === 'no') out.push(id);
     })
@@ -681,33 +688,33 @@ function invSeatedNo() {
   return out;
 }
 function invApply() {
-  if (MODE !== 'edit' || !INV.list) return;
+  if (appState.MODE !== 'edit' || !INV.list) return;
   const fresh = INV.list.filter(
     i => !i.revoked && i.answer && i.answered_at && (!i.applied_at || i.answered_at > i.applied_at)
   );
   if (!fresh.length) return;
   commit(() => {
-    S.rsvpExtra = S.rsvpExtra || {};
+    appState.S.rsvpExtra = appState.S.rsvpExtra || {};
     fresh.forEach(i => {
       const a = i.answer;
       Object.entries(a.members || {}).forEach(([gid, v]) => {
-        const g = S.guests[gid];
+        const g = appState.S.guests[gid];
         if (g && v.coming && v.meal) g.meal = v.meal;
       });
-      const have = Object.entries(S.rsvpExtra)
+      const have = Object.entries(appState.S.rsvpExtra)
         .filter(([, x]) => x.inv === i.id)
         .map(([, x]) => skel(x.name));
       (a.extras || []).forEach(e => {
         if (have.includes(skel(e.name))) return;
         const gid = mkGuest(e.name);
-        const g = S.guests[gid];
+        const g = appState.S.guests[gid];
         if (g) {
           g.meal = e.meal || '';
-          const fam = (S.guests[(i.members || [])[0]] || {}).group;
+          const fam = (appState.S.guests[(i.members || [])[0]] || {}).group;
           if (fam) g.group = fam;
         }
-        S.waiting.push(gid);
-        S.rsvpExtra[gid] = { inv: i.id, name: e.name };
+        appState.S.waiting.push(gid);
+        appState.S.rsvpExtra[gid] = { inv: i.id, name: e.name };
       });
     });
   });
@@ -715,31 +722,46 @@ function invApply() {
   const at = new Date().toISOString();
   fresh.forEach(async i => {
     i.applied_at = at;
-    const { error } = await SB.from('invites').update({ applied_at: at }).eq('id', i.id);
+    const { error } = await appState.SB.from('invites').update({ applied_at: at }).eq('id', i.id);
     if (error) logSafe('invapply', error);
   });
 }
 async function invRefresh() {
   INV_AT = Date.now();
   await invLoad();
-  if (MODE !== 'edit') return;
+  if (appState.MODE !== 'edit') return;
   invApply();
   renderPlan();
-  if (panel === 'guests' && !sel.kind) renderLeft();
-  if (sel.kind === 'seat') renderRight();
+  if (appState.panel === 'guests' && !appState.sel.kind) renderLeft();
+  if (appState.sel.kind === 'seat') renderRight();
 }
 function invMoveDeclined() {
   const ids = invSeatedNo();
   if (!ids.length) return;
   commit(() => {
-    S.tables.forEach(x =>
+    appState.S.tables.forEach(x =>
       x.seats.forEach((id, i) => {
         if (id && ids.includes(id)) {
           x.seats[i] = null;
-          S.waiting.push(id);
+          appState.S.waiting.push(id);
         }
       })
     );
   });
   toast(tn('invMoved', ids.length));
 }
+
+export {
+  INV,
+  INV_AT,
+  eventCols,
+  invClick,
+  invGuestStatus,
+  invInput,
+  invOfGuest,
+  invPanel,
+  invRefresh,
+  invSeatedNo,
+  invSettingChange,
+  okMapUrl
+};

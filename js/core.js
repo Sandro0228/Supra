@@ -1,4 +1,3 @@
-'use strict';
 /* Shared helpers, text (t/tn), name matching, choices and the character drawing. Part of the planner (app.html); see js/README.md. */
 const $ = s => document.querySelector(s);
 const esc = s =>
@@ -48,10 +47,11 @@ const storedLang = () => {
     return null;
   }
 };
-let LANG = storedLang();
-const UL = () => LANG || S?.event?.lang || ((navigator.language || '').startsWith('ka') ? 'ka' : 'en');
+
+const UL = () =>
+  appState.LANG || appState.S?.event?.lang || ((navigator.language || '').startsWith('ka') ? 'ka' : 'en');
 function setLang(l) {
-  LANG = l;
+  appState.LANG = l;
   try {
     localStorage.setItem('supra.lang', l);
   } catch (e) {}
@@ -88,6 +88,39 @@ function shade(hex, p) {
   const f = v => Math.max(0, Math.min(255, Math.round(v + ((p < 0 ? v : 255 - v) * p) / 100)));
   return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
+
+/* State that several files change (one object, because modules can't reassign each other's variables). */
+const appState = {
+  ARR: null,
+  DRAFT: 'supra.draft',
+  FINDQ: '',
+  GL: { mode: 'prefix', pin: false },
+  LANG: storedLang(),
+  MODE: 'edit',
+  PREVIEW: null,
+  PREVIEW_ID: null,
+  R: null,
+  RD: null,
+  ROW: null,
+  RTOK: '',
+  S: null,
+  SB: null,
+  SLUG: '',
+  confirmK: null,
+  dirty: false,
+  drawerOpener: null,
+  fitMode: null,
+  guestMode: false,
+  hintOpen: false, // boot() sets it from hintSeen()
+  panel: null,
+  readOnly: false,
+  saveState: 'idle',
+  saveT: 0,
+  scale: null,
+  sel: { kind: null },
+  swapFrom: null,
+  waitSel: null
+};
 
 /* ---------------- options ---------------- */
 const OPT = {
@@ -223,7 +256,7 @@ function randLook(kind, r = Math.random) {
   };
 }
 /* 'seat': guests are told their table and seat; 'table': only their table, they pick a chair themselves. */
-const seatMode = () => (S?.event?.seatMode === 'table' ? 'table' : 'seat');
+const seatMode = () => (appState.S?.event?.seatMode === 'table' ? 'table' : 'seat');
 const guessKind = n => window.SupraNames?.guess(n) || null;
 /* Redraw someone as a woman or a man, keeping skin, eyes, hair colour and glasses so they still look like themselves. */
 function relook(L, kind, r) {
@@ -348,3 +381,42 @@ function chairM() {
 function person(G, P, withChair = true) {
   return `${withChair ? chairM() : ''}<g transform="translate(0 ${G.kid ? 3 : 0}) scale(${G.kid ? 0.8 : 1})">${fig(G.look)}</g>`;
 }
+
+export {
+  $,
+  BEARD_LBL,
+  DECOS,
+  DECO_LBL,
+  EVENT_TYPES,
+  GL_LBL,
+  L10N,
+  MEALS,
+  MEAL_LBL,
+  NAT,
+  OPT,
+  PALETTES,
+  SHAPES,
+  SIDES,
+  SIDE_COL,
+  UL,
+  VENUE,
+  allDefs,
+  appState,
+  chairM,
+  esc,
+  guessKind,
+  imageDefs,
+  lookMismatch,
+  person,
+  randLook,
+  relook,
+  rng,
+  seatMode,
+  setLang,
+  shade,
+  skel,
+  t,
+  tn,
+  uid,
+  use
+};

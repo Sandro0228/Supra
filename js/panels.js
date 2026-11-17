@@ -1,13 +1,44 @@
-'use strict';
+import {
+  $,
+  BEARD_LBL,
+  DECOS,
+  DECO_LBL,
+  EVENT_TYPES,
+  GL_LBL,
+  MEALS,
+  MEAL_LBL,
+  OPT,
+  PALETTES,
+  SHAPES,
+  SIDES,
+  SIDE_COL,
+  UL,
+  VENUE,
+  appState,
+  esc,
+  guessKind,
+  lookMismatch,
+  person,
+  randLook,
+  rng,
+  seatMode,
+  skel,
+  t,
+  tn
+} from './core.js';
+import { P, T, V, headName, hist, tName, toast } from './state.js';
+import { arrangeDefaults, arrangePreview, ruleBroken } from './layout.js';
+import { isPhone, keepView } from './actions.js';
+import { fmtDate } from './guest.js';
+import { INV, INV_AT, invGuestStatus, invOfGuest, invPanel, invRefresh, invSeatedNo, okMapUrl } from './invites.js';
 /* Top bar, side panels (Event, Guests, Share), guest-link settings and the inspector. Part of the planner (app.html); see js/README.md. */
 /* ---------------- top bar ---------------- */
 /* ---------------- top bar ---------------- */
-let panel = null,
-  FINDQ = '',
-  ARR = null,
-  swapFrom = null;
+
 const OPEN = new Set();
 const ICON = {
+  invites:
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
   turn: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
   close:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -41,20 +72,20 @@ function hintSeen() {
     return false;
   }
 }
-let hintOpen = !hintSeen();
+
 function renderTop() {
-  const seated = S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0),
-    cap = S.tables.reduce((a, x) => a + x.seats.length, 0);
+  const seated = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0),
+    cap = appState.S.tables.reduce((a, x) => a + x.seats.length, 0);
   const sides = { bride: 0, groom: 0 };
-  Object.values(S.guests).forEach(g => {
+  Object.values(appState.S.guests).forEach(g => {
     if (sides[g.side] !== undefined) sides[g.side]++;
   });
-  const nb = S.rules.filter(ruleBroken).length;
-  $('#evname').textContent = S.event.name || 'Supra';
-  if (!guestMode) document.title = t('editTitle', { event: S.event.name || 'Supra' });
+  const nb = appState.S.rules.filter(ruleBroken).length;
+  $('#evname').textContent = appState.S.event.name || 'Supra';
+  if (!appState.guestMode) document.title = t('editTitle', { event: appState.S.event.name || 'Supra' });
   $('#stats').innerHTML =
-    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${S.waiting.length ? ` · ${esc(tn('nUnseated', S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>` : ''}`;
-  const cur = !sel.kind && panel,
+    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${appState.S.waiting.length ? ` · ${esc(tn('nUnseated', appState.S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>` : ''}`;
+  const cur = !appState.sel.kind && appState.panel,
     tabs = [
       ['event', 'event'],
       ['guests', 'tabGuests'],
@@ -93,11 +124,17 @@ function renderTop() {
   fb.setAttribute('aria-label', fb.title);
   const sb = $('#save'),
     st = $('#savestate');
-  sb.hidden = saveState !== 'error';
+  sb.hidden = appState.saveState !== 'error';
   sb.textContent = t('save');
   st.textContent =
-    saveState === 'saving' ? t('saving') : saveState === 'error' ? t('notSaved') : dirty ? t('unsaved') : t('saved');
-  st.dataset.state = saveState === 'error' || dirty ? 'dirty' : 'ok';
+    appState.saveState === 'saving'
+      ? t('saving')
+      : appState.saveState === 'error'
+        ? t('notSaved')
+        : appState.dirty
+          ? t('unsaved')
+          : t('saved');
+  st.dataset.state = appState.saveState === 'error' || appState.dirty ? 'dirty' : 'ok';
   const bk = $('#backlink');
   if (bk) {
     bk.setAttribute('aria-label', t('logoHome'));
@@ -108,12 +145,12 @@ function renderTop() {
   sv.setAttribute('aria-label', t('saveStatus'));
   const hn = $('#hint'),
     touch = matchMedia('(pointer:coarse)').matches;
-  hn.hidden = !hintOpen || (!!(sel.kind || panel) && isPhone());
+  hn.hidden = !appState.hintOpen || (!!(appState.sel.kind || appState.panel) && isPhone());
   hn.innerHTML = `<span>${esc(t(touch ? 'hintTouch' : 'hintPlan'))}</span><button type="button" data-act="hintok" aria-label="${esc(t('hintClose'))}">×</button>`;
   $('#help').setAttribute('aria-expanded', !hn.hidden);
   $('#quickadd').setAttribute('aria-label', t('addToRoom'));
   $('#quickadd').innerHTML =
-    `<button type="button" class="btn" data-act="arr-open" aria-pressed="${panel === 'arrange'}">${ICON.arrange}<span>${t('arrOpenShort')}</span></button><span class="tsep" aria-hidden="true"></span><button type="button" class="btn" data-act="addtable">${t('addTable')}</button>${['stage', 'bar', 'dance'].map(k => `<button type="button" class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
+    `<button type="button" class="btn" data-act="arr-open" aria-pressed="${appState.panel === 'arrange'}">${ICON.arrange}<span>${t('arrOpenShort')}</span></button><span class="tsep" aria-hidden="true"></span><button type="button" class="btn" data-act="addtable">${t('addTable')}</button>${['stage', 'bar', 'dance'].map(k => `<button type="button" class="btn" data-addvenue="${k}">+ ${t(k)}</button>`).join('')}`;
   [
     ['zout', 'zoomOut'],
     ['zin', 'zoomIn'],
@@ -128,7 +165,7 @@ function renderTop() {
   });
   $('#zoombar').setAttribute('aria-label', t('zoom'));
   const swb = $('#swapbar'),
-    sf = swapFrom && T(swapFrom);
+    sf = appState.swapFrom && T(appState.swapFrom);
   swb.hidden = !sf;
   if (sf)
     swb.innerHTML = `<span>${esc(t('swapPick', { n: tName(sf) }))}</span><button type="button" class="btn sm" data-act="swap-cancel">${t('swapCancel')}</button>`;
@@ -155,13 +192,13 @@ const dhead = (title, sub) =>
   `<div class="dhead"><div style="min-width:0"><h2 id="dtitle" tabindex="-1">${title}</h2>${sub ? `<span class="muted">${sub}</span>` : ''}</div><button type="button" class="icon" data-act="close" aria-label="${esc(t('closePanel'))}" title="${esc(t('closePanel'))}">${ICON.close}</button></div>`;
 function renderLeft() {
   const L = $('#left');
-  if (!panel || sel.kind) {
+  if (!appState.panel || appState.sel.kind) {
     L.innerHTML = '';
     return;
   }
-  const e = S.event;
+  const e = appState.S.event;
   let h = '';
-  if (panel === 'event') {
+  if (appState.panel === 'event') {
     h =
       dhead(t('event')) +
       `
@@ -190,10 +227,10 @@ function renderLeft() {
         .map(k => `<button type="button" class="chip" data-addvenue="${k}">+ ${t(k)}</button>`)
         .join('')}</div><button type="button" class="btn sm" data-act="arrange">${t('autoArrange')}</button>`
     )}`;
-  } else if (panel === 'arrange') {
-    const o = ARR || (ARR = arrangeDefaults()),
+  } else if (appState.panel === 'arrange') {
+    const o = appState.ARR || (appState.ARR = arrangeDefaults()),
       pv = arrangePreview(o),
-      n = S.tables.filter(x => x.shape !== 'head').length;
+      n = appState.S.tables.filter(x => x.shape !== 'head').length;
     const tog = (kind, count, list) =>
       count < 1
         ? `<p class="muted small">${t('arrNoGaps')}</p>`
@@ -219,13 +256,13 @@ function renderLeft() {
         ['xwide', 'arrAisleX']
       ].map(([k, l]) => ({ attr: `data-arr-aisle="${k}"`, on: o.aisle === k, html: esc(t(l)) }))
     )}</div>
-    ${S.venue.length ? `<label class="check"><input type="checkbox" id="arr-venue" ${o.venue ? 'checked' : ''}> ${t('arrVenue')}</label>` : ''}
+    ${appState.S.venue.length ? `<label class="check"><input type="checkbox" id="arr-venue" ${o.venue ? 'checked' : ''}> ${t('arrVenue')}</label>` : ''}
     <div class="field"><span class="lbl">${t('arrPreview')}</span>${pv.svg}</div>
     <div class="row"><button type="button" class="btn primary" data-act="arr-apply">${t('arrApply')}</button><button type="button" class="btn" data-act="close">${t('arrCancel')}</button></div>
     <p class="muted small">${t('arrUndoHint')}</p>`;
-  } else if (panel === 'guests') {
-    const total = Object.keys(S.guests).length;
-    const seatedG = S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
+  } else if (appState.panel === 'guests') {
+    const total = Object.keys(appState.S.guests).length;
+    const seatedG = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
     h =
       dhead(t('tabGuests'), esc(t('statGuests', { seatedGuests: seatedG, totalGuests: total }))) +
       `
@@ -235,32 +272,32 @@ function renderLeft() {
         ? `<div class="confirm"><span>${esc(tn('invNoSeated', n))}</span><div class="row"><button type="button" class="btn sm primary" data-inv="move-declined">${esc(tn('invMoveBtn', n))}</button></div></div>`
         : '';
     })()}
-    <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(FINDQ)}"><div class="search-res" id="findres"></div>
-    ${S.waiting.length ? `<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id => `<button type="button" class="wchip" data-wait="${id}" aria-pressed="${waitSel === id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>` : ''}
+    <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(appState.FINDQ)}"><div class="search-res" id="findres"></div>
+    ${appState.S.waiting.length ? `<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${appState.S.waiting.map(id => `<button type="button" class="wchip" data-wait="${id}" aria-pressed="${appState.waitSel === id}">${esc(appState.S.guests[id]?.name)}</button>`).join('')}</div></div>` : ''}
     ${det(
       'add',
       t('addGuests'),
       `<label class="field"><span class="lbl">${t('pasteNames')}</span><textarea id="bulk" rows="3" class="inp" placeholder="ნინო ბერიძე&#10;Giorgi Kapanadze"></textarea></label>
-      <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${S.tables.map(x => `<option value="${x.id}">${esc(tName(x))} (${esc(tn('nFree', x.seats.filter(v => !v).length))})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
+      <label class="field"><span class="lbl">${t('seatThem')}</span><select id="bulk-t"><option value="">${t('anyFree')}</option>${appState.S.tables.map(x => `<option value="${x.id}">${esc(tName(x))} (${esc(tn('nFree', x.seats.filter(v => !v).length))})</option>`).join('')}<option value="__wait">${t('waitList')}</option></select></label>
       <div class="row"><button type="button" class="btn primary" data-act="bulk">${t('addNames')}</button></div>
       <div class="row"><button type="button" class="btn sm" data-act="import">${t('importX')}</button><button type="button" class="btn sm" data-act="export">${t('exportX')}</button></div>`
     )}
     ${det(
       'rules',
-      `${t('rules')}${S.rules.length ? ` · ${S.rules.length}` : ''}`,
+      `${t('rules')}${appState.S.rules.length ? ` · ${appState.S.rules.length}` : ''}`,
       `${
-        S.rules.length
-          ? `<div class="rules">${S.rules
+        appState.S.rules.length
+          ? `<div class="rules">${appState.S.rules
               .map(r => {
                 const b = ruleBroken(r);
-                return `<div class="rule ${b ? 'bad' : ''}"><span>${esc(S.guests[r.a]?.name)} <b>${r.type === 'together' ? '＋' : '≠'}</b> ${esc(S.guests[r.b]?.name)}</span><span class="pill ${b ? 'bad' : ''}">${b ? t('ruleBroken') : t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`;
+                return `<div class="rule ${b ? 'bad' : ''}"><span>${esc(appState.S.guests[r.a]?.name)} <b>${r.type === 'together' ? '＋' : '≠'}</b> ${esc(appState.S.guests[r.b]?.name)}</span><span class="pill ${b ? 'bad' : ''}">${b ? t('ruleBroken') : t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`;
               })
               .join('')}</div>`
           : ''
       }<p class="muted">${t('rulesHint')}</p>`
     )}
     ${(() => {
-      const n = Object.values(S.guests).filter(lookMismatch).length;
+      const n = Object.values(appState.S.guests).filter(lookMismatch).length;
       return n
         ? `<div class="confirm"><span>${esc(tn('matchQ', n))}</span><div class="row"><button type="button" class="btn sm primary" data-act="matchlooks">${t('matchBtn')}</button></div></div>`
         : '';
@@ -269,10 +306,10 @@ function renderLeft() {
       'tools',
       t('tools'),
       `<div class="row"><button type="button" class="btn sm" data-act="matchlooks">${t('matchBtn')}</button><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
-      ${confirmK === 'autoseat' ? `<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>` : ''}
-      ${confirmK === 'reset' ? `<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>` : ''}`
+      ${appState.confirmK === 'autoseat' ? `<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>` : ''}
+      ${appState.confirmK === 'reset' ? `<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>` : ''}`
     )}`;
-  } else if (panel === 'invites') {
+  } else if (appState.panel === 'invites') {
     h = invPanel();
     if (!INV.busy && !INV.err && (INV.list === null || Date.now() - INV_AT > 30000)) setTimeout(invRefresh);
   } else {
@@ -280,11 +317,11 @@ function renderLeft() {
       u = guestUrl(),
       pre = presetOf(sh),
       st = sh.status,
-      pv = `/edit/${encodeURIComponent(ROW?.id || '')}?preview=1`;
+      pv = `/edit/${encodeURIComponent(appState.ROW?.id || '')}?preview=1`;
     const btn = (act, label, cls = '') =>
       `<button type="button" class="btn ${cls}" data-act="${act}">${label}</button>`;
     const conf = (k, text, yes, cls = 'primary') =>
-      confirmK === k
+      appState.confirmK === k
         ? `<div class="confirm ${cls === 'danger' ? 'danger' : ''}" role="group" aria-label="${esc(text)}"><span>${text}</span><div class="row">${btn(k + '-yes', yes, 'sm ' + cls)}${btn('cancel', t('keepIt'), 'sm')}</div></div>`
         : '';
     h =
@@ -306,7 +343,7 @@ function renderLeft() {
     ${
       st !== 'revoked'
         ? `<div class="field"><span class="lbl" id="sl-l">${t('shareLink')}</span>
-      <p class="sharelink" aria-labelledby="sl-l"><span class="host">${esc(location.host)}/e/</span><b class="code">${esc(ROW?.slug || '')}</b></p>
+      <p class="sharelink" aria-labelledby="sl-l"><span class="host">${esc(location.host)}/e/</span><b class="code">${esc(appState.ROW?.slug || '')}</b></p>
       <div class="row"><button type="button" class="btn ${st === 'published' ? 'primary' : ''}" data-act="copylink">${t('copyLink')}</button>${st === 'published' ? `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t('openGuest')}<span class="sr"> ${t('newTab')}</span></a>` : ''}</div>
       <p id="copystate" class="muted small" role="status">${st === 'published' ? '' : esc(t('shNotLiveYet'))}</p></div>
       <div id="qr" class="qr" role="img" aria-label="${esc(t('qrAlt'))}"></div>
@@ -326,8 +363,8 @@ function renderLeft() {
         }))
       )}
       <p class="small muted">${pre === 'custom' ? t('pr_customHint') : t('pr_' + pre + 'Hint')}</p>
-      ${confirmK === 'strict' ? `<div class="confirm" role="group" aria-label="${esc(t('pr_strict'))}"><label class="field"><span class="lbl">${t('lkPin')}</span><input id="pr-pin" class="inp" maxlength="12" autocomplete="off" aria-describedby="pr-pin-h"></label><span class="small muted" id="pr-pin-h">${t('prStrictCode')}</span><div class="row">${btn('strict-yes', t('prUseStrict'), 'sm primary')}${btn('cancel', t('keepIt'), 'sm')}</div></div>` : ''}
-      ${confirmK === 'open' ? `<div class="confirm danger" role="group" aria-label="${esc(t('pr_open'))}"><span>${t('prOpenQ')}</span><ul class="small publist"><li>${t('prOpen1')}</li><li>${t('prOpen2')}</li><li>${t('prOpen3')}</li></ul><div class="row">${btn('open-yes', t('prUseOpen'), 'sm danger')}${btn('cancel', t('keepIt'), 'sm')}</div></div>` : ''}
+      ${appState.confirmK === 'strict' ? `<div class="confirm" role="group" aria-label="${esc(t('pr_strict'))}"><label class="field"><span class="lbl">${t('lkPin')}</span><input id="pr-pin" class="inp" maxlength="12" autocomplete="off" aria-describedby="pr-pin-h"></label><span class="small muted" id="pr-pin-h">${t('prStrictCode')}</span><div class="row">${btn('strict-yes', t('prUseStrict'), 'sm primary')}${btn('cancel', t('keepIt'), 'sm')}</div></div>` : ''}
+      ${appState.confirmK === 'open' ? `<div class="confirm danger" role="group" aria-label="${esc(t('pr_open'))}"><span>${t('prOpenQ')}</span><ul class="small publist"><li>${t('prOpen1')}</li><li>${t('prOpen2')}</li><li>${t('prOpen3')}</li></ul><div class="row">${btn('open-yes', t('prUseOpen'), 'sm danger')}${btn('cancel', t('keepIt'), 'sm')}</div></div>` : ''}
       <p class="small">${t('privacy')}</p>
       <p class="small">${t('pubSees')}</p>
       <ul class="small publist"><li>${t(sh.layout ? 'pubLayout' : 'pubNoLayout')}</li><li>${t(seatMode() === 'table' ? 'pubMatchTable' : 'pubMatch')}</li>${sh.mates ? `<li>${t('pubMates')}</li>` : ''}</ul>
@@ -359,7 +396,7 @@ function renderLeft() {
           ['ka', t('lang_ka')]
         ].map(([k, l]) => ({
           attr: `data-glangset="${k}" lang="${k}"`,
-          on: (S.event.lang || 'en') === k,
+          on: (appState.S.event.lang || 'en') === k,
           html: esc(l)
         }))
       )}<span class="muted small">${t('guestLangHint')}</span></div>`
@@ -374,8 +411,8 @@ function renderLeft() {
     )}`;
   }
   L.innerHTML = h;
-  if (panel === 'guests') doFind();
-  if (panel === 'share') drawQR();
+  if (appState.panel === 'guests') doFind();
+  if (appState.panel === 'share') drawQR();
 }
 function doFind() {
   const q = ($('#find')?.value || '').trim().toLowerCase(),
@@ -391,17 +428,17 @@ function doFind() {
       return v.toLowerCase().includes(q) || (qk.length >= 2 && skel(v).includes(qk));
     };
   const res = [];
-  S.tables.forEach(x =>
+  appState.S.tables.forEach(x =>
     x.seats.forEach((id, i) => {
-      const G = id && S.guests[id];
+      const G = id && appState.S.guests[id];
       if (G && (has(G.name) || has(G.group)))
         res.push(
           `<button type="button" data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i + 1}</small></button>`
         );
     })
   );
-  S.waiting.forEach(id => {
-    const G = S.guests[id];
+  appState.S.waiting.forEach(id => {
+    const G = appState.S.guests[id];
     if (G && has(G.name))
       res.push(
         `<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`
@@ -428,7 +465,7 @@ const QRLIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.
 /* ---------------- guest link: lifecycle and privacy ----------------
    The server owns the link token and the publish state (migration 006); the page only asks for changes. */
 function shareInfo() {
-  const r = ROW || {},
+  const r = appState.ROW || {},
     has = r.share_status !== undefined,
     exp = r.share_expires_at && new Date(r.share_expires_at) <= new Date();
   const status = has
@@ -453,15 +490,15 @@ function presetOf(sh) {
   return 'custom';
 }
 function applyShare(st) {
-  if (!st || !ROW) return;
-  ROW.share_status = st.status === 'expired' ? 'published' : st.status;
-  ROW.share_expires_at = st.expires || null;
-  if (st.slug) ROW.slug = st.slug;
-  ROW.lookup_mode = st.mode;
-  ROW.lookup_pin_hash = st.pin ? 'set' : null;
-  ROW.show_tablemates = !!st.mates;
-  ROW.show_layout = !!st.layout;
-  ROW.guest_page = st.status === 'published';
+  if (!st || !appState.ROW) return;
+  appState.ROW.share_status = st.status === 'expired' ? 'published' : st.status;
+  appState.ROW.share_expires_at = st.expires || null;
+  if (st.slug) appState.ROW.slug = st.slug;
+  appState.ROW.lookup_mode = st.mode;
+  appState.ROW.lookup_pin_hash = st.pin ? 'set' : null;
+  appState.ROW.show_tablemates = !!st.mates;
+  appState.ROW.show_layout = !!st.layout;
+  appState.ROW.guest_page = st.status === 'published';
 }
 /* Errors are reported by kind only: never names, codes, or plan contents. */
 function logSafe(kind, err) {
@@ -470,7 +507,7 @@ function logSafe(kind, err) {
   } catch (e) {}
 }
 async function shareCall(fn, args, okMsg, focusSel) {
-  const { data, error } = await SB.rpc(fn, Object.assign({ p_event: ROW.id }, args || {}));
+  const { data, error } = await appState.SB.rpc(fn, Object.assign({ p_event: appState.ROW.id }, args || {}));
   if (error || !data) {
     logSafe('share:' + fn, error);
     toast(t(/revoked/.test(error?.message || '') ? 'shRevokedErr' : 'shErr'));
@@ -478,7 +515,7 @@ async function shareCall(fn, args, okMsg, focusSel) {
     return false;
   }
   applyShare(data);
-  confirmK = null;
+  appState.confirmK = null;
   renderLeft();
   if (okMsg) toast(okMsg);
   if (focusSel) $(focusSel)?.focus();
@@ -486,28 +523,28 @@ async function shareCall(fn, args, okMsg, focusSel) {
 }
 async function setLookup(ch) {
   const args = {
-    p_event: ROW.id,
-    p_mode: ch.mode || ROW.lookup_mode || 'prefix',
+    p_event: appState.ROW.id,
+    p_mode: ch.mode || appState.ROW.lookup_mode || 'prefix',
     p_pin: ch.pin === undefined ? null : ch.pin,
-    p_mates: ch.mates === undefined ? !!ROW.show_tablemates : ch.mates
+    p_mates: ch.mates === undefined ? !!appState.ROW.show_tablemates : ch.mates
   };
-  const { data, error } = await SB.rpc('set_guest_lookup', args);
+  const { data, error } = await appState.SB.rpc('set_guest_lookup', args);
   if (error || !data) {
     logSafe('share:set_guest_lookup', error);
     toast(t('lkErr'));
     renderLeft();
     return;
   }
-  ROW.lookup_mode = data.mode;
-  ROW.show_tablemates = data.mates;
-  ROW.lookup_pin_hash = data.pin ? 'set' : null;
+  appState.ROW.lookup_mode = data.mode;
+  appState.ROW.show_tablemates = data.mates;
+  appState.ROW.lookup_pin_hash = data.pin ? 'set' : null;
   renderLeft();
   toast(ch.pin === undefined ? t('lkSaved') : ch.pin ? t('lkPinSaved') : t('lkPinGone'));
   const f = ch.mode ? `[name=lk-mode][value=${data.mode}]` : ch.mates !== undefined ? '#lk-mates' : '#lk-pin';
   $(f)?.focus();
 }
 function guestUrl() {
-  return ROW ? location.origin + '/e/' + ROW.slug : '';
+  return appState.ROW ? location.origin + '/e/' + appState.ROW.slug : '';
 }
 async function drawQR() {
   const box = $('#qr');
@@ -582,41 +619,41 @@ const rotUI = it =>
   `<div class="field"><span class="lbl">${t('rotation')}</span><div class="stepper"><button type="button" class="btn sm" data-rot="-15" aria-label="${t('rotLeft')}">↺</button><output>${it.rot || 0}°</output><button type="button" class="btn sm" data-rot="15" aria-label="${t('rotRight')}">↻</button></div><span class="muted small">${t('rotHint')}</span></div>`;
 function renderRight() {
   const R = $('#right');
-  if (!sel.kind) {
+  if (!appState.sel.kind) {
     R.innerHTML = '';
     return;
   }
-  if (sel.kind === 'seat') {
-    const x = T(sel.t);
-    if (!x || sel.i >= x.seats.length) {
-      sel = { kind: null };
+  if (appState.sel.kind === 'seat') {
+    const x = T(appState.sel.t);
+    if (!x || appState.sel.i >= x.seats.length) {
+      appState.sel = { kind: null };
       return renderRight();
     }
-    const id = x.seats[sel.i],
-      G = id && S.guests[id];
+    const id = x.seats[appState.sel.i],
+      G = id && appState.S.guests[id];
     if (!G) {
       R.innerHTML =
-        dhead(`${esc(tName(x))} · ${t('seat')} ${sel.i + 1}`, t('freeSeat')) +
+        dhead(`${esc(tName(x))} · ${t('seat')} ${appState.sel.i + 1}`, t('freeSeat')) +
         `
       <label class="field"><span class="lbl">${t('guestName')}</span><input id="newname" class="inp" placeholder="${t('typeName')}"></label>
       <div class="row"><button type="button" class="btn primary" data-act="addguest">${t('addGuest')}</button><button type="button" class="btn" data-act="addrandom">${t('addRandom')}</button></div>
-      ${S.waiting.length ? `<div class="field"><span class="lbl">${t('orWaiting')}</span><div class="waiting">${S.waiting.map(w => `<button type="button" class="wchip" data-seatwait="${w}">${esc(S.guests[w]?.name)}</button>`).join('')}</div></div>` : ''}`;
+      ${appState.S.waiting.length ? `<div class="field"><span class="lbl">${t('orWaiting')}</span><div class="waiting">${appState.S.waiting.map(w => `<button type="button" class="wchip" data-seatwait="${w}">${esc(appState.S.guests[w]?.name)}</button>`).join('')}</div></div>` : ''}`;
       return;
     }
     const L = G.look,
       groups = [
         ...new Set(
-          Object.values(S.guests)
+          Object.values(appState.S.guests)
             .map(g => g.group)
             .filter(Boolean)
         )
       ];
-    const myRules = S.rules.filter(r => r.a === G.id || r.b === G.id);
-    const others = Object.values(S.guests)
+    const myRules = appState.S.rules.filter(r => r.a === G.id || r.b === G.id);
+    const others = Object.values(appState.S.guests)
       .filter(g => g.id !== G.id)
       .sort((a, b) => a.name.localeCompare(b.name));
     R.innerHTML =
-      dhead(esc(G.name), `${esc(tName(x))} · ${t('seat')} ${sel.i + 1}`) +
+      dhead(esc(G.name), `${esc(tName(x))} · ${t('seat')} ${appState.sel.i + 1}`) +
       `
     <div class="who"><div class="preview">${preview(G)}</div><div class="whotxt">
       <button type="button" class="btn primary" data-act="rnd">🎲 ${t('randomLook')}</button><button type="button" class="btn sm" data-act="kind">${L.kind === 'm' ? t('toFem') : t('toMasc')}</button></div></div>
@@ -662,7 +699,7 @@ function renderRight() {
       `${t('rules')}${myRules.length ? ` · ${myRules.length}` : ''}`,
       `${myRules
         .map(r => {
-          const o = S.guests[r.a === G.id ? r.b : r.a];
+          const o = appState.S.guests[r.a === G.id ? r.b : r.a];
           const b = ruleBroken(r);
           return `<div class="rule ${b ? 'bad' : ''}"><span>${r.type === 'together' ? t('together') : t('apart')}: ${esc(o?.name)}</span><span class="pill ${b ? 'bad' : ''}">${b ? t('ruleBroken') : t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`;
         })
@@ -672,13 +709,13 @@ function renderRight() {
       <button type="button" class="btn sm" data-act="addrule">${t('addRule')}</button>`
     )}
     <div class="row" style="border-top:1px solid var(--line);padding-top:12px"><button type="button" class="btn sm" data-act="unseat">${t('toWaiting')}</button><button type="button" class="btn sm danger" data-act="delguest">${t('removeGuest')}</button></div>
-    ${confirmK === 'guest' ? `<div class="confirm danger"><span>${t('removeQ', { n: esc(G.name) })}</span><div class="row"><button type="button" class="btn sm danger" data-act="delguest-yes">${t('remove')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>` : ''}`;
+    ${appState.confirmK === 'guest' ? `<div class="confirm danger"><span>${t('removeQ', { n: esc(G.name) })}</span><div class="row"><button type="button" class="btn sm danger" data-act="delguest-yes">${t('remove')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>` : ''}`;
     return;
   }
-  if (sel.kind === 'table') {
-    const x = T(sel.t);
+  if (appState.sel.kind === 'table') {
+    const x = T(appState.sel.t);
     if (!x) {
-      sel = { kind: null };
+      appState.sel = { kind: null };
       return renderRight();
     }
     const free = x.seats.filter(v => !v).length;
@@ -701,14 +738,14 @@ function renderRight() {
         t('moreActions'),
         `<span class="lbl">${t('setSide')}</span><div class="chips">${SIDES.map(k => `<button type="button" class="chip" data-tside="${k}">${k ? `<i class="dot" style="background:${SIDE_COL[k]}"></i>` : ''}${t(k || 'sideNone')}</button>`).join('')}</div>
         <div class="row"><button type="button" class="btn sm" data-act="focustable">${t('zoomTable')}</button><button type="button" class="btn sm" data-act="shuffle">${t('shuffleTable')}</button><button type="button" class="btn sm" data-act="restyle">${t('restyleTable')}</button><button type="button" class="btn sm" data-act="dup">${t('duplicate')}</button><button type="button" class="btn sm danger" data-act="deltable">${t('deleteTable')}</button></div>
-        ${confirmK === 'table' ? `<div class="confirm danger"><span>${t('deleteTableQ', { n: esc(tName(x)), c: x.seats.filter(Boolean).length })}</span><div class="row"><button type="button" class="btn sm danger" data-act="deltable-yes">${t('deleteTable')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>` : ''}`
+        ${appState.confirmK === 'table' ? `<div class="confirm danger"><span>${t('deleteTableQ', { n: esc(tName(x)), c: x.seats.filter(Boolean).length })}</span><div class="row"><button type="button" class="btn sm danger" data-act="deltable-yes">${t('deleteTable')}</button><button type="button" class="btn sm" data-act="cancel">${t('keepIt')}</button></div></div>` : ''}`
       )}`;
     return;
   }
-  if (sel.kind === 'venue') {
-    const v = V(sel.v);
+  if (appState.sel.kind === 'venue') {
+    const v = V(appState.sel.v);
     if (!v) {
-      sel = { kind: null };
+      appState.sel = { kind: null };
       return renderRight();
     }
     R.innerHTML =
@@ -723,10 +760,9 @@ function renderRight() {
 }
 /* Desktop: a side panel next to the plan. Phone: a modal sheet — focus moves to its heading, stays inside,
    the plan behind it is inert, and closing returns focus to whatever opened it. */
-let drawerOpen = false,
-  drawerOpener = null;
+let drawerOpen = false;
 function renderDrawer() {
-  const open = !!sel.kind || !!panel,
+  const open = !!appState.sel.kind || !!appState.panel,
     d = $('#drawer'),
     modal = open && isPhone(),
     was = drawerOpen;
@@ -734,12 +770,12 @@ function renderDrawer() {
     d.hidden = !open;
   });
   drawerOpen = open;
-  $('#left').hidden = !!sel.kind || !panel;
-  $('#right').hidden = !sel.kind;
+  $('#left').hidden = !!appState.sel.kind || !appState.panel;
+  $('#right').hidden = !appState.sel.kind;
   const L = $('#left');
-  if (panel && !sel.kind && ['event', 'guests', 'invites', 'share'].includes(panel)) {
+  if (appState.panel && !appState.sel.kind && ['event', 'guests', 'invites', 'share'].includes(appState.panel)) {
     L.setAttribute('role', 'tabpanel');
-    L.setAttribute('aria-labelledby', 'tab-' + panel);
+    L.setAttribute('aria-labelledby', 'tab-' + appState.panel);
   } else {
     L.removeAttribute('role');
     L.removeAttribute('aria-labelledby');
@@ -771,4 +807,30 @@ const focusKeyOf = el => {
     el.tagName.toLowerCase() +
     ds.map(([k, v]) => `[data-${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}="${CSS.escape(v)}"]`).join('')
   );
+};
+
+export {
+  ICON,
+  OPEN,
+  PDFLIB,
+  XLSXLIB,
+  curTheme,
+  det,
+  dhead,
+  doFind,
+  drawerOpen,
+  focusKeyOf,
+  guestUrl,
+  hintSeen,
+  loadScript,
+  logSafe,
+  portrait,
+  radios,
+  renderDrawer,
+  renderLeft,
+  renderRight,
+  renderTop,
+  setLookup,
+  shareCall,
+  shareInfo
 };

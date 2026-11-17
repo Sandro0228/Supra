@@ -1,12 +1,14 @@
-'use strict';
+import { $, MEAL_LBL, UL, appState, esc, setLang, t, tn, uid } from './core.js';
+import { toast } from './state.js';
+import { logSafe, portrait } from './panels.js';
+import { fname, offerFile } from './files.js';
+import { fmtDate } from './guest.js';
+import { fatal } from './boot.js';
 /* The household RSVP page (/r/<token>). Part of the planner (app.html); see js/README.md. */
 /* ---------------- RSVP: /r/<token> ----------------
    One household's invitation. The server sends only this household (rsvp_get) and checks every answer and the
    deadline itself (rsvp_answer); this page helps people answer and keeps their typing across language switches. */
-let RTOK = '',
-  R = null,
-  RD = null,
-  REDIT = false,
+let REDIT = false,
   RBUSY = false,
   RERR = '';
 const RMEALS = ['', 'meat', 'fish', 'veg', 'vegan', 'kids'];
@@ -33,7 +35,7 @@ function fmtWhen(iso) {
   return t('rsvpAt', { date: fmtDate(`${p.year}-${p.month}-${p.day}`), time: `${p.hour}:${p.minute}` });
 }
 function rsvpDraftFrom(a) {
-  const inv = R.invite;
+  const inv = appState.R.invite;
   return {
     members: Object.fromEntries(
       inv.members.map(m => {
@@ -49,8 +51,8 @@ function rsvpDraftFrom(a) {
 const mealSelect = (attr, val) =>
   `<select ${attr}>${RMEALS.map(k => `<option value="${k}"${val === k ? ' selected' : ''}>${esc(mealName(k))}</option>`).join('')}</select>`;
 function rsvpForm() {
-  const inv = R.invite,
-    d = RD,
+  const inv = appState.R.invite,
+    d = appState.RD,
     left = inv.extraAllowed - d.extras.length;
   return `<form id="rform" class="rform" novalidate aria-labelledby="rformh">
     <div class="rintro"><h2 id="rformh">${esc(inv.name || t('rsvpTitle'))}</h2><p class="rlead">${t('rsvpLead')}</p></div>
@@ -90,11 +92,11 @@ function rsvpForm() {
     <p id="rerr" class="gerr" role="alert" tabindex="-1">${esc(RERR)}</p>
     <button type="submit" class="btn primary rsend"${RBUSY ? ' aria-busy="true" disabled' : ''}>${RBUSY ? t('rsvpSending') : REDIT ? t('rsvpSave') : t('rsvpSend')}</button>
     ${REDIT ? `<button type="button" class="linkbtn" data-rcancel>${t('rsvpCancel')}</button>` : ''}
-    ${R.deadline ? `<p class="rnote">${esc(t('rsvpUntil', { when: fmtWhen(R.deadline) }))}</p>` : ''}
+    ${appState.R.deadline ? `<p class="rnote">${esc(t('rsvpUntil', { when: fmtWhen(appState.R.deadline) }))}</p>` : ''}
   </form>`;
 }
 function rsvpDone() {
-  const inv = R.invite,
+  const inv = appState.R.invite,
     a = inv.answer || { members: {}, extras: [] },
     ex = a.extras || [],
     n = inv.members.filter(m => a.members[m.id]?.coming).length + ex.length;
@@ -110,18 +112,18 @@ function rsvpDone() {
       ${ex.map(x => `<li><span class="rn">${esc(x.name)}</span><span class="ryes">${t('rsvpYes')}${x.meal ? `<small>${esc(mealName(x.meal))}</small>` : ''}</span></li>`).join('')}</ul>
     ${a.allergies ? `<div class="rextra-text"><h3>${t('rsvpAllergies')}</h3><p>${esc(a.allergies)}</p></div>` : ''}
     ${a.message ? `<div class="rextra-text"><h3>${t('rsvpMessage')}</h3><p>${esc(a.message)}</p></div>` : ''}
-    <div class="racts">${R.closed ? '' : `<button type="button" class="btn" data-rchange>${t('rsvpChange')}</button>`}${R.event.startsAt ? `<button type="button" class="btn" data-rics>${t('rsvpCalendar')}</button>` : ''}</div>
-    <p class="rnote">${R.closed ? t('rsvpClosed') : R.deadline ? esc(t('rsvpUntil', { when: fmtWhen(R.deadline) })) : ''}</p>
+    <div class="racts">${appState.R.closed ? '' : `<button type="button" class="btn" data-rchange>${t('rsvpChange')}</button>`}${appState.R.event.startsAt ? `<button type="button" class="btn" data-rics>${t('rsvpCalendar')}</button>` : ''}</div>
+    <p class="rnote">${appState.R.closed ? t('rsvpClosed') : appState.R.deadline ? esc(t('rsvpUntil', { when: fmtWhen(appState.R.deadline) })) : ''}</p>
   </section>`;
 }
 function rsvpRender() {
   document.body.classList.add('guestmode');
   document.documentElement.lang = UL();
-  const ev = R.event,
-    a = R.invite.answer;
+  const ev = appState.R.event,
+    a = appState.R.invite.answer;
   document.title = [t('rsvpTitle'), ev.name, 'Supra'].filter(Boolean).join(' · ');
   const when = ev.startsAt ? fmtWhen(ev.startsAt) : fmtDate(ev.date);
-  const body = R.closed
+  const body = appState.R.closed
     ? a
       ? rsvpDone()
       : `<p class="gnone rclosed" role="status">${t('rsvpClosed')}</p>`
@@ -145,11 +147,11 @@ function rsvpRender() {
 }
 function rsvpInput(e) {
   const el = e.target;
-  if (!RD) return;
+  if (!appState.RD) return;
   if (el.type === 'radio' && el.name.startsWith('c-')) {
     const li = el.closest('[data-mid]'),
       yes = el.value === 'yes';
-    RD.members[li.dataset.mid].coming = yes;
+    appState.RD.members[li.dataset.mid].coming = yes;
     li.classList.toggle('ryes', yes);
     li.classList.toggle('rno', !yes);
     const ml = li.querySelector('.rmeal');
@@ -162,26 +164,26 @@ function rsvpInput(e) {
     return;
   }
   if (el.dataset.meal !== undefined) {
-    RD.members[el.dataset.meal].meal = el.value;
+    appState.RD.members[el.dataset.meal].meal = el.value;
     return;
   }
   if (el.dataset.xname !== undefined) {
-    RD.extras[+el.dataset.xname].name = el.value;
+    appState.RD.extras[+el.dataset.xname].name = el.value;
     return;
   }
   if (el.dataset.xmeal !== undefined) {
-    RD.extras[+el.dataset.xmeal].meal = el.value;
+    appState.RD.extras[+el.dataset.xmeal].meal = el.value;
     return;
   }
-  if (el.id === 'rall') RD.allergies = el.value;
-  else if (el.id === 'rmsg') RD.message = el.value;
+  if (el.id === 'rall') appState.RD.allergies = el.value;
+  else if (el.id === 'rmsg') appState.RD.message = el.value;
 }
 function rsvpCheck() {
-  for (const m of R.invite.members)
-    if (RD.members[m.id].coming === null)
+  for (const m of appState.R.invite.members)
+    if (appState.RD.members[m.id].coming === null)
       return { msg: t('rsvpPickAll', { name: m.name }), focus: `input[name="c-${CSS.escape(m.id)}"]` };
-  for (let i = 0; i < RD.extras.length; i++)
-    if (!RD.extras[i].name.trim()) return { msg: t('rsvpNameNeeded'), focus: `[data-xname="${i}"]` };
+  for (let i = 0; i < appState.RD.extras.length; i++)
+    if (!appState.RD.extras[i].name.trim()) return { msg: t('rsvpNameNeeded'), focus: `[data-xname="${i}"]` };
   return null;
 }
 async function rsvpSend() {
@@ -198,15 +200,15 @@ async function rsvpSend() {
   rsvpRender();
   const ans = {
     members: Object.fromEntries(
-      Object.entries(RD.members).map(([k, v]) => [k, { coming: v.coming, meal: v.coming ? v.meal : '' }])
+      Object.entries(appState.RD.members).map(([k, v]) => [k, { coming: v.coming, meal: v.coming ? v.meal : '' }])
     ),
-    extras: RD.extras.map(x => ({ name: x.name.trim(), meal: x.meal })),
-    allergies: RD.allergies.trim(),
-    message: RD.message.trim()
+    extras: appState.RD.extras.map(x => ({ name: x.name.trim(), meal: x.meal })),
+    allergies: appState.RD.allergies.trim(),
+    message: appState.RD.message.trim()
   };
   let r;
   try {
-    const { data, error } = await SB.rpc('rsvp_answer', { p_token: RTOK, p_answer: ans });
+    const { data, error } = await appState.SB.rpc('rsvp_answer', { p_token: appState.RTOK, p_answer: ans });
     if (error) throw error;
     r = data || { status: 'error' };
   } catch (e) {
@@ -215,9 +217,9 @@ async function rsvpSend() {
   }
   RBUSY = false;
   if (r.status === 'ok' || r.status === 'closed') {
-    R = r;
+    appState.R = r;
     REDIT = false;
-    RD = rsvpDraftFrom(R.invite.answer);
+    appState.RD = rsvpDraftFrom(appState.R.invite.answer);
     rsvpRender();
     if (r.status === 'ok') toast(t('rsvpSaved'));
     ($('#rdone') || $('.rclosed'))?.focus();
@@ -232,7 +234,7 @@ async function rsvpSend() {
   $('#rerr')?.focus();
 }
 function rsvpIcs() {
-  const ev = R.event,
+  const ev = appState.R.event,
     s = new Date(ev.startsAt),
     e = new Date(s.getTime() + 6 * 3600e3),
     f = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
@@ -269,13 +271,13 @@ function rsvpClick(e) {
     return;
   }
   if (b.dataset.xadd !== undefined) {
-    RD.extras.push({ name: '', meal: '' });
+    appState.RD.extras.push({ name: '', meal: '' });
     rsvpRender();
-    $(`[data-xname="${RD.extras.length - 1}"]`)?.focus();
+    $(`[data-xname="${appState.RD.extras.length - 1}"]`)?.focus();
     return;
   }
   if (b.dataset.xdel !== undefined) {
-    RD.extras.splice(+b.dataset.xdel, 1);
+    appState.RD.extras.splice(+b.dataset.xdel, 1);
     rsvpRender();
     ($('[data-xadd]') || $('#rall'))?.focus();
     return;
@@ -283,7 +285,7 @@ function rsvpClick(e) {
   if (b.dataset.rchange !== undefined) {
     REDIT = true;
     RERR = '';
-    RD = rsvpDraftFrom(R.invite.answer);
+    appState.RD = rsvpDraftFrom(appState.R.invite.answer);
     rsvpRender();
     $('#rform input[type=radio]:checked, #rform input[type=radio]')?.focus();
     return;
@@ -291,7 +293,7 @@ function rsvpClick(e) {
   if (b.dataset.rcancel !== undefined) {
     REDIT = false;
     RERR = '';
-    RD = rsvpDraftFrom(R.invite.answer);
+    appState.RD = rsvpDraftFrom(appState.R.invite.answer);
     rsvpRender();
     $('[data-rchange]')?.focus();
     return;
@@ -304,3 +306,5 @@ document.addEventListener('submit', e => {
     rsvpSend();
   }
 });
+
+export { fmtWhen, rsvpClick, rsvpDraftFrom, rsvpInput, rsvpRender };
