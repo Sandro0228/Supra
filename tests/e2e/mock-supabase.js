@@ -56,8 +56,36 @@ function findSeat(ev,query,pin){const qn=norm(query);if(qn.replace(/ /g,'').leng
   const ms=rows.filter(hit);if(!ms.length)return{status:'none',matches:[]};if(ms.length>5)return{status:'many',matches:[]};
   return{status:'ok',matches:ms.map(r=>({name:r.g.name,look:r.g.look,kid:!!r.g.kid,table:r.ti,tableName:r.t.name,seat:d.event?.seatMode==='table'?null:r.si+1,
     mates:ev.show_tablemates?rows.filter(o=>o.ti===r.ti&&o.si!==r.si).map(o=>o.g.name):null}))}}
+// RSVP (migration 008): one household per token; strict answers; deadline 24 h before starts_at unless set or switched off.
+const RMEALS=['','meat','fish','veg','vegan','kids'],LOOK=['kind','skin','hair','hairColor','beard','beardColor','eye','outfit','outfitColor','glasses'];
+const strip=o=>JSON.parse(JSON.stringify(o,(k,v)=>v===null?undefined:v));
+function rsvpDeadline(ev){if(ev.rsvp_no_deadline)return null;if(ev.rsvp_deadline)return ev.rsvp_deadline;return ev.starts_at?new Date(new Date(ev.starts_at).getTime()-864e5).toISOString():null}
+function rsvpPayload(inv,ev,status){const d=ev.data||{},dl=rsvpDeadline(ev);
+  return strip({status:status||'ok',event:{name:d.event?.name,date:d.event?.date,type:d.event?.type,palette:d.event?.palette,lang:d.event?.lang,startsAt:ev.starts_at||null,venue:ev.venue_name||null,mapUrl:ev.venue_map_url||null},
+    invite:{name:inv.name||'',lang:inv.lang||'ka',extraAllowed:inv.extra_allowed||0,
+      members:(inv.members||[]).filter(id=>d.guests&&d.guests[id]).map(id=>{const g=d.guests[id],L=g.look||{};return{id,name:g.name,look:Object.fromEntries(LOOK.filter(x=>x in L).map(x=>[x,L[x]])),kid:!!g.kid}}),
+      answer:inv.answer||null,answeredAt:inv.answered_at||null},
+    deadline:dl,closed:ev.rsvp_open===false||(dl!==null&&Date.now()>=new Date(dl).getTime())})}
+function rsvpClean(inv,a){const bad=m=>{throw{message:m,code:'22023'}};
+  if(!a||typeof a!=='object'||Array.isArray(a))bad('answer must be an object');
+  const members={};for(const id of inv.members||[]){const v=(a.members||{})[id];if(!v||typeof v.coming!=='boolean')bad('every member needs coming yes or no');
+    const meal=v.meal||'';if(!RMEALS.includes(meal))bad('unknown meal');members[id]={coming:v.coming,meal:v.coming?meal:''}}
+  const ex=a.extras||[];if(!Array.isArray(ex))bad('extras must be a list');if(ex.length>(inv.extra_allowed||0))bad('too many extra guests');
+  const extras=ex.map(x=>{const n=String(x.name||'').replace(/\s+/g,' ').trim();if(!n||n.length>80)bad('extra guest needs a name');const meal=x.meal||'';if(!RMEALS.includes(meal))bad('unknown meal');return{name:n,meal}});
+  const al=String(a.allergies||'').trim(),msg=String(a.message||'').trim();if(al.length>500)bad('allergies too long');if(msg.length>1000)bad('message too long');
+  return{members,extras,allergies:al,message:msg}}
+function rsvpRpc(fn,args){const d=db(),inv=(d.invites||[]).find(i=>i.token===args.p_token&&!i.revoked);window.__mockCalls.push([fn,args]);
+  if(!inv)return{data:{status:'unavailable'},error:null};
+  const ev=d.events.find(e=>e.id===inv.event_id);
+  if(fn==='rsvp_get')return{data:rsvpPayload(inv,ev),error:null};
+  const p=rsvpPayload(inv,ev);if(p.closed)return{data:Object.assign(p,{status:'closed'}),error:null};
+  if(cfg().rsvp==='rate')return{data:{status:'rate_limited',retry_after:3600},error:null};
+  if(cfg().rsvp==='net')return{data:null,error:{message:'network'}};
+  try{inv.answer=rsvpClean(inv,args.p_answer)}catch(e){return{data:null,error:e}}
+  inv.answered_at=new Date().toISOString();put(d);return{data:rsvpPayload(inv,ev),error:null}}
 window.supabase={createClient(){return{from:q,
   async rpc(fn,args){await sleep(cfg().rpcDelay||0);const evs=db().events;
+    if(fn==='rsvp_get'||fn==='rsvp_answer')return rsvpRpc(fn,args);
     if(fn==='public_plan'){const ev=evs.find(e=>e.slug===args.p_slug&&live(e));return{data:ev?publicPlan(ev):null,error:null}}
     if(fn==='find_seat'){if(norm(args.p_query).replace(/ /g,'').length<3)return{data:{status:'short',matches:[]},error:null};
       const ev=evs.find(e=>e.slug===args.p_slug&&live(e));if(!ev)return{data:{status:'unavailable',matches:[]},error:null};

@@ -12,7 +12,7 @@ class H(http.server.SimpleHTTPRequestHandler):
     def __init__(s, *a, **k): super().__init__(*a, directory=ROOT, **k)
     def do_GET(s):
         p = s.path.split('?')[0]
-        if re.match(r'^/(edit|e)/[\w-]+$', p): s.path = '/app.html'
+        if re.match(r'^/(edit|e|r)/[\w-]+$', p): s.path = '/app.html'
         elif p == '/app': s.path = '/app.html'
         elif p == '/': s.path = '/index.html' + ('?' + s.path.split('?', 1)[1] if '?' in s.path else '')
         return super().do_GET()
@@ -23,7 +23,7 @@ def serve():
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv, 'http://127.0.0.1:%d' % srv.server_address[1]
 
-def seed_script(session=True, cfg=None, events=None, extra=''):
+def seed_script(session=True, cfg=None, events=None, extra='', invites=None):
     if events is None:
         events = [dict(id='ev1', owner='u1', name=PLAN['event']['name'], slug='guestcode1', guest_page=True, data=PLAN,
                        public_data={}, lookup_mode='prefix', lookup_pin_hash=None, show_tablemates=False, updated_at='seed',
@@ -31,7 +31,7 @@ def seed_script(session=True, cfg=None, events=None, extra=''):
     return ("if(!sessionStorage.getItem('seeded')){sessionStorage.setItem('seeded','1');localStorage.clear();"
             + ("localStorage.setItem('mocksess','1');" if session else "")
             + "localStorage.setItem('mockcfg',%s);localStorage.setItem('mockdb',%s);%s}" % (
-                json.dumps(json.dumps(cfg or {})), json.dumps(json.dumps({'events': events})), extra))
+                json.dumps(json.dumps(cfg or {})), json.dumps(json.dumps({'events': events, 'invites': invites or []})), extra))
 
 class Ctx:
     def __init__(s, pw, base, viewport=(1440, 900), **kw):

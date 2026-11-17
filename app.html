@@ -94,16 +94,16 @@ body.focus .bar{display:none}
 /* Layout: three-pane workbench — tabbed event/guest/share panel left, the paper floor plan centre, the inspector right; a separate full-screen "find my seat" view for guests */
 :root{
   --bg:#EEF0EA; --panel:#FFFFFF; --ink:#24302A; --muted:#66706A; --line:#DADFD5;
-  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#F5F6F1; --danger:#B3261E; --warn-bg:#FBEDE9;
+  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#F5F6F1; --danger:#B3261E; --warn-bg:#FBEDE9; --yes:#3D6B4A; --yes-ink:#FFFFFF;
   --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
   --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#141917; --panel:#1D2421; --ink:#E7EBE4; --muted:#9BA59E; --line:#2F3934;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; color-scheme:dark}}
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; --yes:#94C9A0; --yes-ink:#10251A; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141917; --panel:#1D2421; --ink:#E7EBE4; --muted:#9BA59E; --line:#2F3934;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; color-scheme:dark}
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; --yes:#94C9A0; --yes-ink:#10251A; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -282,6 +282,59 @@ body.swapping #plan .tbody{cursor:pointer}
 :root[data-theme="dark"] .st-published{color:#7FD3A2}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .st-published{color:#7FD3A2}}
 .pubbox [role=radiogroup] .chip{flex:1 1 30%;justify-content:center}
+
+/* RSVP (/r/<token>): one household answers. The one moving part: a member who can't come fades to grey. */
+.rwrap{gap:18px}
+.rhead{display:flex;flex-direction:column;gap:6px}
+.rhead h1{margin:0}
+.rvenue{margin:0;color:var(--muted);font-size:15px}.rvenue a{color:var(--accent);font-weight:500;white-space:nowrap}
+.rform{display:flex;flex-direction:column;gap:18px;text-align:left}
+.rintro{text-align:center;display:flex;flex-direction:column;gap:4px}
+.rform h2,.rdone h2{color:var(--ink);font-family:var(--display);font-weight:400;font-size:27px;line-height:1.2;margin:0;text-wrap:balance}
+.rlead{margin:0;color:var(--muted)}
+.rmembers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rmember{display:grid;grid-template-columns:72px minmax(0,1fr);column-gap:14px;row-gap:10px;align-items:center;padding:12px 14px 14px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}
+.rface{grid-row:1/span 2;align-self:start;transition:filter .5s ease,opacity .5s ease,transform .5s cubic-bezier(.3,1.4,.5,1)}
+.rmember.ryes .rface{transform:translateY(-3px)}
+.rmember.rno .rface,.rfaces .rno{filter:grayscale(1);opacity:.42;transform:scale(.92)}
+.rpick{border:0;margin:0;padding:0;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
+.rname{float:left;width:100%;padding:0;margin:0 0 2px;font-weight:500;font-size:17px;overflow-wrap:anywhere}
+.rchoice{position:relative;flex:1 1 104px;display:flex}
+.rchoice input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.rchoice span{flex:1;display:flex;align-items:center;justify-content:center;min-height:46px;padding:8px 12px;border:1.5px solid var(--line);border-radius:12px;font-weight:500;background:var(--soft);transition:background .2s,border-color .2s,color .2s}
+.rc-yes input:checked+span{background:var(--yes);border-color:var(--yes);color:var(--yes-ink)}
+.rc-no input:checked+span{background:var(--panel);border-color:var(--ink);color:var(--ink)}
+.rchoice input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.rmeal{grid-column:2;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.rmeal[hidden]{display:none}
+.rmeal select{font:inherit;font-size:16px;color:var(--ink);padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);width:100%}
+.rextras{display:flex;flex-direction:column;gap:12px;padding:16px;border:1.5px dashed var(--line);border-radius:18px}
+.rextras h3,.rextra-text h3{margin:0;font-size:16px;font-weight:500}
+.rextra{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.rextra .rmeal{grid-column:auto}
+.rdel{align-self:flex-start;color:var(--danger)}
+.rextras .btn{align-self:flex-start}
+.rin{font-size:16px}
+textarea.ginput{min-height:64px;resize:vertical;line-height:1.45}
+.ropt{color:var(--muted);font-weight:400}
+.rsend{min-height:52px;font-size:17px;justify-content:center;text-align:center}
+.rnote{margin:0;color:var(--muted);font-size:14px;text-align:center}
+.rextras .rleft{text-align:left;margin-top:-6px}
+.rdone{display:flex;flex-direction:column;gap:16px;padding:22px 18px;border:1px solid var(--line);border-radius:20px;background:var(--panel);outline:none}
+.rfaces{display:flex;justify-content:center;flex-wrap:wrap;gap:2px}
+.rfaces span{transition:filter .5s ease,opacity .5s ease,transform .5s ease}
+.rsum{list-style:none;margin:0;padding:0;text-align:left}
+.rsum li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.rsum .rn{font-weight:500;overflow-wrap:anywhere}
+.rsum .ryes,.rsum .rnot{text-align:right;white-space:nowrap}
+.rsum .ryes{color:var(--yes);font-weight:600}
+.rsum .rnot{color:var(--muted)}
+.rsum small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.rextra-text{text-align:left;display:flex;flex-direction:column;gap:4px}.rextra-text p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.racts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.rclosed{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+@media (prefers-reduced-motion:reduce){.rface,.rfaces span,.rchoice span{transition:none}}
+@media (max-width:360px){.rmember{grid-template-columns:56px minmax(0,1fr)}.rface .gportrait{width:56px;height:56px}}
 </style>
 </head>
 <body>
