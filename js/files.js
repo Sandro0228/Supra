@@ -120,6 +120,7 @@ function catererModal(){
   const tr=r=>`<tr><td>${esc(r.table)}</td><td>${r.total}</td>${MEALS.map(m=>`<td>${r.meals[m]||''}</td>`).join('')}<td>${r.kids||''}</td></tr>`;
   modal(`<h2>${t('catTitle')}</h2><div class="tablewrap"><table class="cat">${head}${rows.map(tr).join('')}<tr class="tot">${tr(Object.assign({table:t('total')},tot)).slice(4)}</table></div>
   <h3>${t('allergyList')}</h3>${al.length?`<ul class="al">${al.join('')}</ul>`:`<p class="muted">${t('noAllergies')}</p>`}
+  ${(()=>{const h=(INV.list||[]).filter(i=>!i.revoked&&i.state==='coming'&&i.answer?.allergies);return h.length?`<h3>${t('invAllergyList')}</h3><ul class="al">${h.map(i=>`<li><b>${esc(i.name)}</b> · ${esc(i.answer.allergies)}</li>`).join('')}</ul>`:''})()}
   <div class="row"><button type="button" class="btn primary" id="dlcsv">${t('dlCSV')}</button></div>`);
   $('#dlcsv').onclick=()=>{const L=[['colTable','colSeat','colName','colMeal','colChild','colAllergies','colSide','colGroup'].map(k=>t(k))];S.tables.forEach(x=>x.seats.forEach((id,i)=>{const g=id&&S.guests[id];if(g)L.push([tName(x),i+1,g.name,t(MEAL_LBL[g.meal]||g.meal),g.kid?t('yes'):'',g.allergies,g.side?t(g.side):'',g.group])}));
     const csv='﻿'+L.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');offerFile(fname('-'+t('fileCaterer')+'.csv'),new Blob([csv],{type:'text/csv'}))};

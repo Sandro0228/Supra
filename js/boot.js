@@ -69,6 +69,7 @@ async function boot(){
   route();
   document.fonts?.ready.then(()=>{if(!guestMode)renderPlan()});
   if(MODE==='edit'&&(dirty||!(ROW.data&&ROW.data.tables))){dirty=true;savePlan()}
+  if(MODE==='edit'&&!readOnly)invRefresh();
   window.__supraState=()=>S;
 }
 boot();

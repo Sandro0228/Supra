@@ -705,7 +705,17 @@ en:{
   "agoHour_one":"{count} hour ago",
   "agoHour_other":"{count} hours ago",
   "agoDay_one":"{count} day ago",
-  "agoDay_other":"{count} days ago"
+  "agoDay_other":"{count} days ago",
+  "invApplied_one":"{count} new answer added to the plan",
+  "invApplied_other":"{count} new answers added to the plan",
+  "invNoSeated_one":"{count} seated guest said they can't come.",
+  "invNoSeated_other":"{count} seated guests said they can't come.",
+  "invMoveBtn_one":"Unseat {count} guest",
+  "invMoveBtn_other":"Unseat {count} guests",
+  "invMoved_one":"{count} guest moved to Unseated guests",
+  "invMoved_other":"{count} guests moved to Unseated guests",
+  "invGuestLine":"Invitation: {name}",
+  "invAllergyList":"Allergies from invitations"
 },
 ka:{
   "ruleType":"წესის ტიპი",
@@ -1412,6 +1422,16 @@ ka:{
   "agoHour_one":"{count} საათის წინ",
   "agoHour_other":"{count} საათის წინ",
   "agoDay_one":"{count} დღის წინ",
-  "agoDay_other":"{count} დღის წინ"
+  "agoDay_other":"{count} დღის წინ",
+  "invApplied_one":"გეგმას დაემატა {count} ახალი პასუხი",
+  "invApplied_other":"გეგმას დაემატა {count} ახალი პასუხი",
+  "invNoSeated_one":"დასმული {count} სტუმარი ვერ მოდის.",
+  "invNoSeated_other":"დასმული {count} სტუმარი ვერ მოდის.",
+  "invMoveBtn_one":"{count} სტუმრის დაუსმელებში გადატანა",
+  "invMoveBtn_other":"{count} სტუმრის დაუსმელებში გადატანა",
+  "invMoved_one":"{count} სტუმარი გადავიდა დაუსმელ სტუმრებში",
+  "invMoved_other":"{count} სტუმარი გადავიდა დაუსმელ სტუმრებში",
+  "invGuestLine":"მოსაწვევი: {name}",
+  "invAllergyList":"ალერგიები მოსაწვევებიდან"
 }
 };

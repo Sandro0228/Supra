@@ -1,6 +1,6 @@
 # RSVP: design
 
-Status: **agreed** (2026-11-17). M1 (database), M2 (guest page `/r/<token>`) and M3 (Invitations tab, event time/venue) are built and tested; next is M4. M3 notes: groups of more than 12 guests get one invitation per person; the Email button opens the couple's mail app (automatic email is M5).
+Status: **agreed** (2026-11-17). M1–M4 are built and tested (database, guest page `/r/<token>`, Invitations tab, answers in the plan); M5 (automatic email) waits for a domain. M4 notes: household allergies are listed per household in the caterer summary, not copied onto one guest; RSVP markers show on screen only, never in exported PNG/PDF plans. M3 notes: groups of more than 12 guests get one invitation per person; the Email button opens the couple's mail app (automatic email is M5).
 
 ## Goal
 The couple sends each invited family a personal link by WhatsApp, Viber, SMS or email. On that link the family says who is coming, plus meal choices, allergies and a message. They can change their answer as often as they like until the deadline, which defaults to 24 hours before the wedding. The couple sees live totals and every change, and the answers flow into the seating plan.

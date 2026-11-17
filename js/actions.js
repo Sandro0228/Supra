@@ -1,7 +1,7 @@
 'use strict';
 /* Rendering everything, and every click, key and input in the planner. Part of the planner (app.html); see js/README.md. */
 /* ---------------- render ---------------- */
-function renderPlan(){const{B,inner}=withView(()=>planSVG());const svg=$('#plan');svg.setAttribute('viewBox',`${B.x} ${B.y} ${B.w} ${B.h}`);svg.dataset.w=B.w;svg.dataset.h=B.h;svg.innerHTML=inner;applyZoom()}
+function renderPlan(){const{B,inner}=withView(()=>planSVG({rsvp:true}));const svg=$('#plan');svg.setAttribute('viewBox',`${B.x} ${B.y} ${B.w} ${B.h}`);svg.dataset.w=B.w;svg.dataset.h=B.h;svg.innerHTML=inner;applyZoom()}
 /* View: `scale` is screen pixels per plan unit, so opening or closing a panel never changes the zoom.
    fitMode remembers a pressed Fit button so the view refits when the window changes size. */
 const isPhone=()=>matchMedia('(max-width:900px)').matches;

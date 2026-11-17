@@ -86,6 +86,7 @@ function renderLeft(){
     <div class="row"><button type="button" class="btn primary" data-act="arr-apply">${t('arrApply')}</button><button type="button" class="btn" data-act="close">${t('arrCancel')}</button></div>
     <p class="muted small">${t('arrUndoHint')}</p>`}
   else if(panel==='guests'){const total=Object.keys(S.guests).length;const seatedG=S.tables.reduce((a,x)=>a+x.seats.filter(Boolean).length,0);h=dhead(t('tabGuests'),esc(t('statGuests',{seatedGuests:seatedG,totalGuests:total})))+`
+    ${(()=>{const n=invSeatedNo().length;return n?`<div class="confirm"><span>${esc(tn('invNoSeated',n))}</span><div class="row"><button type="button" class="btn sm primary" data-inv="move-declined">${esc(tn('invMoveBtn',n))}</button></div></div>`:''})()}
     <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(FINDQ)}"><div class="search-res" id="findres"></div>
     ${S.waiting.length?`<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${S.waiting.map(id=>`<button type="button" class="wchip" data-wait="${id}" aria-pressed="${waitSel===id}">${esc(S.guests[id]?.name)}</button>`).join('')}</div></div>`:''}
     ${det('add',t('addGuests'),`<label class="field"><span class="lbl">${t('pasteNames')}</span><textarea id="bulk" rows="3" class="inp" placeholder="ნინო ბერიძე&#10;Giorgi Kapanadze"></textarea></label>
@@ -97,7 +98,7 @@ function renderLeft(){
     ${det('tools',t('tools'),`<div class="row"><button type="button" class="btn sm" data-act="matchlooks">${t('matchBtn')}</button><button type="button" class="btn sm" data-act="autoseat">${t('autoSeat')}</button><button type="button" class="btn sm" data-act="randall">${t('restyle')}</button><button type="button" class="btn sm" data-act="shuffleall">${t('shuffle')}</button><button type="button" class="btn sm danger" data-act="reset">${t('startOver')}</button></div>
       ${confirmK==='autoseat'?`<div class="confirm"><span>${t('autoSeatQ')}</span><div class="row"><button type="button" class="btn sm primary" data-act="autoseat-yes">${t('autoSeatYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}
       ${confirmK==='reset'?`<div class="confirm danger"><span>${t('startOverQ')}</span><div class="row"><button type="button" class="btn sm danger" data-act="reset-yes">${t('startOverYes')}</button><button type="button" class="btn sm" data-act="cancel">${t('keep')}</button></div></div>`:''}`)}`}
-  else if(panel==='invites'){h=invPanel();if(INV.list===null&&!INV.busy&&!INV.err)setTimeout(invLoad)}
+  else if(panel==='invites'){h=invPanel();if(!INV.busy&&!INV.err&&(INV.list===null||Date.now()-INV_AT>30000))setTimeout(invRefresh)}
   else{const sh=shareInfo(),u=guestUrl(),pre=presetOf(sh),st=sh.status,pv=`/edit/${encodeURIComponent(ROW?.id||'')}?preview=1`;
     const btn=(act,label,cls='')=>`<button type="button" class="btn ${cls}" data-act="${act}">${label}</button>`;
     const conf=(k,text,yes,cls='primary')=>confirmK===k?`<div class="confirm ${cls==='danger'?'danger':''}" role="group" aria-label="${esc(text)}"><span>${text}</span><div class="row">${btn(k+'-yes',yes,'sm '+cls)}${btn('cancel',t('keepIt'),'sm')}</div></div>`:'';
@@ -212,6 +213,7 @@ function renderRight(){
     R.innerHTML=dhead(esc(G.name),`${esc(tName(x))} · ${t('seat')} ${sel.i+1}`)+`
     <div class="who"><div class="preview">${preview(G)}</div><div class="whotxt">
       <button type="button" class="btn primary" data-act="rnd">🎲 ${t('randomLook')}</button><button type="button" class="btn sm" data-act="kind">${L.kind==='m'?t('toFem'):t('toMasc')}</button></div></div>
+    ${(()=>{const iv=invOfGuest(G.id),st=invGuestStatus(G.id);return iv?`<p class="small invg">${esc(t('invGuestLine',{name:iv.name}))} <span class="pill${st==='yes'?' invok':st==='no'?' invno':''}">${t(st==='yes'?'invSt_coming':st==='no'?'invSt_declined':'invSt_pending')}</span></p>`:''})()}
     <label class="field"><span class="lbl">${t('name')}</span><input id="g-name" class="inp" value="${esc(G.name)}"></label>
     <div class="field"><span class="lbl">${t('side')}</span>${radios(t('side'),SIDES.map(k=>({attr:`data-gside="${k}"`,on:G.side===k,html:`${k?`<i class="dot" style="background:${SIDE_COL[k]}"></i>`:''}${t(k||'sideNone')}`})))}</div>
     ${det('look',t('appearance'),`<span class="lbl">${t('skin')}</span>${sw('skin',OPT.skin,L.skin)}

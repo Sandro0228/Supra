@@ -22,7 +22,7 @@ async function invLoad(){if(!SB||!ROW||INV.busy)return;INV.busy=true;INV.err='';
       SB.from('invite_log').select('*').eq('event_id',ROW.id).order('at',{ascending:false}).limit(30)]);
     if(a.error)throw a.error;if(b.error)throw b.error;INV.list=a.data||[];INV.log=b.data||[]}
   catch(e){logSafe('invites',e);INV.err=t('invLoadErr')}
-  INV.busy=false;invRender()}
+  INV.busy=false;INV_AT=Date.now();invRender()}
 function invRender(focus){if(panel!=='invites'||sel.kind)return;const fk=focus||focusKeyOf(document.activeElement);renderLeft();
   const el=fk&&document.querySelector(fk);if(el&&el!==document.activeElement)el.focus({preventScroll:true})}
 const invById=id=>(INV.list||[]).find(i=>i.id===id);
@@ -179,6 +179,7 @@ async function invAct(k,id){const f=INV.form;
   }}
 /* Returns true when the event was the Invitations tab's, so the planner's own handlers skip it. */
 function invClick(b){const d=b.dataset;
+  if(d.inv==='move-declined'){invMoveDeclined();return true}
   if(d.inv){invAct(d.inv,d.id);return true}
   if(d.invf){INV.filter=d.invf;invRender(`[data-invf="${d.invf}"]`);return true}
   return false}
@@ -201,3 +202,30 @@ function invSettingChange(e){const el=e.target,id=el.id||'';
   if(id==='rs-msg-ka'||id==='rs-msg-en'){const l=id.slice(-2);set(r=>{r.msg=Object.assign({},r.msg,{[l]:el.value})});return true}
   return false}
 document.addEventListener('click',e=>{if(guestMode)return;const a=e.target.closest('a[data-send]');if(a)invMarkSent(a.dataset.id,a.dataset.send)});
+
+/* ---------- RSVP M4: answers flow into the plan ----------
+   Who can't come is shown on their seat; meal choices go into the guests; extra guests a household adds become
+   guests in the waiting list (remembered in S.rsvpExtra so they're made once). Household allergies stay with the
+   household and are listed in the caterer summary. Applying is one undoable step. */
+let INV_AT=0;
+function invGuestStatus(gid){if(!INV.list)return null;
+  const x=S.rsvpExtra&&S.rsvpExtra[gid];
+  if(x){const i=invById(x.inv);if(!i||i.revoked||!i.answer)return null;return(i.answer.extras||[]).some(e=>skel(e.name)===skel(x.name))?'yes':'no'}
+  for(const i of INV.list){if(i.revoked||!(i.members||[]).includes(gid))continue;const a=i.answer?.members?.[gid];return a?(a.coming?'yes':'no'):'pending'}
+  return null}
+const invOfGuest=gid=>{const x=S.rsvpExtra&&S.rsvpExtra[gid];return x?invById(x.inv):(INV.list||[]).find(i=>!i.revoked&&(i.members||[]).includes(gid))};
+function invSeatedNo(){const out=[];S.tables.forEach(x=>x.seats.forEach(id=>{if(id&&invGuestStatus(id)==='no')out.push(id)}));return out}
+function invApply(){if(MODE!=='edit'||!INV.list)return;
+  const fresh=INV.list.filter(i=>!i.revoked&&i.answer&&i.answered_at&&(!i.applied_at||i.answered_at>i.applied_at));if(!fresh.length)return;
+  commit(()=>{S.rsvpExtra=S.rsvpExtra||{};
+    fresh.forEach(i=>{const a=i.answer;
+      Object.entries(a.members||{}).forEach(([gid,v])=>{const g=S.guests[gid];if(g&&v.coming&&v.meal)g.meal=v.meal});
+      const have=Object.entries(S.rsvpExtra).filter(([,x])=>x.inv===i.id).map(([,x])=>skel(x.name));
+      (a.extras||[]).forEach(e=>{if(have.includes(skel(e.name)))return;const gid=mkGuest(e.name);const g=S.guests[gid];
+        if(g){g.meal=e.meal||'';const fam=(S.guests[(i.members||[])[0]]||{}).group;if(fam)g.group=fam}S.waiting.push(gid);S.rsvpExtra[gid]={inv:i.id,name:e.name}})})});
+  toast(tn('invApplied',fresh.length));
+  const at=new Date().toISOString();
+  fresh.forEach(async i=>{i.applied_at=at;const{error}=await SB.from('invites').update({applied_at:at}).eq('id',i.id);if(error)logSafe('invapply',error)})}
+async function invRefresh(){INV_AT=Date.now();await invLoad();if(MODE!=='edit')return;invApply();renderPlan();if(panel==='guests'&&!sel.kind)renderLeft();if(sel.kind==='seat')renderRight()}
+function invMoveDeclined(){const ids=invSeatedNo();if(!ids.length)return;
+  commit(()=>{S.tables.forEach(x=>x.seats.forEach((id,i)=>{if(id&&ids.includes(id)){x.seats[i]=null;S.waiting.push(id)}}))});toast(tn('invMoved',ids.length))}

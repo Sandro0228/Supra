@@ -23,6 +23,7 @@ Couples sign in, draw their hall, seat guests (each guest is an illustrated char
 - Name search (guest page, organiser search) compares names both as typed and as a Latin "skeleton" (`supra_skel` in `007`, `skel()` in `js/core.js` and the mock), so Georgian names typed in Latin letters match. Keep the SQL and the two JS copies identical.
 - RSVP (`008`, design in `docs/RSVP_DESIGN.md`): `invites` (one row per household, owner-only RLS, server-made token, answer cleaned by a trigger) and `invite_log`. Guests call only `rsvp_get(token)` / `rsvp_answer(token, answer)`. Answers never go into `events.data`.
 - Event details for RSVP live in the plan (`S.event.time`, `venue`, `mapUrl`, `rsvp:{open,deadline,deadlineAt,msg}`) and `savePlan()` also writes them to the event columns via `eventCols()` (Tbilisi time = UTC+4). **Saving needs migration 008 in the database.**
+- RSVP answers reach the plan in `js/invites.js` (`invRefresh` → `invApply`, one undoable `commit`): meals into guests, extra guests into Unseated with `S.rsvpExtra[gid]={inv,name}`, then `invites.applied_at` is set so each answer is applied once. `planSVG({rsvp:true})` (on-screen plan only) marks guests who can't come.
 - Guests never read `events` directly. They call `public_plan(token)` (layout and drawings only, no names) and `find_seat(token, query, code)` (one name at a time, rate-limited). **Never send meals, allergies, groups, notes, rules or the waiting list to the guest page.** Tests enforce this.
 
 ## Rules
@@ -33,7 +34,7 @@ Couples sign in, draw their hall, seat guests (each guest is an illustrated char
 - Never touch the live Supabase project from tests or scripts. Use the mock or a separate dev project.
 
 ## Tests
-- Browser (83 tests, all passing on 2026-11-17): `python3 tests/e2e/run_all.py` (needs `pip install playwright` + `python -m playwright install chromium`). The harness serves the site with Vercel's routes, swaps `supabase.min.js` for `tests/e2e/mock-supabase.js` (state in localStorage: `mockdb`, `mocksess`, `mockcfg`) and loads `tests/e2e/fixture-plan.json` (event `ev1`, guest link `/e/guestcode1`). RSVP tests seed `invites` through `Ctx(..., invites=[...])`; the mock implements `rsvp_get`/`rsvp_answer` like migration 008 (`mockcfg.rsvp = 'net' | 'rate'` simulates failures). Add new tests as `@test` functions in `tests/e2e/test_*.py`.
+- Browser (89 tests, all passing on 2026-11-17): `python3 tests/e2e/run_all.py` (needs `pip install playwright` + `python -m playwright install chromium`). The harness serves the site with Vercel's routes, swaps `supabase.min.js` for `tests/e2e/mock-supabase.js` (state in localStorage: `mockdb`, `mocksess`, `mockcfg`) and loads `tests/e2e/fixture-plan.json` (event `ev1`, guest link `/e/guestcode1`). RSVP tests seed `invites` through `Ctx(..., invites=[...])`; the mock implements `rsvp_get`/`rsvp_answer` like migration 008 (`mockcfg.rsvp = 'net' | 'rate'` simulates failures). Add new tests as `@test` functions in `tests/e2e/test_*.py`.
 - Database: `tests/sql/run.sh -h <host> -p <port> -U postgres` against an empty Postgres 15+.
 - Run the browser tests after every change. When a migration changes, run the SQL tests too.
 

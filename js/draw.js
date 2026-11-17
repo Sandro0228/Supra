@@ -62,7 +62,7 @@ function venueM(v,p,isSel,guest){
   <g transform="translate(${lx.toFixed(1)} ${lyy.toFixed(1)})">${pill?`<rect x="${-lw/2}" y="-12" width="${lw}" height="24" rx="12" fill="#FFFFFF" stroke="${p.accent}" opacity=".95"/>`:''}<text x="0" y="5" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="15" fill="${p.ink}">${esc(lbl)}</text></g>
   ${isSel?(()=>{const[hx,hy]=rot(0,y-34,r);return`<path d="M0,0 L${hx.toFixed(1)},${hy.toFixed(1)}" stroke="${p.accent}" stroke-width="1" stroke-dasharray="3 3" opacity=".6" pointer-events="none"/>`+handle('venue',v.id,hx,hy,p)})():''}</g>`;
 }
-function seatLabel(x,i,G){const where=tName(x)+', '+t('seat')+' '+(i+1);return G?(G.anon?t('takenSeat'):G.name)+' — '+where:t('emptySeat')+' — '+where}
+function seatLabel(x,i,G){const where=tName(x)+', '+t('seat')+' '+(i+1),no=G&&!G.anon&&invGuestStatus(G.id)==='no';return G?(G.anon?t('takenSeat'):G.name)+(no?' ('+t('invSt_declined')+')':'')+' — '+where:t('emptySeat')+' — '+where}
 function planSVG(opt={}){
   const p=P(),B=bounds(),broken=opt.guest?new Set():brokenSet();
   let s=`<rect x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" fill="${p.floor}"/>`;
@@ -83,7 +83,8 @@ function planSVG(opt={}){
       const on=(!opt.guest&&sel.kind==='seat'&&sel.t===x.id&&sel.i===i)||(opt.hi&&opt.hi===gid);
       tb+=`<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest?'':`role="button" tabindex="0" aria-label="${esc(seatLabel(x,i,G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb+=`<circle class="ring" r="40" fill="${p.accent}" opacity="${on?.32:0}"/>`;
-      tb+=G&&G.ghost?chairM(p):G?person(G,p):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
+      const no=opt.rsvp&&G&&!G.anon&&invGuestStatus(gid)==='no';   // on screen only, never in printed plans
+      tb+=G&&G.ghost?chairM(p):G?(no?`<g class="rsvpno" opacity=".38" style="filter:grayscale(1)">${person(G,p)}</g><g class="rsvpbadge" transform="translate(17 -40)"><circle r="10" fill="#FFFFFF" stroke="${p.accent}" stroke-width="2"/><path d="M-4,-4 L4,4 M4,-4 L-4,4" stroke="${p.accent}" stroke-width="2.2" stroke-linecap="round"/></g>`:person(G,p)):chairM(p)+`<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair,-30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair,-35)}" stroke-width="1.5"/>`;
       tb+=`</g></g>`;
     });
     if(g.shape.type==='round'){const r=g.shape.r;
