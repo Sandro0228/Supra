@@ -1,4 +1,8 @@
-'use strict';
+import { NAT, SIDE_COL, appState, chairM, esc, person, shade, t, tn, use } from './core.js';
+import { P, tName } from './state.js';
+import { bounds, brokenSet, geo, rot } from './layout.js';
+import { gDate } from './guest.js';
+import { invGuestStatus } from './invites.js';
 /* Drawing the plan as SVG. Part of the planner (app.html); see js/README.md. */
 /* ---------------- plan drawing ---------------- */
 function decoAt(kind, x, y, w) {
@@ -186,19 +190,19 @@ function planSVG(opt = {}) {
   let s = `<rect x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" fill="${p.floor}"/>`;
   for (let x = Math.ceil(B.x / 48) * 48; x < B.x + B.w; x += 48)
     s += `<path d="M${x},${B.y} V${B.y + B.h}" stroke="${shade(p.floor, -4)}" stroke-width="1"/>`;
-  const seated = S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
+  const seated = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
   const date = gDate();
   const cx = B.x + B.w / 2;
-  s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(S.event.name || t('wedding'))}</text>`;
-  s += `<text x="${cx}" y="${B.y + 102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date, tn('nGuests', seated), tn('nTables', S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
+  s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(appState.S.event.name || t('wedding'))}</text>`;
+  s += `<text x="${cx}" y="${B.y + 102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date, tn('nGuests', seated), tn('nTables', appState.S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
   s += `<path d="M${cx - 70},${B.y + 116} H${cx + 70}" stroke="${p.accent}" stroke-width="1"/>`;
-  S.venue.forEach(
+  appState.S.venue.forEach(
     v =>
-      (s += `<g opacity="${opt.dim ? 0.5 : 1}">${venueM(v, p, !opt.guest && sel.kind === 'venue' && sel.v === v.id, opt.guest)}</g>`)
+      (s += `<g opacity="${opt.dim ? 0.5 : 1}">${venueM(v, p, !opt.guest && appState.sel.kind === 'venue' && appState.sel.v === v.id, opt.guest)}</g>`)
   );
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const g = geo(x),
-      isSel = !opt.guest && ((sel.kind === 'table' && sel.t === x.id) || swapFrom === x.id),
+      isSel = !opt.guest && ((appState.sel.kind === 'table' && appState.sel.t === x.id) || appState.swapFrom === x.id),
       dim = opt.dim && opt.dim !== x.id;
     const tA = opt.guest
       ? ''
@@ -207,9 +211,11 @@ function planSVG(opt = {}) {
     let tb = `<g class="tgrp" data-tg="${x.id}" transform="translate(${x.x} ${x.y})" opacity="${dim ? 0.3 : 1}"><g transform="rotate(${R0})">`;
     g.seats.forEach((st, i) => {
       const gid = x.seats[i],
-        G = gid && S.guests[gid],
+        G = gid && appState.S.guests[gid],
         ang = (Math.atan2(-st.oy, -st.ox) * 180) / Math.PI - 90;
-      const on = (!opt.guest && sel.kind === 'seat' && sel.t === x.id && sel.i === i) || (opt.hi && opt.hi === gid);
+      const on =
+        (!opt.guest && appState.sel.kind === 'seat' && appState.sel.t === x.id && appState.sel.i === i) ||
+        (opt.hi && opt.hi === gid);
       tb += `<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest ? '' : `role="button" tabindex="0" aria-label="${esc(seatLabel(x, i, G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb += `<circle class="ring" r="40" fill="${p.accent}" opacity="${on ? 0.32 : 0}"/>`;
       const no = opt.rsvp && G && !G.anon && invGuestStatus(gid) === 'no'; // on screen only, never in printed plans
@@ -268,7 +274,7 @@ function planSVG(opt = {}) {
     const [plx, ply] = rot(0, ly, R0);
     tb += `<g pointer-events="none"><rect x="${(plx - lw / 2).toFixed(1)}" y="${(ply - 13).toFixed(1)}" width="${lw}" height="26" rx="13" fill="#FFFFFF" stroke="${p.accent}" stroke-width="1"/><text x="${plx.toFixed(1)}" y="${(ply + 5).toFixed(1)}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="14" fill="${p.ink}">${esc(nm)}</text></g>`;
     g.seats.forEach((st, i) => {
-      const G = x.seats[i] && S.guests[x.seats[i]];
+      const G = x.seats[i] && appState.S.guests[x.seats[i]];
       if (G && !G.anon) {
         const d = 48 + 46 * Math.abs(st.ox) + 18 * Math.abs(st.oy);
         const [cx, cy] = rot(st.x + st.ox * d, st.y + st.oy * d, R0);
@@ -291,7 +297,7 @@ function planSVG(opt = {}) {
     }
     s += tb + `</g>`;
   });
-  if (Object.values(S.guests).some(g => g.side)) {
+  if (Object.values(appState.S.guests).some(g => g.side)) {
     const ly = B.y + B.h - 22;
     let lx = B.x + 30;
     [['bride'], ['groom'], ['both']].forEach(([k]) => {
@@ -301,3 +307,5 @@ function planSVG(opt = {}) {
   }
   return { B, inner: s };
 }
+
+export { BODYFONT, NAMEFONT, planSVG };

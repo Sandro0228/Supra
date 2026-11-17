@@ -1,4 +1,5 @@
-'use strict';
+import { appState, esc, t } from './core.js';
+import { P, where } from './state.js';
 /* Table geometry, "Arrange tables", view rotation and seating rules. Part of the planner (app.html); see js/README.md. */
 /* ---------------- geometry ---------------- */
 const SP = 86;
@@ -65,7 +66,7 @@ function autoArrange() {
     rows = [];
   let row = [],
     rw = 0;
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const [gw, gh] = dims(x),
       g = { w: gw, h: gh };
     if (row.length && rw + GAP + g.w > MAXW) {
@@ -90,7 +91,7 @@ function autoArrange() {
     y += rh + GAP;
   });
   let vx = -500;
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     v.x = vx + v.w / 2;
     v.y = y + v.h / 2;
     vx += v.w + 40;
@@ -103,8 +104,8 @@ const AISLE = { normal: 140, wide: 220, xwide: 320 },
   GAP = 60,
   SECTION = 100; // GAP ≥ resolveOverlaps' clearance, so arranged tables never get nudged
 function arrangeDefaults() {
-  const n = S.tables.filter(x => x.shape !== 'head').length || 1;
-  const o = S.layout || {};
+  const n = appState.S.tables.filter(x => x.shape !== 'head').length || 1;
+  const o = appState.S.layout || {};
   const rows = Math.min(n, Math.max(1, o.rows || Math.round(Math.sqrt(n / 1.6)) || 1));
   return {
     orient: o.orient === 'vertical' ? 'vertical' : 'horizontal',
@@ -116,8 +117,8 @@ function arrangeDefaults() {
   };
 }
 function arrangeLayout(o) {
-  const heads = S.tables.filter(x => x.shape === 'head'),
-    guests = S.tables.filter(x => x.shape !== 'head'),
+  const heads = appState.S.tables.filter(x => x.shape === 'head'),
+    guests = appState.S.tables.filter(x => x.shape !== 'head'),
     n = guests.length;
   const R = Math.min(Math.max(1, o.rows | 0), Math.max(1, n)),
     C = Math.max(1, Math.ceil(n / R)),
@@ -161,8 +162,8 @@ function arrangeLayout(o) {
     y = hh + SECTION;
   }
   // room items in one row under the head table, keeping their left-to-right order
-  if (o.venue && S.venue.length) {
-    const vs = [...S.venue].sort((a, b) => (a.x || 0) - (b.x || 0)),
+  if (o.venue && appState.S.venue.length) {
+    const vs = [...appState.S.venue].sort((a, b) => (a.x || 0) - (b.x || 0)),
       dims = vs.map(v => rbox(v.w, v.h, v.rot)),
       vw = dims.reduce((a, [w]) => a + w, 0) + GAP * (vs.length - 1),
       vh = Math.max(...dims.map(([, h]) => h));
@@ -172,8 +173,8 @@ function arrangeLayout(o) {
       vx += dims[i][0] + GAP;
     });
     y += vh + SECTION;
-  } else if (!o.venue && S.venue.length) {
-    S.venue.forEach(v => {
+  } else if (!o.venue && appState.S.venue.length) {
+    appState.S.venue.forEach(v => {
       const [, h] = rbox(v.w, v.h, v.rot);
       y = Math.max(y, (v.y || 0) + h / 2 + SECTION);
     });
@@ -204,7 +205,7 @@ function arrangeLayout(o) {
 }
 function applyArrangement(o) {
   const L = arrangeLayout(o);
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const p = L.tables[x.id];
     if (p) {
       x.x = p.x;
@@ -212,14 +213,14 @@ function applyArrangement(o) {
       x.rot = p.rot;
     }
   });
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const p = L.venue[v.id];
     if (p) {
       v.x = p.x;
       v.y = p.y;
     }
   });
-  S.layout = {
+  appState.S.layout = {
     orient: o.orient,
     rows: o.rows,
     rowAisles: o.rowAisles,
@@ -243,13 +244,13 @@ function arrangePreview(o) {
     y0 = Math.min(y0, cy - h / 2);
     y1 = Math.max(y1, cy + h / 2);
   };
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const q = L.tables[x.id],
       g = geo(x),
       [w, h] = rbox(g.w, g.h, q.rot);
     box(q.x, q.y, w, h);
   });
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const q = L.venue[v.id] || v,
       [w, h] = rbox(v.w, v.h, v.rot);
     box(q.x, q.y, w, h);
@@ -257,12 +258,12 @@ function arrangePreview(o) {
   L.bands.forEach(
     b => (s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="${p.accent}" opacity=".16"/>`)
   );
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const q = L.venue[v.id] || v,
       [w, h] = rbox(v.w, v.h, v.rot);
     s += `<rect x="${q.x - w / 2}" y="${q.y - h / 2}" width="${w}" height="${h}" rx="8" fill="none" stroke="${p.edge}" stroke-width="6" stroke-dasharray="14 10"/>`;
   });
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const q = L.tables[x.id],
       g = geo(x);
     s +=
@@ -281,7 +282,7 @@ function arrangePreview(o) {
    Turns the picture only, in 90° steps, for this viewer on this device. The saved plan keeps its own coordinates,
    so downloads, the guest page for other people and every saved position stay exactly as they are. */
 let VROT = null;
-const vKey = () => 'supra.view.' + (ROW?.id || SLUG || 'plan');
+const vKey = () => 'supra.view.' + (appState.ROW?.id || appState.SLUG || 'plan');
 function vrot() {
   if (VROT == null) {
     let v = 0;
@@ -311,21 +312,21 @@ function toWorld(x, y) {
 /* Runs fn with S.tables and S.venue swapped for turned copies (same ids and seat lists), then puts the real ones back. */
 function withView(fn) {
   if (!vrot()) return fn();
-  const T0 = S.tables,
-    V0 = S.venue;
-  S.tables = T0.map(x => {
+  const T0 = appState.S.tables,
+    V0 = appState.S.venue;
+  appState.S.tables = T0.map(x => {
     const [a, b] = toView(x.x, x.y);
     return Object.assign({}, x, { x: a, y: b, rot: ((x.rot || 0) + VROT) % 360 });
   });
-  S.venue = V0.map(v => {
+  appState.S.venue = V0.map(v => {
     const [a, b] = toView(v.x, v.y);
     return Object.assign({}, v, { x: a, y: b, rot: ((v.rot || 0) + VROT) % 360 });
   });
   try {
     return fn();
   } finally {
-    S.tables = T0;
-    S.venue = V0;
+    appState.S.tables = T0;
+    appState.S.venue = V0;
   }
 }
 function rbox(w, h, deg) {
@@ -351,7 +352,7 @@ function resolveOverlaps() {
       return { x0: x.x - w / 2, x1: x.x + w / 2, y0: x.y - h / 2, y1: x.y + h / 2 };
     };
   let moved = false;
-  const ts = [...S.tables].sort((a, b) => a.y - b.y);
+  const ts = [...appState.S.tables].sort((a, b) => a.y - b.y);
   for (let i = 1; i < ts.length; i++)
     for (let j = 0; j < i; j++) {
       const A = R(ts[j]),
@@ -368,14 +369,14 @@ function bounds() {
     y0 = Infinity,
     x1 = -Infinity,
     y1 = -Infinity;
-  S.tables.forEach(x => {
+  appState.S.tables.forEach(x => {
     const [w, h] = dims(x);
     x0 = Math.min(x0, x.x - w / 2);
     x1 = Math.max(x1, x.x + w / 2);
     y0 = Math.min(y0, x.y - h / 2);
     y1 = Math.max(y1, x.y + h / 2);
   });
-  S.venue.forEach(v => {
+  appState.S.venue.forEach(v => {
     const [w, h] = rbox(v.w, v.h, v.rot);
     x0 = Math.min(x0, v.x - w / 2 - 30);
     x1 = Math.max(x1, v.x + w / 2 + 30);
@@ -404,7 +405,7 @@ function ruleBroken(r) {
 }
 function brokenSet() {
   const s = new Set();
-  S.rules.forEach(r => {
+  appState.S.rules.forEach(r => {
     if (ruleBroken(r)) {
       s.add(r.a);
       s.add(r.b);
@@ -412,3 +413,22 @@ function brokenSet() {
   });
   return s;
 }
+
+export {
+  applyArrangement,
+  arrangeDefaults,
+  arrangePreview,
+  autoArrange,
+  bounds,
+  brokenSet,
+  dims,
+  geo,
+  rbox,
+  resolveOverlaps,
+  rot,
+  ruleBroken,
+  toView,
+  toWorld,
+  turnView,
+  withView
+};

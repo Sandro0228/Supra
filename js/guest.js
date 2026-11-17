@@ -1,10 +1,15 @@
-'use strict';
+import { $, UL, appState, esc, guessKind, randLook, seatMode, setLang, t } from './core.js';
+import { T, tName } from './state.js';
+import { dims, turnView, withView } from './layout.js';
+import { planSVG } from './draw.js';
+import { ICON, logSafe, portrait } from './panels.js';
+import { renderAll } from './actions.js';
+import { rsvpRender } from './rsvp.js';
 /* The public "find my seat" page (/e/<token>). Part of the planner (app.html); see js/README.md. */
 /* ---------------- guest "find my seat" view ----------------
    The public page never receives the guest list. It gets a sanitized layout (public_plan) and asks the server
    for one name at a time (find_seat), which returns only name, drawing, table and seat. */
 let GROOM = false,
-  GL = { mode: 'prefix', pin: false },
   GQ = '',
   GPIN = '',
   gseq = 0,
@@ -42,28 +47,28 @@ function fmtDate(d) {
       );
 }
 function gDate() {
-  return fmtDate(S.event.date);
+  return fmtDate(appState.S.event.date);
 }
 function guestMeta() {
   document.documentElement.lang = UL();
-  document.title = PREVIEW
-    ? t('pvTitle') + ' · ' + (S.event.name || 'Supra')
-    : [t('fgTitle'), S.event.name, 'Supra'].filter(Boolean).join(' · ');
+  document.title = appState.PREVIEW
+    ? t('pvTitle') + ' · ' + (appState.S.event.name || 'Supra')
+    : [t('fgTitle'), appState.S.event.name, 'Supra'].filter(Boolean).join(' · ');
   let m = document.querySelector('meta[name=description]');
   if (!m) {
     m = document.createElement('meta');
     m.name = 'description';
     document.head.appendChild(m);
   }
-  m.content = t('fgMeta', { event: S.event.name || 'Supra' });
+  m.content = t('fgMeta', { event: appState.S.event.name || 'Supra' });
 }
 function guestRender() {
   document.body.classList.add('guestmode');
   guestMeta();
   const date = gDate(),
-    hint = GL.mode === 'exact' ? t('fgHintExact') : t('fgHintPrefix');
+    hint = appState.GL.mode === 'exact' ? t('fgHintExact') : t('fgHintPrefix');
   $('#guest').innerHTML =
-    `<div class="gwrap">${PREVIEW ? `<div class="gpreview" role="status"><b>${t('pvTitle')}</b><span>${esc(t('pvHint', { status: t('st_' + PREVIEW) }))}</span></div>` : ''}
+    `<div class="gwrap">${appState.PREVIEW ? `<div class="gpreview" role="status"><b>${t('pvTitle')}</b><span>${esc(t('pvHint', { status: t('st_' + appState.PREVIEW) }))}</span></div>` : ''}
     <div class="glang" role="radiogroup" aria-label="${esc(t('language'))}">${[
       ['en', 'English'],
       ['ka', 'ქართული']
@@ -73,17 +78,17 @@ function guestRender() {
           `<button type="button" role="radio" data-glang="${k}" aria-checked="${UL() === k}" tabindex="${UL() === k ? 0 : -1}" lang="${k}">${l}</button>`
       )
       .join('')}</div>
-    ${date ? `<p class="gdate"><time datetime="${esc(S.event.date)}">${esc(date)}</time></p>` : ''}<h1>${esc(S.event.name || 'Supra')}</h1>
+    ${date ? `<p class="gdate"><time datetime="${esc(appState.S.event.date)}">${esc(date)}</time></p>` : ''}<h1>${esc(appState.S.event.name || 'Supra')}</h1>
     <form id="gform" class="gform" role="search" autocomplete="off" novalidate>
       <h2 id="gtitle">${t('fgTitle')}</h2>
-      ${GL.pin ? `<label class="gfield"><span>${t('fgPin')}</span><input id="gpin" class="ginput" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" value="${esc(GPIN)}" aria-describedby="gpinhint"><small id="gpinhint">${t('fgPinNeed')}</small></label>` : ''}
-      <label class="gfield"><span>${t('fgLabel')}</span><input id="gq" class="ginput" type="search" placeholder="${esc(t(GL.mode === 'exact' ? 'fgPhFull' : 'fgPh'))}" value="${esc(GQ)}" aria-describedby="ghint gerr" spellcheck="false" autocapitalize="words"${GERR ? ' aria-invalid="true"' : ''}></label>
+      ${appState.GL.pin ? `<label class="gfield"><span>${t('fgPin')}</span><input id="gpin" class="ginput" type="text" inputmode="text" autocomplete="one-time-code" maxlength="12" value="${esc(GPIN)}" aria-describedby="gpinhint"><small id="gpinhint">${t('fgPinNeed')}</small></label>` : ''}
+      <label class="gfield"><span>${t('fgLabel')}</span><input id="gq" class="ginput" type="search" placeholder="${esc(t(appState.GL.mode === 'exact' ? 'fgPhFull' : 'fgPh'))}" value="${esc(GQ)}" aria-describedby="ghint gerr" spellcheck="false" autocapitalize="words"${GERR ? ' aria-invalid="true"' : ''}></label>
       <small id="ghint" class="ghint">${hint}</small>
       <p id="gerr" class="gerr" role="alert">${GERR ? esc(t(GERR)) : ''}</p>
       <button type="submit" class="btn primary gfind">${t('fgFind')}</button>
     </form>
     <div id="gres" class="gres" aria-live="polite"></div><div id="gmap" class="gmap"></div>
-    ${MODE === 'edit' ? `<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>` : ''}
+    ${appState.MODE === 'edit' ? `<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>` : ''}
     <footer class="gpowered"><span>${esc(t('poweredBy'))}</span>${SupraLogo({ kind: 'full', width: 100, alt: UL() === 'ka' ? '' : 'Supra', cls: 'gplogo' })}</footer></div>`;
   guestShow();
 }
@@ -136,23 +141,23 @@ function guestShow() {
   gMap(m);
 }
 function gTableName(m) {
-  const x = S.tables[m.table];
+  const x = appState.S.tables[m.table];
   return x ? tName(x) : tName({ shape: m.tableName === 'Head table' ? 'head' : '', name: m.tableName || '' });
 }
 function gMap(m) {
-  const x = S.tables[m.table];
+  const x = appState.S.tables[m.table];
   if (!x) return;
   const own = m.seat != null && seatMode() === 'seat';
   if (!own) {
-    const keepSel = sel;
-    sel = { kind: null };
+    const keepSel = appState.sel;
+    appState.sel = { kind: null };
     const { B, inner } = withView(() => planSVG({ guest: true, dim: x.id }));
-    sel = keepSel;
+    appState.sel = keepSel;
     return gMapShow(x, B, inner, t('fgMapAltTable', { table: tName(x) }));
   }
   const keepSeat = x.seats[m.seat - 1],
-    keepSel = sel;
-  S.guests.__hit = {
+    keepSel = appState.sel;
+  appState.S.guests.__hit = {
     id: '__hit',
     name: m.name,
     look: m.look || randLook(guessKind(m.name)),
@@ -163,11 +168,11 @@ function gMap(m) {
     allergies: ''
   };
   x.seats[m.seat - 1] = '__hit';
-  sel = { kind: null };
+  appState.sel = { kind: null };
   const { B, inner } = withView(() => planSVG({ guest: true, dim: x.id, hi: '__hit' }));
   x.seats[m.seat - 1] = keepSeat;
-  delete S.guests.__hit;
-  sel = keepSel;
+  delete appState.S.guests.__hit;
+  appState.sel = keepSel;
   gMapShow(x, B, inner, t('fgMapAlt', { table: tName(x), seat: m.seat }));
 }
 function gMapShow(x0, B, inner, alt) {
@@ -188,14 +193,14 @@ function findLocal(q) {
   if (qn.replace(/ /g, '').length < 3) return { status: 'short', matches: [] };
   const sw = qn.replace(/^(\S+) (.+)$/, '$2 $1'),
     rows = [];
-  S.tables.forEach((x, ti) =>
+  appState.S.tables.forEach((x, ti) =>
     x.seats.forEach((id, si) => {
-      const g = id && S.guests[id];
+      const g = id && appState.S.guests[id];
       if (g && !g.anon) rows.push({ g, ti, si, nn: gnorm(g.name) });
     })
   );
   const hit = r =>
-    GL.mode === 'exact' ? r.nn === qn || r.nn === sw : r.nn.startsWith(qn) || (' ' + r.nn).includes(' ' + qn);
+    appState.GL.mode === 'exact' ? r.nn === qn || r.nn === sw : r.nn.startsWith(qn) || (' ' + r.nn).includes(' ' + qn);
   const ms = rows.filter(hit);
   if (ms.length > 5) return { status: 'many', matches: [] };
   return {
@@ -205,9 +210,9 @@ function findLocal(q) {
       look: r.g.look,
       kid: r.g.kid,
       table: r.ti,
-      tableName: S.tables[r.ti].name,
+      tableName: appState.S.tables[r.ti].name,
       seat: seatMode() === 'table' ? null : r.si + 1,
-      mates: ROW?.show_tablemates ? rows.filter(o => o.ti === r.ti && o.si !== r.si).map(o => o.g.name) : null
+      mates: appState.ROW?.show_tablemates ? rows.filter(o => o.ti === r.ti && o.si !== r.si).map(o => o.g.name) : null
     }))
   };
 }
@@ -242,7 +247,7 @@ async function guestSearch() {
   }
   setGuestErr('');
   const my = ++gseq;
-  if (MODE !== 'guest') {
+  if (appState.MODE !== 'guest') {
     const r = findLocal(GQ);
     GS = { status: r.status, matches: r.matches, chosen: r.matches.length === 1 ? 0 : -1 };
     guestShow();
@@ -252,9 +257,13 @@ async function guestSearch() {
   guestShow();
   let r;
   try {
-    const { data, error } = PREVIEW
-      ? await SB.rpc('preview_find_seat', { p_event: PREVIEW_ID, p_query: GQ })
-      : await SB.rpc('find_seat', { p_slug: SLUG, p_query: GQ, p_pin: GL.pin ? GPIN : null });
+    const { data, error } = appState.PREVIEW
+      ? await appState.SB.rpc('preview_find_seat', { p_event: appState.PREVIEW_ID, p_query: GQ })
+      : await appState.SB.rpc('find_seat', {
+          p_slug: appState.SLUG,
+          p_query: GQ,
+          p_pin: appState.GL.pin ? GPIN : null
+        });
     if (error) throw error;
     r = data || { status: 'error', matches: [] };
   } catch (e) {
@@ -329,20 +338,22 @@ document.addEventListener('submit', e => {
 });
 function route() {
   $('#loading').hidden = true;
-  guestMode = MODE === 'guest' || MODE === 'rsvp' || location.hash === '#find';
-  $('#app').hidden = guestMode;
-  $('#guest').hidden = !guestMode;
-  if (MODE === 'rsvp') {
+  appState.guestMode = appState.MODE === 'guest' || appState.MODE === 'rsvp' || location.hash === '#find';
+  $('#app').hidden = appState.guestMode;
+  $('#guest').hidden = !appState.guestMode;
+  if (appState.MODE === 'rsvp') {
     rsvpRender();
     return;
   }
-  if (guestMode) {
-    if (MODE === 'edit') GL = { mode: ROW?.lookup_mode || 'prefix', pin: false };
+  if (appState.guestMode) {
+    if (appState.MODE === 'edit') appState.GL = { mode: appState.ROW?.lookup_mode || 'prefix', pin: false };
     guestRender();
-    if (MODE === 'guest' || !GQ) $('#gq')?.focus({ preventScroll: true });
+    if (appState.MODE === 'guest' || !GQ) $('#gq')?.focus({ preventScroll: true });
   } else {
     document.body.classList.remove('guestmode');
     renderAll();
   }
 }
 window.addEventListener('hashchange', route);
+
+export { GERR, fmtDate, gDate, guestClick, route, setGuestErr };
