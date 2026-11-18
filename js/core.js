@@ -354,7 +354,9 @@ function imageDefs() {
   for (const k in IMG) s += imageDef(k);
   return (
     s +
-    `<clipPath id="cHead" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="1254" height="828"/></clipPath><clipPath id="cBody" clipPathUnits="userSpaceOnUse"><rect x="-300" y="-400" width="1854" height="1615"/></clipPath>`
+    `<clipPath id="cHead" clipPathUnits="userSpaceOnUse"><rect x="0" y="0" width="1254" height="828"/></clipPath><clipPath id="cBody" clipPathUnits="userSpaceOnUse"><rect x="-300" y="-400" width="1854" height="1615"/></clipPath>` +
+    // fades out the bottom of the body so a seated guest doesn't end in a hard straight line above the chair legs
+    `<linearGradient id="gBodyFade" gradientUnits="userSpaceOnUse" x1="0" y1="1140" x2="0" y2="1215"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#000000"/></linearGradient><mask id="mBody" maskUnits="userSpaceOnUse" x="-300" y="-400" width="1854" height="1615"><rect x="-300" y="-400" width="1854" height="1615" fill="url(#gBodyFade)"/></mask>`
   );
 }
 function allDefs() {
@@ -396,7 +398,7 @@ function lookImages(L) {
   if (L.outfit === 'suit') k.push('out_suit_fixed');
   if (L.hair && L.hair !== 'bald') k.push('hair_' + L.hair);
   if (L.beard && L.beard !== 'none') k.push('beard_' + L.beard);
-  if (L.glasses && L.glasses !== 'none') k.push('gl_' + L.glasses);
+  if (L.glasses && L.glasses !== 'none' && !GLASSES[L.glasses]) k.push('gl_' + L.glasses);
   return k;
 }
 function fig(L) {
@@ -425,9 +427,36 @@ function fig(L) {
       .join('');
   if (L.hair !== 'bald' && IMG['hair_' + L.hair]) g += use('hair_' + L.hair, `filter="${tint(h)}"`);
   if (L.beard !== 'none' && IMG['beard_' + L.beard]) g += use('beard_' + L.beard, `filter="${tint(bc)}"`);
-  if (L.glasses !== 'none') g += use('gl_' + L.glasses);
-  return `<g transform="${PERSON_T}" clip-path="url(#cBody)">${g}</g>`;
+  if (L.glasses !== 'none') g += GLASSES[L.glasses] || use('gl_' + L.glasses);
+  return `<g transform="${PERSON_T}" clip-path="url(#cBody)" mask="url(#mBody)">${g}</g>`;
 }
+/* Round and square glasses are drawn as shapes, not pictures: dark frames thick enough to read at seat size,
+   lenses centred on the eyes (see the eye positions in fig), and no arms: only the frame and the bridge. */
+const EYES = [
+  [486, 590],
+  [767, 586]
+];
+function glassesSVG({ col, w, lens }) {
+  const [[lx, ly], [rx, ry]] = EYES,
+    hw = lens.w / 2,
+    ty = (ly + ry) / 2 - lens.h * 0.22;
+  const one = (x, y) =>
+    lens.round
+      ? `<circle cx="${x}" cy="${y}" r="${hw}"/>`
+      : `<rect x="${x - hw}" y="${y - lens.h / 2}" width="${lens.w}" height="${lens.h}" rx="${lens.rx}"/>`;
+  const glint = (x, y) =>
+    `<path d="M${x - hw * 0.55},${y - lens.h * 0.12} q${hw * 0.18},${-lens.h * 0.28} ${hw * 0.5},${-lens.h * 0.32}" stroke="#FFFFFF" stroke-width="${w * 0.6}" opacity=".55" fill="none"/>`;
+  return (
+    `<g fill="#FFFFFF" fill-opacity=".06" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${one(lx, ly)}${one(rx, ry)}</g>` +
+    `<g fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"><path d="M${lx + hw - w * 0.3},${ty + 4} Q${(lx + rx) / 2},${ty - 26} ${rx - hw + w * 0.3},${ty + 4}"/></g>` +
+    glint(lx, ly) +
+    glint(rx, ry)
+  );
+}
+const GLASSES = {
+  round: glassesSVG({ col: '#2E211A', w: 14, lens: { round: true, w: 226, h: 226 } }),
+  square: glassesSVG({ col: '#3E2619', w: 18, lens: { w: 222, h: 160, rx: 40 } })
+};
 function chairM() {
   const n = NAT.chair;
   return `<g transform="translate(-25 -47) scale(${(50 / n[0]).toFixed(4)})">${use('chair')}</g>`;
