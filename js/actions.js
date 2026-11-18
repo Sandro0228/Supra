@@ -1,4 +1,17 @@
-import { $, UL, VENUE, appState, lookMismatch, randLook, relook, seatMode, setLang, t, uid } from './core.js';
+import {
+  $,
+  UL,
+  VENUE,
+  appState,
+  lookMismatch,
+  randLook,
+  relook,
+  seatMode,
+  setLang,
+  smartLook,
+  t,
+  uid
+} from './core.js';
 import { T, V, commit, hist, markDirty, mkGuest, tName, toast, undo } from './state.js';
 import {
   applyArrangement,
@@ -437,14 +450,21 @@ function act(a) {
       toast(t('added', { n: names.length }));
       break;
     }
-    case 'randall':
+    case 'randall': {
+      // One seed per run: relatives come out alike, and each run gives the families a new look.
+      // The couple (gown, tuxedo) and looks changed by hand stay as they are.
+      const seed = uid();
       commit(() =>
         Object.values(appState.S.guests).forEach(g => {
-          if (!['gown', 'tuxedo'].includes(g.look.outfit)) g.look = randLook(g.look.kind);
+          if (g.look.hand || ['gown', 'tuxedo'].includes(g.look.outfit)) return;
+          const keep = g.look.kindSet;
+          g.look = smartLook(g.name, g.group, { kind: g.look.kind, seed });
+          if (keep) g.look.kindSet = true;
         })
       );
       toast(t('newLooks'));
       break;
+    }
     case 'shuffleall':
       commit(() => {
         const tb = appState.S.tables.filter(y => y.shape !== 'head');
@@ -530,7 +550,7 @@ function act(a) {
       commit(() => {
         const g = curGuest(),
           keep = g.look.kindSet;
-        g.look = randLook(g.look.kind);
+        g.look = smartLook(g.name, g.group, { kind: g.look.kind, self: g });
         if (keep) g.look.kindSet = true;
       });
       break;
@@ -613,14 +633,19 @@ function act(a) {
     case 'shuffle':
       commit(() => shuffle(x.seats));
       break;
-    case 'restyle':
+    case 'restyle': {
+      const seed = uid();
       commit(() =>
         x.seats.forEach(id => {
           const g = id && appState.S.guests[id];
-          if (g && !['gown', 'tuxedo'].includes(g.look.outfit)) g.look = randLook(g.look.kind);
+          if (!g || g.look.hand || ['gown', 'tuxedo'].includes(g.look.outfit)) return;
+          const keep = g.look.kindSet;
+          g.look = smartLook(g.name, g.group, { kind: g.look.kind, seed });
+          if (keep) g.look.kindSet = true;
         })
       );
       break;
+    }
     case 'dup':
       commit(() => {
         const nt = {
@@ -848,10 +873,24 @@ document.addEventListener('click', e => {
     });
     return;
   }
+  if (d.crowd)
+    return commit(() => {
+      const ev = appState.S.event;
+      if (d.crowd === 'auto') return delete ev.crowd;
+      const c = (ev.crowd = ev.crowd || { skin: [], hair: [] }),
+        list = (c[d.crowd] = c[d.crowd] || []),
+        i = +d.i,
+        at = list.indexOf(i);
+      if (at >= 0) list.splice(at, 1);
+      else list.push(i);
+      list.sort((a, b) => a - b);
+      if (!c.skin.length && !c.hair.length) delete ev.crowd;
+    });
   if (d.look)
     return commit(() => {
       const g = curGuest();
       g.look[d.look] = d.v;
+      g.look.hand = true; // drawn by hand: never restyled, and relatives added later take after this look
       if (d.look === 'hairColor' && g.look.beard === 'none') g.look.beardColor = d.v;
     });
   if (d.gside !== undefined) return commit(() => (curGuest().side = d.gside));
