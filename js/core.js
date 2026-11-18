@@ -296,6 +296,81 @@ function randLook(kind, r = Math.random) {
     glasses: r() < 0.16 ? pick(['round', 'square', 'sun'], r) : 'none'
   };
 }
+/* ---------------- first guesses for a new guest's drawing ----------------
+   Random looks felt wrong at a real wedding, so a new guest's drawing starts from what is likely:
+   - man or woman from the first name (names.js);
+   - the couple's "typical guests" setting (S.event.crowd: skin and hair-colour indexes into OPT) or, if unset,
+     a light-to-medium, mostly dark-haired mix for names in Georgian letters and an even mix otherwise;
+   - relatives (same surname, compared as a Latin skeleton) share a skin tone and mostly a hair colour, taken from a
+     relative already in the plan (one drawn by hand first) or from a seed per family;
+   - grandparents (by title or group name) get grey or white hair; children's groups no beard or glasses.
+   Looks the organiser changed by hand carry look.hand and are never restyled. */
+const CROWD_KA = { skin: [3, 3, 2, 1, 0.35, 0.25], hair: [3, 3, 2, 1, 0.4, 0.3, 0, 0] },
+  CROWD_ANY = { skin: [1, 1, 1, 1, 1, 1], hair: [1, 1, 1, 1, 1, 1, 0, 0] },
+  ELDER_GROUP = /ბებია|ბებო|ბაბუა|grand|elder|бабуш|дедуш|მოხუც/i,
+  KID_GROUP = /ბავშვ|პატარ|kid|child|дет/i;
+function weighted(ws, r) {
+  const sum = ws.reduce((a, b) => a + b, 0);
+  let x = r() * sum;
+  for (let i = 0; i < ws.length; i++) if ((x -= ws[i]) < 0) return i;
+  return ws.length - 1;
+}
+function crowdWeights(name) {
+  const c = appState.S?.event?.crowd;
+  if (c && (c.skin?.length || c.hair?.length)) {
+    const only = (list, n, auto) =>
+      list?.length ? Array.from({ length: n }, (_, i) => (list.includes(i) ? 1 : 0)) : auto;
+    return {
+      skin: only(c.skin, OPT.skin.length, CROWD_ANY.skin),
+      hair: only(c.hair, OPT.hairColor.length, CROWD_ANY.hair)
+    };
+  }
+  return /[Ⴀ-ჿ]/.test(name || '') ? CROWD_KA : CROWD_ANY;
+}
+const familyOf = name => {
+  const f = window.SupraNames?.family?.(name);
+  return f ? skel(f) : null;
+};
+function relative(fam, skip) {
+  if (!fam) return null;
+  let any = null;
+  for (const g of Object.values(appState.S?.guests || {})) {
+    if (g === skip || !g.look || familyOf(g.name) !== fam) continue;
+    if (g.look.hand) return g;
+    any = any || g;
+  }
+  return any;
+}
+/* opts.seed: a word that makes a fresh family resemblance (a "restyle everyone" run); opts.self: the guest being
+   restyled, so they don't copy themselves. */
+function smartLook(name, group = '', opts = {}) {
+  const r = opts.r || Math.random,
+    L = randLook(opts.kind || guessKind(name), r),
+    w = crowdWeights(name),
+    fam = familyOf(name),
+    rel = opts.seed == null ? relative(fam, opts.self) : null,
+    fr = fam ? rng(fam + '|' + (opts.seed ?? appState.ROW?.id ?? '')) : r;
+  if (rel) {
+    L.skin = rel.look.skin;
+    L.hairColor = r() < 0.7 ? rel.look.hairColor : OPT.hairColor[weighted(w.hair, r)];
+  } else {
+    L.skin = OPT.skin[weighted(w.skin, fr)];
+    const famHair = OPT.hairColor[weighted(w.hair, fr)];
+    L.hairColor = !fam || r() < 0.7 ? famHair : OPT.hairColor[weighted(w.hair, r)];
+  }
+  if (window.SupraNames?.elder?.(name) || ELDER_GROUP.test(group || '')) {
+    L.hairColor = pick(OPT.hairColor.slice(6), r);
+    if (L.kind === 'f') L.hair = pick(['bob', 'bun', 'short', 'curly'], r);
+    else if (L.hair === 'curly') L.hair = 'short';
+    if (L.outfit === 'dress' && r() < 0.5) L.outfit = 'sweater';
+    if (L.glasses === 'none' && r() < 0.35) L.glasses = pick(['round', 'square'], r);
+  } else if (KID_GROUP.test(group || '')) {
+    L.beard = 'none';
+    L.glasses = 'none';
+  }
+  L.beardColor = L.hairColor;
+  return L;
+}
 /* 'seat': guests are told their table and seat; 'table': only their table, they pick a chair themselves. */
 const seatMode = () => (appState.S?.event?.seatMode === 'table' ? 'table' : 'seat');
 const guessKind = n => window.SupraNames?.guess(n) || null;
@@ -437,6 +512,7 @@ function person(G, P, withChair = true) {
 }
 
 export {
+  smartLook,
   $,
   loadImages,
   lookImages,

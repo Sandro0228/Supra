@@ -220,5 +220,22 @@ christopher jonathan stephen frank philip giovanni marco luca matteo pierre jean
     }
     return null;
   }
-  window.SupraNames = { guess, _lists: { F, M, XF, XM } };
+  // The family a guest belongs to, for drawing relatives alike: their surname (the word with a surname ending, or
+  // failing that a word that isn't a first name or title). null for one-word names.
+  function family(full) {
+    const words = String(full || '')
+      .split(/[\s\-–—/]+/)
+      .map(norm)
+      .filter(w => w && !TF.has(w) && !TM.has(w));
+    if (words.length < 2) return null;
+    return words.find(w => SURNAME.test(w) && !one(w)) || words.find(w => !one(w)) || null;
+  }
+  // Grandparents ("ბებია ლია", "Grandpa Joe", "дедушка") are drawn with grey hair.
+  const ELDER = set('ბებია ბებო ბაბუა ბაბუ grandma grandmother grandpa grandfather granny бабушка дедушка');
+  function elder(full) {
+    return String(full || '')
+      .split(/[\s\-–—/]+/)
+      .some(w => ELDER.has(norm(w)));
+  }
+  window.SupraNames = { guess, family, elder, _lists: { F, M, XF, XM } };
 })();

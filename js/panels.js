@@ -186,6 +186,22 @@ const chipBtns = (attr, list, cur, lbl, name) =>
     name || '',
     list.map(k => ({ attr: `${attr}="${k}"`, on: cur === k, html: esc(lbl ? lbl(k) : t(k)) }))
   );
+/* "Typical guests": the skin tones and hair colours new guests are drawn with (smartLook in core.js). */
+function crowdField(e) {
+  const c = e.crowd || {},
+    set = !!(c.skin?.length || c.hair?.length),
+    row = (key, list, lblKey) =>
+      `<span class="muted small">${esc(t(lblKey))}</span><div class="crowdrow" role="group" aria-label="${esc(t(lblKey))}">${list
+        .map(
+          (col, i) =>
+            `<button type="button" class="sw" data-crowd="${key}" data-i="${i}" aria-pressed="${!!c[key]?.includes(i)}" aria-label="${esc(t(lblKey) + ' ' + t('shadeN', { n: i + 1, of: list.length }))}" style="background:${col}"></button>`
+        )
+        .join('')}</div>`;
+  return `<div class="field"><span class="lbl">${t('crowdTitle')}</span><p class="muted small">${t('crowdHint')}</p>
+    ${row('skin', OPT.skin, 'crowdSkin')}${row('hair', OPT.hairColor, 'crowdHair')}
+    <p class="muted small" role="status">${set ? t('crowdSet') : t('crowdAuto')}</p>
+    <div class="row"><button type="button" class="btn sm" data-act="randall">${t('crowdApply')}</button>${set ? `<button type="button" class="btn sm" data-crowd="auto">${t('crowdReset')}</button>` : ''}</div></div>`;
+}
 const det = (key, title, body) =>
   `<details class="more" data-sec="${key}" ${OPEN.has(key) ? 'open' : ''}><summary>${title}</summary><div class="body">${body}</div></details>`;
 const dhead = (title, sub) =>
@@ -219,6 +235,7 @@ function renderLeft() {
       .join(', ')}.</p>
     <div class="field"><span class="lbl">${t('arrTitle')}</span><p class="muted small">${t('arrHint')}</p><div class="row"><button type="button" class="btn" data-act="arr-open">${t('arrOpen')}</button></div></div>
     <div class="field"><span class="lbl">${t('style')}</span>${chipBtns('data-pal', Object.keys(PALETTES), e.palette, k => t('pal_' + k), t('style'))}</div>
+    ${crowdField(e)}
     ${det(
       'layout',
       t('layoutTools'),

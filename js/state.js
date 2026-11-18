@@ -1,4 +1,4 @@
-import { PALETTES, appState, guessKind, randLook, rng, t, uid } from './core.js';
+import { PALETTES, appState, guessKind, randLook, rng, smartLook, t, uid } from './core.js';
 import { autoArrange, resolveOverlaps } from './layout.js';
 import { renderTop } from './panels.js';
 import { renderAll } from './actions.js';
@@ -15,7 +15,7 @@ let PUB = null,
 function mkGuest(name, look, extra) {
   const id = uid();
   appState.S.guests[id] = Object.assign(
-    { id, name, group: '', side: '', kid: false, meal: '', allergies: '', look: look || randLook(guessKind(name)) },
+    { id, name, group: '', side: '', kid: false, meal: '', allergies: '', look: look || smartLook(name, extra?.group) },
     extra || {}
   );
   return id;
