@@ -183,59 +183,103 @@ function seatLabel(x, i, G) {
     ? (G.anon ? t('takenSeat') : G.name) + (no ? ' (' + t('invSt_declined') + ')' : '') + ' — ' + where
     : t('emptySeat') + ' — ' + where;
 }
-/* The room around the plan: parquet floor softened with the palette colour, walls, windows along the top wall,
-   plants in the top corners, the entrance with two candelabras in the middle of the bottom wall. Drawings come
-   from img/ (floor, window, plant, door, candelabra) and are skipped if they haven't loaded. */
-const WALL = 16;
-function art(k, x, y, h) {
+/* The room around the plan, all seen from above like the floor plan itself: parquet softened with the palette
+   colour, walls with windows that let daylight onto the floor, olive trees in the corners, and the entrance in the
+   middle of the bottom wall (open doors, a runner and two flower arrangements). Drawings come from img/ (floor,
+   tree_top, flowers_top, runner) and are skipped if they haven't loaded. Only the guests are drawn from the front. */
+const WALL = 18,
+  WALL_COL = '#F4ECDF',
+  DOOR_W = 110,
+  TREE = 84;
+function art(k, x, y, w, h) {
   const n = NAT[k];
   if (!n || !IMG[k]) return '';
-  const sc = h / n[1];
-  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${sc.toFixed(4)})">${use(k)}</g>`;
+  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(w / n[0]).toFixed(4)} ${(h / n[1]).toFixed(4)})">${use(k)}</g>`;
+}
+const artH = (k, x, y, h) => (NAT[k] ? art(k, x, y, (h * NAT[k][0]) / NAT[k][1], h) : '');
+/* A window in the wall: glass with a frame, and daylight falling into the room. side: 't', 'l' or 'r'. */
+function windowAt(side, a, len) {
+  const glass = `fill="#EEF4F3" stroke="${shade(WALL_COL, -40)}" stroke-width="1.5"`;
+  if (side === 't') {
+    const { x, y } = a;
+    return (
+      `<path d="M${x},${y + WALL} L${x + len},${y + WALL} L${x + len + 18},${y + WALL + 110} L${x - 18},${y + WALL + 110} Z" fill="url(#gSunT)"/>` +
+      `<rect x="${x}" y="${y + WALL / 2 - 4}" width="${len}" height="8" ${glass}/><path d="M${x + len / 2},${y + WALL / 2 - 4} v8" stroke="${shade(WALL_COL, -40)}" stroke-width="1.5"/>`
+    );
+  }
+  const { x, y } = a,
+    dir = side === 'l' ? 1 : -1,
+    inner = x + dir * WALL,
+    far = inner + dir * 110;
+  return (
+    `<path d="M${inner},${y} L${inner},${y + len} L${far},${y + len + 18} L${far},${y - 18} Z" fill="url(#gSun${side.toUpperCase()})"/>` +
+    `<rect x="${x + dir * (WALL / 2) - 4}" y="${y}" width="8" height="${len}" ${glass}/><path d="M${x + dir * (WALL / 2) - 4},${y + len / 2} h8" stroke="${shade(WALL_COL, -40)}" stroke-width="1.5"/>`
+  );
 }
 function hall(B, p) {
   const { x, y, w, h } = B,
     cx = x + w / 2,
-    tile = 300;
+    tile = 300,
+    sun = (id, x1, y1, x2, y2) =>
+      `<linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="#FFFBEF" stop-opacity=".38"/><stop offset="1" stop-color="#FFFBEF" stop-opacity="0"/></linearGradient>`;
   let s =
     `<defs><pattern id="pFloor" patternUnits="userSpaceOnUse" x="${x}" y="${y}" width="${tile}" height="${tile}">` +
     (IMG.floor ? `<g transform="scale(${tile / NAT.floor[0]})">${use('floor')}</g>` : '') +
     `</pattern><radialGradient id="gPool"><stop offset="0" stop-color="#FFF6E2" stop-opacity=".75"/><stop offset=".6" stop-color="#FFF6E2" stop-opacity=".35"/><stop offset="1" stop-color="#FFF6E2" stop-opacity="0"/></radialGradient>` +
-    `<radialGradient id="gHall" cx=".5" cy=".45" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3A2A1C" stop-opacity=".16"/></radialGradient></defs>`;
+    `<radialGradient id="gHall" cx=".5" cy=".45" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3A2A1C" stop-opacity=".16"/></radialGradient>` +
+    sun('gSunT', 0, 0, 0, 1) +
+    sun('gSunL', 0, 0, 1, 0) +
+    sun('gSunR', 1, 0, 0, 0) +
+    `</defs>`;
   s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${p.floor}"/>`;
   if (IMG.floor)
     s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#pFloor)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${p.floor}" opacity=".5"/>`;
   s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#gHall)"/>`;
-  // walls
-  s += `<rect x="${x + WALL / 2}" y="${y + WALL / 2}" width="${w - WALL}" height="${h - WALL}" fill="none" stroke="#F4ECDF" stroke-width="${WALL}"/><rect x="${x + WALL}" y="${y + WALL}" width="${w - 2 * WALL}" height="${h - 2 * WALL}" fill="none" stroke="${shade('#F4ECDF', -28)}" stroke-width="1.5"/>`;
-  // top wall: plants in the corners, windows on both sides of the title
-  const ph = 130,
-    pw = ph * (NAT.plant ? NAT.plant[0] / NAT.plant[1] : 0.6);
-  s += art('plant', x + WALL + 4, y + WALL + 6, ph) + art('plant', x + w - WALL - 4 - pw, y + WALL + 6, ph);
-  const wh = 118,
-    ww = wh * (NAT.window ? NAT.window[0] / NAT.window[1] : 0.66),
-    gap = 46,
-    // keep the windows clear of the event name (38px Marcellus is about 19 units per letter)
-    half = Math.max(200, ((appState.S.event.name || t('wedding')).length * 19) / 2 + 40);
+  // windows first, so their daylight lies under the walls and everything in the room
+  const half = Math.max(200, ((appState.S.event.name || t('wedding')).length * 19) / 2 + 40), // clear of the event name
+    WIN = 92,
+    STEP = 230;
+  let win = '';
   for (const [a, b] of [
-    [x + WALL + pw + 24, cx - half],
-    [cx + half, x + w - WALL - pw - 24]
+    [x + WALL + TREE + 30, cx - half],
+    [cx + half, x + w - WALL - TREE - 30]
   ]) {
-    const n = Math.max(0, Math.floor((b - a + gap) / (ww + gap)));
-    const used = n * ww + (n - 1) * gap,
-      start = a + (b - a - used) / 2;
-    for (let i = 0; i < n; i++) s += art('window', start + i * (ww + gap), y + WALL - 4, wh);
+    const n = Math.max(0, Math.floor((b - a - WIN) / STEP) + 1);
+    const start = a + (b - a - (n - 1) * STEP - WIN) / 2;
+    for (let i = 0; i < n; i++) win += windowAt('t', { x: start + i * STEP, y }, WIN);
   }
-  // bottom wall: the entrance
-  const dh = 150,
-    dw = dh * (NAT.door ? NAT.door[0] / NAT.door[1] : 0.67),
-    ch = 108,
-    cw = ch * (NAT.candelabra ? NAT.candelabra[0] / NAT.candelabra[1] : 0.42);
-  s += `<ellipse cx="${cx}" cy="${y + h - WALL - 6}" rx="${dw * 1.1}" ry="38" fill="url(#gPool)"/>`;
-  s += art('door', cx - dw / 2, y + h - WALL - dh + 6, dh);
+  {
+    const a = y + 220,
+      b = y + h - 220,
+      n = Math.max(0, Math.floor((b - a - WIN) / STEP) + 1),
+      start = a + (b - a - (n - 1) * STEP - WIN) / 2;
+    for (let i = 0; i < n; i++)
+      win += windowAt('l', { x, y: start + i * STEP }, WIN) + windowAt('r', { x: x + w, y: start + i * STEP }, WIN);
+  }
+  // walls, with the windows set into them
+  s += `<rect x="${x + WALL / 2}" y="${y + WALL / 2}" width="${w - WALL}" height="${h - WALL}" fill="none" stroke="${WALL_COL}" stroke-width="${WALL}"/><rect x="${x + WALL}" y="${y + WALL}" width="${w - 2 * WALL}" height="${h - 2 * WALL}" fill="none" stroke="${shade(WALL_COL, -28)}" stroke-width="1.5"/>`;
+  s += win;
+  // the entrance: a gap in the bottom wall, both doors open against the wall, a runner and flowers on either side
+  const by = y + h - WALL,
+    dl = cx - DOOR_W / 2,
+    dr = cx + DOOR_W / 2,
+    leaf = DOOR_W / 2,
+    wood = '#B98A5E';
+  s += `<ellipse cx="${cx}" cy="${by}" rx="${DOOR_W * 1.3}" ry="70" fill="url(#gPool)"/>`;
+  s += `<rect x="${dl}" y="${by - 1}" width="${DOOR_W}" height="${WALL + 2}" fill="${shade(WALL_COL, -10)}"/>`;
+  if (IMG.runner) s += art('runner', cx - 34, by - 140, 68, 140);
+  s += `<rect x="${dl - 3}" y="${by - leaf}" width="7" height="${leaf}" rx="1.5" fill="${wood}" stroke="${shade(wood, -35)}" stroke-width="1"/><rect x="${dr - 3}" y="${by - leaf}" width="7" height="${leaf}" rx="1.5" fill="${wood}" stroke="${shade(wood, -35)}" stroke-width="1"/>`;
+  s += artH('flowers_top', dl - 86, by - 76, 70) + artH('flowers_top', dr + 16, by - 76, 70);
+  // olive trees in the corners
+  const tx0 = x + WALL + 6,
+    tx1 = x + w - WALL - 6 - TREE,
+    ty0 = y + WALL + 6,
+    ty1 = y + h - WALL - 6 - TREE;
   s +=
-    art('candelabra', cx - dw / 2 - cw - 14, y + h - WALL - ch, ch) +
-    art('candelabra', cx + dw / 2 + 14, y + h - WALL - ch, ch);
+    artH('tree_top', tx0, ty0, TREE) +
+    artH('tree_top', tx1, ty0, TREE) +
+    artH('tree_top', tx0, ty1, TREE) +
+    artH('tree_top', tx1, ty1, TREE);
   return s;
 }
 function planSVG(opt = {}) {
@@ -356,7 +400,7 @@ function planSVG(opt = {}) {
   });
   if (Object.values(appState.S.guests).some(g => g.side)) {
     const ly = B.y + B.h - 22;
-    let lx = B.x + 30;
+    let lx = B.x + (IMG.tree_top ? WALL + TREE + 24 : 30);
     [['bride'], ['groom'], ['both']].forEach(([k]) => {
       s += `<rect x="${lx}" y="${ly - 10}" width="12" height="12" rx="2" fill="${SIDE_COL[k]}"/><text x="${lx + 18}" y="${ly}" font-family="${BODYFONT}" font-size="12" fill="${p.ink}">${esc(t(k))}</text>`;
       lx += t(k).length * 7 + 46;
