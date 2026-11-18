@@ -3,3 +3,4 @@ build/
 .DS_Store
 !brand/*.png
 __pycache__/
+new-art/

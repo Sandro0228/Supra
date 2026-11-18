@@ -466,6 +466,7 @@ function person(G, P, withChair = true) {
 }
 
 export {
+  IMG,
   $,
   loadImages,
   lookImages,
