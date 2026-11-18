@@ -1,6 +1,6 @@
-import { NAT, SIDE_COL, appState, chairM, esc, person, shade, t, tn, use } from './core.js';
+import { IMG, NAT, SIDE_COL, appState, chairM, esc, person, shade, t, tn, use } from './core.js';
 import { P, tName } from './state.js';
-import { bounds, brokenSet, geo, rot } from './layout.js';
+import { bounds, brokenSet, dims, geo, rot } from './layout.js';
 import { gDate } from './guest.js';
 import { invGuestStatus } from './invites.js';
 /* Drawing the plan as SVG. Part of the planner (app.html); see js/README.md. */
@@ -183,19 +183,76 @@ function seatLabel(x, i, G) {
     ? (G.anon ? t('takenSeat') : G.name) + (no ? ' (' + t('invSt_declined') + ')' : '') + ' — ' + where
     : t('emptySeat') + ' — ' + where;
 }
+/* The room around the plan: parquet floor softened with the palette colour, walls, windows along the top wall,
+   plants in the top corners, the entrance with two candelabras in the middle of the bottom wall. Drawings come
+   from img/ (floor, window, plant, door, candelabra) and are skipped if they haven't loaded. */
+const WALL = 16;
+function art(k, x, y, h) {
+  const n = NAT[k];
+  if (!n || !IMG[k]) return '';
+  const sc = h / n[1];
+  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${sc.toFixed(4)})">${use(k)}</g>`;
+}
+function hall(B, p) {
+  const { x, y, w, h } = B,
+    cx = x + w / 2,
+    tile = 300;
+  let s =
+    `<defs><pattern id="pFloor" patternUnits="userSpaceOnUse" x="${x}" y="${y}" width="${tile}" height="${tile}">` +
+    (IMG.floor ? `<g transform="scale(${tile / NAT.floor[0]})">${use('floor')}</g>` : '') +
+    `</pattern><radialGradient id="gPool"><stop offset="0" stop-color="#FFF6E2" stop-opacity=".75"/><stop offset=".6" stop-color="#FFF6E2" stop-opacity=".35"/><stop offset="1" stop-color="#FFF6E2" stop-opacity="0"/></radialGradient>` +
+    `<radialGradient id="gHall" cx=".5" cy=".45" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3A2A1C" stop-opacity=".16"/></radialGradient></defs>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${p.floor}"/>`;
+  if (IMG.floor)
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#pFloor)"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${p.floor}" opacity=".5"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#gHall)"/>`;
+  // walls
+  s += `<rect x="${x + WALL / 2}" y="${y + WALL / 2}" width="${w - WALL}" height="${h - WALL}" fill="none" stroke="#F4ECDF" stroke-width="${WALL}"/><rect x="${x + WALL}" y="${y + WALL}" width="${w - 2 * WALL}" height="${h - 2 * WALL}" fill="none" stroke="${shade('#F4ECDF', -28)}" stroke-width="1.5"/>`;
+  // top wall: plants in the corners, windows on both sides of the title
+  const ph = 130,
+    pw = ph * (NAT.plant ? NAT.plant[0] / NAT.plant[1] : 0.6);
+  s += art('plant', x + WALL + 4, y + WALL + 6, ph) + art('plant', x + w - WALL - 4 - pw, y + WALL + 6, ph);
+  const wh = 118,
+    ww = wh * (NAT.window ? NAT.window[0] / NAT.window[1] : 0.66),
+    gap = 46,
+    // keep the windows clear of the event name (38px Marcellus is about 19 units per letter)
+    half = Math.max(200, ((appState.S.event.name || t('wedding')).length * 19) / 2 + 40);
+  for (const [a, b] of [
+    [x + WALL + pw + 24, cx - half],
+    [cx + half, x + w - WALL - pw - 24]
+  ]) {
+    const n = Math.max(0, Math.floor((b - a + gap) / (ww + gap)));
+    const used = n * ww + (n - 1) * gap,
+      start = a + (b - a - used) / 2;
+    for (let i = 0; i < n; i++) s += art('window', start + i * (ww + gap), y + WALL - 4, wh);
+  }
+  // bottom wall: the entrance
+  const dh = 150,
+    dw = dh * (NAT.door ? NAT.door[0] / NAT.door[1] : 0.67),
+    ch = 108,
+    cw = ch * (NAT.candelabra ? NAT.candelabra[0] / NAT.candelabra[1] : 0.42);
+  s += `<ellipse cx="${cx}" cy="${y + h - WALL - 6}" rx="${dw * 1.1}" ry="38" fill="url(#gPool)"/>`;
+  s += art('door', cx - dw / 2, y + h - WALL - dh + 6, dh);
+  s +=
+    art('candelabra', cx - dw / 2 - cw - 14, y + h - WALL - ch, ch) +
+    art('candelabra', cx + dw / 2 + 14, y + h - WALL - ch, ch);
+  return s;
+}
 function planSVG(opt = {}) {
   const p = P(),
     B = bounds(),
     broken = opt.guest ? new Set() : brokenSet();
-  let s = `<rect x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" fill="${p.floor}"/>`;
-  for (let x = Math.ceil(B.x / 48) * 48; x < B.x + B.w; x += 48)
-    s += `<path d="M${x},${B.y} V${B.y + B.h}" stroke="${shade(p.floor, -4)}" stroke-width="1"/>`;
+  let s = hall(B, p);
   const seated = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
   const date = gDate();
   const cx = B.x + B.w / 2;
   s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(appState.S.event.name || t('wedding'))}</text>`;
   s += `<text x="${cx}" y="${B.y + 102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date, tn('nGuests', seated), tn('nTables', appState.S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
   s += `<path d="M${cx - 70},${B.y + 116} H${cx + 70}" stroke="${p.accent}" stroke-width="1"/>`;
+  appState.S.tables.forEach(x => {
+    const [w, h] = dims(x);
+    s += `<ellipse cx="${x.x}" cy="${x.y}" rx="${(w * 0.62).toFixed(0)}" ry="${(h * 0.62).toFixed(0)}" fill="url(#gPool)"/>`;
+  });
   appState.S.venue.forEach(
     v =>
       (s += `<g opacity="${opt.dim ? 0.5 : 1}">${venueM(v, p, !opt.guest && appState.sel.kind === 'venue' && appState.sel.v === v.id, opt.guest)}</g>`)

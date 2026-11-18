@@ -17,6 +17,16 @@ def read_globals(src):
         out[m.group(1)] = dec.raw_decode(src, m.end())[0]
     return out
 
+def webp_size(b):
+    '''Width and height of a WebP file (lossy VP8, lossless VP8L or extended VP8X).'''
+    kind = b[12:16]
+    if kind == b'VP8X':
+        return 1 + int.from_bytes(b[24:27], 'little'), 1 + int.from_bytes(b[27:30], 'little')
+    if kind == b'VP8L':
+        n = int.from_bytes(b[21:25], 'little')
+        return 1 + (n & 0x3FFF), 1 + ((n >> 14) & 0x3FFF)
+    return int.from_bytes(b[26:28], 'little') & 0x3FFF, int.from_bytes(b[28:30], 'little') & 0x3FFF
+
 def main():
     g = read_globals(open(ASSETS, encoding='utf-8').read())
     os.makedirs(IMG, exist_ok=True)
@@ -34,6 +44,15 @@ def main():
         name = '%s.%s.webp' % (k, hashlib.sha256(b).hexdigest()[:10])
         open(os.path.join(IMG, name), 'wb').write(b)
         files[k] = '/img/' + name
+    # New plain drawings (not character parts, which are placed by SUPRA_FIT) get their natural size recorded,
+    # and drawings that no longer exist are dropped from both size tables.
+    nat, fit = g.setdefault('SUPRA_NAT', {}), g.setdefault('SUPRA_FIT', {})
+    for k, b in data.items():
+        if k not in fit and k not in nat:
+            nat[k] = list(webp_size(b))
+    for table in (nat, fit):
+        for k in [k for k in table if k not in data]:
+            del table[k]
     g.pop('SUPRA_IMG', None)
     g['SUPRA_IMG_FILES'] = files
     head = '/* Drawing sizes, skin colours and the image files (made by tools/split_assets.py; do not edit by hand). */\n'

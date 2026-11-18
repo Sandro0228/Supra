@@ -389,11 +389,13 @@ function bounds() {
     y0 = 0;
     y1 = 300;
   }
-  const w = Math.max(x1 - x0, 800);
+  // at least 800 wide, and not much narrower than tall, so the hall reads as a room
+  const w = Math.max(x1 - x0, 800, (y1 - y0 + 310) * 0.8 - 100);
   const cx = (x0 + x1) / 2;
   x0 = cx - w / 2;
   x1 = cx + w / 2;
-  return { x: x0 - 50, y: y0 - 160, w: x1 - x0 + 100, h: y1 - y0 + 210 };
+  // 160 above for the title and windows, 150 below for the entrance
+  return { x: x0 - 50, y: y0 - 160, w: x1 - x0 + 100, h: y1 - y0 + 310 };
 }
 
 /* ---------------- rules ---------------- */
