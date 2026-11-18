@@ -12,7 +12,9 @@
 <link rel="stylesheet" href="/brand.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
 <style>
-/* Layout: one calm column — a hero that shows the head-table illustration, then either the sign-in card or the event list */
+/* Layout: signed out, a landing page that shows the product itself: the hall from above, the guest's phone and the
+   place cards, made from a demo wedding in the real app (landing/*.webp, English and Georgian), then the sign-in card.
+   Signed in, only the event list. Text left-aligned; one bold thing (the hall), everything around it quiet. */
 :root{
   --bg:#F6F1EA; --panel:#FFFFFF; --ink:#2B2522; --muted:#6E655F; --line:#E4DACD;
   --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#FBF8F3; --danger:#B3261E; --sage:#6F8F72;
@@ -62,11 +64,54 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .btn.sm{padding:5px 10px;font-size:13px}
 .btn.danger{color:var(--danger)}
 .btn:disabled{opacity:.5;cursor:default}
-.hero{display:grid;gap:18px;text-align:center;justify-items:center}
-.hero h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5.4vw,52px);line-height:1.1;margin:0;max-width:18ch;text-wrap:balance}
-.hero img{width:100%;max-width:820px;height:auto}
-.feats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;color:var(--muted);font-size:14px;margin:0 0 14px;padding:0;list-style:none}
-.feats li::before{content:"✿ ";color:var(--accent)}
+/* ---- landing ---- */
+.lp{display:flex;flex-direction:column;gap:clamp(56px,9vw,112px);margin-top:clamp(12px,3vw,32px)}
+.lp h1,.lp h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;color:var(--ink)}
+.lp h1{font-size:clamp(38px,6vw,72px);line-height:1.02;max-width:13ch;letter-spacing:-.01em}
+:lang(ka) .lp h1{font-size:clamp(32px,4.4vw,54px);line-height:1.12;max-width:17ch}
+:lang(ka) .lp h2{font-size:clamp(25px,2.8vw,34px)}
+@media (max-width:480px){header{gap:8px}.hdrlogo{--bw:108px}}
+@media (max-width:400px){.hdrlogo{--bw:92px}.logo{padding-right:0}}
+.lp h2{font-size:clamp(28px,3.4vw,40px);line-height:1.12;max-width:20ch}
+.lp p{margin:0}
+.lead{font-size:clamp(17px,1.6vw,19px);line-height:1.6;color:var(--muted);max-width:56ch}
+.hero2{display:grid;gap:clamp(24px,4vw,40px)}
+.herotext{display:grid;gap:20px;justify-items:start}
+.heroside{display:grid;gap:20px;justify-items:start}
+.ctas{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn.big{padding:13px 22px;font-size:16px;border-radius:11px}
+.btn.quiet{background:transparent;color:var(--ink)}
+.note{font-size:14px;color:var(--muted)}
+/* the hall: the one bold thing on the page */
+.hallframe{margin:0;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#EADBC6;
+  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 30px 60px -30px rgba(70,45,25,.35)}
+.hallframe img{display:block;width:100%;height:auto}
+@media (min-width:900px){
+  .herotext{grid-template-columns:minmax(0,7fr) minmax(0,5fr);column-gap:48px;align-items:center}
+}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:28px;counter-reset:step}
+@media (min-width:760px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.steps li{display:grid;gap:8px;align-content:start;counter-increment:step;padding-top:18px;border-top:1px solid var(--line)}
+.steps li::before{content:counter(step);font-family:var(--display);font-size:30px;line-height:1;color:var(--accent)}
+.steps h3{font-size:18px;font-weight:500;margin:0}
+.steps p{color:var(--muted)}
+.howhead{display:grid;gap:28px}
+.split{display:grid;gap:clamp(28px,5vw,64px);align-items:center}
+@media (min-width:860px){.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.split.flip>:first-child{order:2}}
+.splittext{display:grid;gap:18px;justify-items:start}
+.ticks{list-style:none;margin:0;padding:0;display:grid;gap:12px;max-width:52ch}
+.ticks li{position:relative;padding-left:28px}
+.ticks li::before{content:"";position:absolute;left:2px;top:.55em;width:12px;height:12px;border-radius:50% 0 50% 50%;background:var(--accent);opacity:.8;transform:rotate(-45deg)}
+.phone{justify-self:center;width:min(300px,78vw);border-radius:38px;border:10px solid #2B2522;background:#2B2522;overflow:hidden;
+  box-shadow:0 30px 60px -28px rgba(40,25,20,.45);margin:0}
+.phone img{display:block;width:100%;height:auto;border-radius:28px}
+.cardsimg{margin:0;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:0 24px 50px -30px rgba(70,45,25,.35)}
+.cardsimg img{display:block;width:100%;height:auto}
+.start{display:grid;gap:24px;align-items:start;scroll-margin-top:24px}
+@media (min-width:860px){.start{grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:48px;align-items:center}}
+.start .signin{margin:0}
+.signedin .start{display:block}
+footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
 .field{display:flex;flex-direction:column;gap:5px}
@@ -112,14 +157,47 @@ h2+.field{margin-top:4px}
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
-  <main>
-  <section class="hero" aria-labelledby="tag">
-    <h1 id="tag">Plan who sits where, with every guest drawn at their seat.</h1>
-    <img src="/hero.webp" width="1400" height="583" alt="Five illustrated wedding guests sitting at a flower-decorated head table">
-    <ul class="feats" id="feats"></ul>
+  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
+  <main class="lp">
+  <section class="hero2 landing" aria-labelledby="tag">
+    <div class="herotext">
+      <h1 id="tag" data-t="lpH1"></h1>
+      <div class="heroside">
+        <p class="lead" data-t="lpLead"></p>
+        <div class="ctas"><button type="button" class="btn primary big" data-start="signup" data-t="lpCta"></button><a class="btn big quiet" href="#guests" data-t="lpCta2"></a></div>
+        <p class="note" data-t="lpNote"></p>
+      </div>
+    </div>
+    <figure class="hallframe"><img data-img="hall" src="/landing/hall-en.webp" width="1400" height="1085" alt="" fetchpriority="high"></figure>
   </section>
-  <div id="main" aria-live="polite"></div>
+  <section class="howhead landing" aria-labelledby="howh">
+    <h2 id="howh" data-t="lpHowH"></h2>
+    <ol class="steps">
+      <li><h3 data-t="lpS1"></h3><p data-t="lpS1p"></p></li>
+      <li><h3 data-t="lpS2"></h3><p data-t="lpS2p"></p></li>
+      <li><h3 data-t="lpS3"></h3><p data-t="lpS3p"></p></li>
+    </ol>
+  </section>
+  <section class="split landing" id="guests" aria-labelledby="guestsh">
+    <div class="splittext">
+      <h2 id="guestsh" data-t="lpGuestsH"></h2>
+      <p class="lead" data-t="lpGuestsP"></p>
+      <ul class="ticks"><li data-t="lpG1"></li><li data-t="lpG2"></li><li data-t="lpG3"></li></ul>
+    </div>
+    <figure class="phone"><img data-img="phone" src="/landing/phone-en.webp" width="600" height="1241" alt="" loading="lazy"></figure>
+  </section>
+  <section class="split flip landing" aria-labelledby="dayh">
+    <div class="splittext">
+      <h2 id="dayh" data-t="lpDayH"></h2>
+      <ul class="ticks"><li data-t="lpD1"></li><li data-t="lpD2"></li><li data-t="lpD3"></li></ul>
+    </div>
+    <figure class="cardsimg"><img data-img="cards" src="/landing/cards-en.webp" width="980" height="560" alt="" loading="lazy"></figure>
+  </section>
+  <section class="start" id="start" aria-labelledby="starth">
+    <div class="splittext landing"><h2 id="starth" data-t="lpStartH"></h2><p class="lead" data-t="lpStartP"></p></div>
+    <div id="main" aria-live="polite"></div>
+  </section>
+  <footer class="foot landing"><span data-t="lpFoot"></span></footer>
   </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>

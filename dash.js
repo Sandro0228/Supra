@@ -166,14 +166,20 @@
           `<button type="button" role="radio" data-lang="${k}" aria-checked="${lang === k}" tabindex="${lang === k ? 0 : -1}" aria-label="${full}" lang="${k}"><span class="full">${full}</span><span class="short" aria-hidden="true">${s}</span></button>`
       )
       .join('');
-    $('#tag').textContent = t('dTag');
-    {
-      const hi = document.querySelector('.hero img');
-      if (hi) hi.alt = t('heroAlt');
-    }
-    $('#feats').innerHTML = ['dF1', 'dF2', 'dF3', 'dF4'].map(k => `<li>${esc(t(k))}</li>`).join('');
+    // landing page: text and pictures in the chosen language; signed in, only the event list shows
+    document.querySelectorAll('[data-t]').forEach(el => (el.textContent = t(el.dataset.t)));
+    document.querySelectorAll('img[data-img]').forEach(img => {
+      const k = img.dataset.img,
+        src = `/landing/${k}-${lang === 'ka' ? 'ka' : 'en'}.webp`;
+      if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+      img.alt = t('lpAlt_' + k);
+    });
     const authed = A.state === 'authenticated';
+    document.body.classList.toggle('signedin', authed);
+    document.querySelectorAll('.landing').forEach(el => (el.hidden = authed));
+    $('#hdrstart').hidden = authed;
     $('#who').textContent = authed ? A.session.user.email || '' : '';
+    $('#who').hidden = !authed;
     const so = $('#signout');
     so.hidden = !authed;
     so.textContent = t('dSignOut');
@@ -474,6 +480,19 @@
     const b = e.target.closest('button');
     if (!b) return;
     const d = b.dataset;
+    if (d.start) {
+      // "Start your plan" / "Sign in" on the landing page: open that form and go to it
+      if (A.state === 'authenticating') return;
+      F.mode = d.start;
+      F.sent = false;
+      A.formError = null;
+      render();
+      $('#start').scrollIntoView({
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+      });
+      $('#email')?.focus({ preventScroll: true });
+      return;
+    }
     if (d.mode) {
       if (A.state === 'authenticating') return;
       const wasTab = b.getAttribute('role') === 'tab';

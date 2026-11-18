@@ -338,7 +338,7 @@ async function placeCards() {
       <text x="226" y="82" text-anchor="middle" font-family="${NAMEFONT}" font-weight="700" font-size="${c.G.name.length > 18 ? 17 : 21}" fill="${p.ink}">${esc(c.G.name.split(/\s+/)[0])}</text>
       <text x="226" y="106" text-anchor="middle" font-family="${BODYFONT}" font-size="14" fill="${shade(p.ink, 25)}">${esc(c.G.name.split(/\s+/).slice(1).join(' '))}</text>
       <path d="M176,122 H276" stroke="${p.accent}"/>
-      <text x="226" y="146" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, serif" font-size="17" fill="${p.accent}">${esc(tName(c.x))}</text>
+      <text x="226" y="146" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, serif" font-size="${Math.min(17, Math.floor(310 / Math.max(1, tName(c.x).length)))}" fill="${p.accent}">${esc(tName(c.x))}</text>
       ${c.G.meal ? `<text x="226" y="167" text-anchor="middle" font-family="${BODYFONT}" font-size="11" fill="${shade(p.ink, 35)}">${esc(t(MEAL_LBL[c.G.meal] || c.G.meal))}</text>` : ''}</g>`;
     });
     try {
