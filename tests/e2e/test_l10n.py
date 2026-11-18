@@ -24,7 +24,7 @@ def every_key_translated_with_same_placeholders(pw, base):
 @test
 def georgian_choice_carries_from_dashboard_to_editor(pw, base):
     c = Ctx(pw, base, session=True, viewport=(1280, 720))
-    p = c.goto('/', wait='#nform')
+    p = c.goto('/', wait='.dashhead')
     p.click('[data-lang=ka]'); p.wait_for_timeout(100)
     p.goto(base + '/edit/ev1'); p.wait_for_selector('#plan .tbody')
     assert p.evaluate('document.documentElement.lang') == 'ka'

@@ -6,7 +6,7 @@ def surfaces(p):
     return p.evaluate("window.__seen||[]")
 
 SAMPLER = """window.__seen=[];(function tick(){const m=document.querySelector('#main');if(m){
-  const s=m.querySelector('#sform')?'signin':m.querySelector('#nform')?'dash':m.querySelector('.loading')?'loading':m.innerText.trim()?'other':'empty';
+  const s=m.querySelector('#sform')?'signin':m.querySelector('.dashhead')?'dash':m.querySelector('.loading')?'loading':m.innerText.trim()?'other':'empty';
   if(window.__seen[window.__seen.length-1]!==s)window.__seen.push(s)}setTimeout(tick,15)})();"""
 
 def start(pw, base, **kw):
@@ -15,7 +15,7 @@ def start(pw, base, **kw):
 @test
 def valid_stored_session_never_shows_sign_in(pw, base):
     c = start(pw, base, session=True, cfg={'sessionDelay': 600})
-    p = c.goto('/', wait='#nform'); p.wait_for_timeout(300)
+    p = c.goto('/', wait='.dashhead'); p.wait_for_timeout(300)
     seen = surfaces(p)
     assert 'signin' not in seen, seen
     assert seen[-1] == 'dash' and 'loading' in seen, seen
@@ -42,8 +42,8 @@ def failed_sign_in_cannot_overwrite_newer_session(pw, base):
     assert p.get_attribute('#sform [type=submit]', 'aria-busy') == 'true'
     assert p.input_value('#pw') == 'wrongpass', 'password must stay while the request runs'
     p.evaluate("localStorage.setItem('mocksess','1');window.__mockEmit('SIGNED_IN',true)")
-    p.wait_for_selector('#nform'); p.wait_for_timeout(1200)
-    assert p.is_visible('#nform') and not p.is_visible('#ferr'), 'late error replaced the dashboard'
+    p.wait_for_selector('.dashhead'); p.wait_for_timeout(1200)
+    assert p.is_visible('.dashhead') and not p.is_visible('#ferr'), 'late error replaced the dashboard'
     c.close()
 
 @test
@@ -67,7 +67,7 @@ def successful_sign_in_then_sign_out_then_reload(pw, base):
     c = start(pw, base, session=False, cfg={})
     p = c.goto('/', wait='#sform')
     p.fill('#email', 'sandro@example.com'); p.fill('#pw', 'secret1'); p.click('#sform [type=submit]')
-    p.wait_for_selector('#nform')
+    p.wait_for_selector('.dashhead')
     p.click('#signout'); p.wait_for_selector('#sform')
     p.evaluate("window.__seen=[]"); p.reload(); p.wait_for_selector('#sform'); p.wait_for_timeout(200)
     assert 'dash' not in surfaces(p), surfaces(p)
@@ -85,8 +85,8 @@ def slow_session_shows_branded_loading(pw, base):
     c = start(pw, base, session=True, cfg={'sessionDelay': 1500})
     p = c.goto('/'); p.wait_for_selector('.loading')
     assert p.get_attribute('.loading', 'role') == 'status'
-    assert not p.is_visible('#sform') and not p.is_visible('#nform')
-    p.wait_for_selector('#nform', timeout=5000)
+    assert not p.is_visible('#sform') and not p.is_visible('.dashhead')
+    p.wait_for_selector('.dashhead', timeout=5000)
     c.close()
 
 @test
@@ -95,7 +95,7 @@ def rejected_session_request_offers_retry(pw, base):
     p = c.goto('/'); p.wait_for_selector('[data-act=retry]')
     assert 'signin' not in surfaces(p) and 'dash' not in surfaces(p)
     p.evaluate("localStorage.setItem('mockcfg','{}')"); p.click('[data-act=retry]')
-    p.wait_for_selector('#nform')
+    p.wait_for_selector('.dashhead')
     c.close()
 
 @test

@@ -43,7 +43,6 @@ button{cursor:pointer}
 .spinner.sm{width:14px;height:14px;border-width:2px;border-top-color:currentColor;border-color:color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
-.dash{display:flex;flex-direction:column;gap:22px}.yours{display:flex;flex-direction:column;gap:12px}
 ul.events{list-style:none;margin:0;padding:0}
 .soon{margin:0}
 .btn[aria-busy="true"]{opacity:.8}
@@ -111,6 +110,51 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 @media (min-width:860px){.start{grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:48px;align-items:center}}
 .start .signin{margin:0}
 .signedin .start{display:block}
+/* ---- signed in: your events ---- */
+.dash{display:flex;flex-direction:column;gap:28px}.yours{display:flex;flex-direction:column;gap:12px}
+.dashhead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.dashhead h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,4vw,44px);line-height:1.1;margin:0}
+.newp{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:clamp(18px,3vw,28px);display:grid;gap:16px}
+.newp.first{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));box-shadow:0 20px 40px -30px rgba(120,50,70,.35)}
+.newhead{display:grid;gap:4px}.newhead h2{font-size:24px}
+.newgrid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr) auto;gap:12px;align-items:start}
+.newfoot{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;border-top:1px solid var(--line);padding-top:14px}
+.newfoot .btn{margin-left:auto}
+.newfoot label.linkish{cursor:pointer;color:var(--ink)}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:18px}
+.ev{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr);min-width:0;
+  transition:box-shadow .2s,border-color .2s}
+.ev:hover{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:0 18px 40px -28px rgba(60,35,30,.35)}
+.events.one{grid-template-columns:1fr}
+.events.one .ev{grid-template-columns:minmax(200px,340px) minmax(0,1fr)}
+.cover{position:relative;display:grid;place-items:center;min-height:190px;overflow:hidden;text-decoration:none;
+  background:radial-gradient(120% 90% at 50% 40%,color-mix(in srgb,var(--c) 10%,var(--panel)),color-mix(in srgb,var(--c) 22%,var(--panel)))}
+.mono{position:relative;font-family:var(--display);font-size:clamp(28px,3.4vw,40px);color:var(--c);letter-spacing:.02em;white-space:nowrap}
+.events.one .mono{font-size:clamp(34px,4.4vw,52px)}
+.fl{position:absolute;width:62%;max-width:170px;right:-14%;bottom:-16%;opacity:.95;pointer-events:none;filter:drop-shadow(0 6px 10px rgba(70,40,30,.12))}
+.evbody{padding:clamp(16px,2.4vw,24px);display:flex;flex-direction:column;gap:12px;min-width:0}
+.evtop{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.evname{font-family:var(--display);font-weight:400;font-size:clamp(22px,2.4vw,28px);line-height:1.15;margin:0;overflow-wrap:break-word}
+.events.one .evname{font-size:clamp(26px,3vw,36px)}
+.evname a{color:inherit;text-decoration:none}.evname a:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
+.pill{flex:none;font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px;opacity:.6}
+.pill.on{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 40%,var(--line))}.pill.on::before{background:var(--sage);opacity:1}
+.when{margin:0;display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:14px}
+.when .count{color:var(--ink);font-weight:500}.when .count.soon{color:var(--accent)}
+.prog{display:grid;gap:6px}
+.progtxt{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.bar{height:6px;border-radius:99px;background:color-mix(in srgb,var(--c) 12%,var(--soft));overflow:hidden}
+.bar i{display:block;height:100%;border-radius:inherit;background:var(--c)}
+.evact{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto;padding-top:4px}
+.evact .linkish{margin-left:auto}
+.evact .linkish.danger{color:var(--muted)}.evact .linkish.danger:hover,.evact .linkish.danger:focus-visible{color:var(--danger)}
+@media (max-width:560px){.ev,.events.one .ev{grid-template-columns:1fr}.cover{min-height:120px}.newgrid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.ev{transition:none}}
+/* dark: lift each wedding's colour so initials and progress stay readable on dark covers */
+.ev{--c:var(--pal)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ev{--c:var(--pal-d)}}
+:root[data-theme="dark"] .ev{--c:var(--pal-d)}
 footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
@@ -120,13 +164,7 @@ footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted)
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
 .msg{font-size:14px;color:var(--muted)}.msg.err{color:var(--danger)}
 h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
-.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-.ev{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.ev h3{font-family:var(--display);font-weight:400;font-size:21px;margin:0;word-break:break-word}
-.ev .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.ev .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
 .confirm{border:1px solid var(--danger);border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:8px;font-size:14px}
-.newgrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:start}
 /* Same height for the name box, dropdown, date picker and button; the button sits level with the boxes, below the labels */
 .newgrid .inp,.newgrid select,.newgrid>.btn{height:calc(1.55em + 22px)}
 .newgrid .lbl{line-height:16px;min-height:16px}
@@ -202,6 +240,7 @@ h2+.field{margin-top:4px}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
+<script src="/assets.js"></script>
 <script src="/i18n.js"></script>
 <script src="/dash.js"></script>
 </body>

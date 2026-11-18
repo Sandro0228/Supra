@@ -19,7 +19,8 @@ db = lambda p: json.loads(p.evaluate("localStorage.getItem('mockdb')"))['events'
 @test
 def new_event_starts_as_private_draft(pw, base):
     c = Ctx(pw, base, session=True, events=[])
-    p = c.goto('/', wait='#nform')
+    p = c.goto('/', wait='.dashhead')
+    if not p.is_visible('#nform'): p.click('[data-newopen]')
     p.fill('#nname', 'Our wedding'); p.click('#nform [type=submit]'); p.wait_for_url('**/edit/**'); p.wait_for_selector('#plan .tbody')
     e = db(p)
     assert e['share_status'] == 'draft' and len(e['slug']) == 22 and e['lookup_mode'] == 'exact' and not e['show_layout']

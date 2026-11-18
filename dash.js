@@ -75,7 +75,7 @@
   let SB = null,
     sub = null;
   const F = { mode: 'signin', email: '', sent: false, recovery: false }; // sign-in form state survives re-renders and language changes
-  const D = { events: null, loadErr: false, confirmId: null, name: '', date: '', nerr: '' }; // dashboard state
+  const D = { events: null, loadErr: false, confirmId: null, name: '', date: '', nerr: '', newOpen: false }; // dashboard state
 
   function setAuth(state, patch) {
     Object.assign(A, patch || {}, { state });
@@ -347,43 +347,91 @@
 
   /* ---------------- dashboard ---------------- */
   const SOON = ['birthday', 'corporate', 'baby', 'anniv'];
-  function renderDash() {
+  /* Signed in: "Your events". Couples usually have one wedding, so each event is a full card that leads to the
+     planner (cover in the wedding's palette with the couple's initials, date and countdown, how many guests are
+     seated, whether the guest page is live). Creating an event is a panel that opens on demand, or straight away
+     when there are no events yet. */
+  const PAL = { blush: '#B4506F', sage: '#5E7E5A', navy: '#2E4A7A', wine: '#7B2F3D' };
+  const initials = nm => {
+    const parts = String(nm || '')
+      .split(/\s*(?:&|\+|და|and)\s*/i)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 2);
+    return parts.length ? parts.map(p => [...p][0].toUpperCase()).join(' & ') : '✿';
+  };
+  const daysTo = d => {
+    if (!d) return null;
+    const t0 = new Date();
+    t0.setHours(12, 0, 0, 0);
+    return Math.round((new Date(String(d).slice(0, 10) + 'T12:00') - t0) / 864e5);
+  };
+  function newPanel(first) {
     const today = new Date().toISOString().slice(0, 10);
-    const list = D.loadErr
-      ? `<div class="empty" role="alert"><p>${esc(t('dLoadErr'))}</p><button type="button" class="btn sm" data-act="reload">${esc(t('dRetry'))}</button></div>`
-      : D.events === null
-        ? `<p class="empty" role="status">${esc(t('dLoadingEvents'))}</p>`
-        : D.events.length
-          ? `<ul class="events" role="list">${D.events.map(evCard).join('')}</ul>`
-          : `<p class="empty">${esc(t('dNone'))}</p>`;
-    $('#main').innerHTML = `<div class="dash">
-  <form class="card" id="nform" novalidate aria-labelledby="newh"><h2 id="newh">${esc(t('dNew'))}</h2>
+    return `<form class="newp${first ? ' first' : ''}" id="nform" novalidate aria-labelledby="newh">
+    <div class="newhead"><h2 id="newh">${esc(t(first ? 'dFirstH' : 'dNew'))}</h2><p class="small">${esc(t('dFirstP'))}</p></div>
     <div class="newgrid">
       <label class="field"><span class="lbl">${esc(t('eventName'))}</span><input class="inp" id="nname" value="${esc(D.name)}" placeholder="${esc(t('dNamePh'))}" ${D.nerr ? 'aria-invalid="true" aria-describedby="nerr"' : ''}></label>
-      <label class="field"><span class="lbl">${esc(t('eventType'))}</span><select id="ntype"><option value="wedding">${esc(t('wedding'))}</option></select></label>
       <label class="field"><span class="lbl">${esc(t('date'))}</span><input class="inp" id="ndate" type="date" min="${today}" value="${esc(D.date)}" aria-describedby="ndate-txt"><span class="small" id="ndate-txt">${esc(fmtDate(D.date))}</span></label>
       <button class="btn primary" type="submit">${esc(t('dCreate'))}</button>
     </div>
     ${D.nerr ? `<p class="msg err" id="nerr" role="alert">${esc(D.nerr)}</p>` : ''}
-    <p class="small soon">${esc(t('soonLine'))} ${SOON.map(k => esc(t(k))).join(', ')}.</p>
-    <div class="field"><span class="lbl" id="nfile-l">${esc(t('dImport'))}</span><div class="filepick"><input type="file" id="nfile" class="fileinput" accept=".json,application/json" aria-labelledby="nfile-l nfile-btn" aria-describedby="nfilehint"><label for="nfile" class="btn sm" id="nfile-btn" aria-hidden="true">${esc(t('pickFile'))}</label><span class="small fname" id="nfile-name" aria-live="polite">${esc(t('noFile'))}</span></div><span class="small" id="nfilehint">${esc(t('dImportHint'))}</span></div>
-  </form>
-  <section aria-labelledby="yourh" class="yours"><h2 id="yourh">${esc(t('dYour'))}</h2>${list}</section></div>`;
+    <div class="newfoot">
+      <div class="filepick"><input type="file" id="nfile" class="fileinput" accept=".json,application/json" aria-label="${esc(t('dImport'))}" aria-describedby="nfilehint"><label for="nfile" class="linkish" id="nfile-btn" aria-hidden="true">${esc(t('dImportOpen'))}</label><span class="small fname" id="nfile-name" aria-live="polite"></span></div>
+      <span class="small" id="nfilehint">${esc(t('dImportHint'))}</span>
+      <span class="small soon">${esc(t('soonLine'))} ${SOON.map(k => esc(t(k))).join(', ')}.</span>
+      ${first ? '' : `<button type="button" class="btn sm" data-newclose>${esc(t('dCancel'))}</button>`}
+    </div>
+  </form>`;
+  }
+  function renderDash() {
+    const evs = D.events,
+      first = evs !== null && !D.loadErr && !evs.length,
+      list = D.loadErr
+        ? `<div class="empty" role="alert"><p>${esc(t('dLoadErr'))}</p><button type="button" class="btn sm" data-act="reload">${esc(t('dRetry'))}</button></div>`
+        : evs === null
+          ? `<p class="empty" role="status"><span class="spinner" aria-hidden="true"></span> ${esc(t('dLoadingEvents'))}</p>`
+          : evs.length
+            ? `<ul class="events${evs.length === 1 ? ' one' : ''}" role="list">${evs.map(evCard).join('')}</ul>`
+            : '';
+    $('#main').innerHTML = `<div class="dash">
+  <div class="dashhead"><h1 id="yourh">${esc(t('dYour'))}</h1>${first || D.newOpen ? '' : `<button type="button" class="btn primary" data-newopen>${PLUS}${esc(t('dNew'))}</button>`}</div>
+  ${first || D.newOpen ? newPanel(first) : ''}
+  <section aria-labelledby="yourh" class="yours">${list}</section></div>`;
   }
   const pubOf = e => (e.share_status || (e.guest_page ? 'published' : 'draft')) === 'published';
   function evCard(e) {
     const n = e.guests ? Object.keys(e.guests).length : 0,
-      nm = e.name || '—';
-    return `<li class="ev"><h3>${esc(nm)}</h3><div class="meta">${esc([fmtDate(e.event_date), tn('nGuests', n), t(pubOf(e) ? 'st_published' : 'st_draft')].filter(Boolean).join(' · '))}</div>
-    <div class="row"><a class="btn sm primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpen') + ': ' + nm)}">${esc(t('dOpen'))}</a>${pubOf(e) ? `<button type="button" class="btn sm" data-copy="${esc(e.slug)}" aria-label="${esc(t('dGuestLink') + ': ' + nm)}">${esc(t('dGuestLink'))}</button>` : ''}<button type="button" class="btn sm danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
-    ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dDelete'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}</li>`;
+      seated = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0),
+      nm = e.name || '—',
+      pal = PAL[e.ev?.palette] || PAL.blush,
+      dd = daysTo(e.event_date),
+      when = dd === null ? t('dNoDate') : dd === 0 ? t('dToday') : dd > 0 ? tn('dInDays', dd) : tn('dDaysAgo', -dd),
+      pub = pubOf(e),
+      pct = n ? Math.round((Math.min(seated, n) / n) * 100) : 0;
+    return `<li class="ev" style="--pal:${pal};--pal-d:color-mix(in srgb,${pal} 55%,#FFFFFF)">
+    <a class="cover" href="/edit/${esc(e.id)}" tabindex="-1" aria-hidden="true">${FLOWERS ? `<img src="${FLOWERS}" alt="" class="fl">` : ''}<span class="mono">${esc(initials(nm))}</span></a>
+    <div class="evbody">
+      <div class="evtop"><span class="pill ${pub ? 'on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span><h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2></div>
+      <p class="when">${e.event_date ? `<span>${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span></p>
+      <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>
+      <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}<button type="button" class="linkish danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
+      ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dDelete'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}
+    </div></li>`;
   }
+  const PLUS =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    LINK =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+    FLOWERS = (window.SUPRA_IMG_FILES || {}).flowers_top || '';
   let loadGen = 0;
   async function loadEvents() {
     const g = ++loadGen;
     D.loadErr = false;
     const { data, error } = await SB.from('events')
-      .select('id,name,event_date,slug,guest_page,share_status,updated_at,guests:data->guests')
+      .select(
+        'id,name,event_date,slug,guest_page,share_status,updated_at,guests:data->guests,tables:data->tables,ev:data->event'
+      )
       .order('updated_at', { ascending: false });
     if (g !== loadGen || A.state !== 'authenticated') return;
     if (error) {
@@ -480,6 +528,13 @@
     const b = e.target.closest('button');
     if (!b) return;
     const d = b.dataset;
+    if ('newopen' in d || 'newclose' in d) {
+      D.newOpen = 'newopen' in d;
+      D.nerr = '';
+      render();
+      (D.newOpen ? $('#nname') : $('[data-newopen]'))?.focus();
+      return;
+    }
     if (d.start) {
       // "Start your plan" / "Sign in" on the landing page: open that form and go to it
       if (A.state === 'authenticating') return;
