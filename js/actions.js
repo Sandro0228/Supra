@@ -49,6 +49,56 @@ import { rsvpClick, rsvpInput } from './rsvp.js';
 import { invClick, invInput, invSettingChange } from './invites.js';
 /* Rendering everything, and every click, key and input in the planner. Part of the planner (app.html); see js/README.md. */
 /* ---------------- render ---------------- */
+/* Motion that answers what the organiser did: a guest who lands in a seat settles into the chair, empty seats
+   glow while a guest is looking for one, and the room celebrates once when the last guest is seated.
+   prefers-reduced-motion turns all of it off (app.html). */
+let lastSeats = null,
+  wasAllSeated = null;
+function seatMap() {
+  const m = {};
+  appState.S.tables.forEach(x => x.seats.forEach((g, i) => g && (m[x.id + ':' + i] = g)));
+  return m;
+}
+function settleNew(svg, before, now) {
+  if (!before) return;
+  const changed = Object.keys(now).filter(k => now[k] !== before[k]);
+  if (!changed.length || changed.length > 120) return;
+  changed.forEach((k, n) => {
+    const [tid, i] = k.split(':'),
+      f = svg.querySelector(`.seat[data-t="${CSS.escape(tid)}"][data-i="${i}"] .fig`);
+    if (!f) return;
+    f.style.animationDelay = Math.min(n * 25, 600) + 'ms';
+    f.classList.add('settle');
+  });
+}
+function allSeated() {
+  const n = Object.keys(appState.S.guests).length;
+  return n >= 2 && !appState.S.waiting.length && Object.keys(seatMap()).length >= n;
+}
+function celebrate() {
+  const key = 'supra.celebrated.' + (appState.ROW?.id || 'plan');
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+  } catch (e) {}
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div');
+  box.className = 'petals';
+  box.setAttribute('aria-hidden', 'true');
+  const cols = ['#F2C6CF', '#FBE3E6', '#FFFFFF', '#E8B4BE', '#F7D9C4'];
+  for (let i = 0; i < 36; i++) {
+    const s = document.createElement('i');
+    s.style.left = Math.random() * 100 + '%';
+    s.style.background = cols[i % cols.length];
+    s.style.animationDelay = Math.random() * 900 + 'ms';
+    s.style.animationDuration = 2200 + Math.random() * 1400 + 'ms';
+    s.style.setProperty('--sway', (Math.random() * 120 - 60).toFixed(0) + 'px');
+    s.style.setProperty('--spin', (Math.random() * 540 - 270).toFixed(0) + 'deg');
+    box.append(s);
+  }
+  $('#canvas').append(box);
+  setTimeout(() => box.remove(), 4200);
+}
 function renderPlan() {
   const { B, inner } = withView(() => planSVG({ rsvp: true }));
   const svg = $('#plan');
@@ -56,6 +106,13 @@ function renderPlan() {
   svg.dataset.w = B.w;
   svg.dataset.h = B.h;
   svg.innerHTML = inner;
+  svg.classList.toggle('seekseat', !!appState.waitSel);
+  const now = seatMap();
+  settleNew(svg, lastSeats, now);
+  lastSeats = now;
+  const all = allSeated();
+  if (all && wasAllSeated === false && !appState.readOnly) celebrate();
+  wasAllSeated = all;
   applyZoom();
 }
 /* View: `scale` is screen pixels per plan unit, so opening or closing a panel never changes the zoom.
@@ -854,6 +911,7 @@ document.addEventListener('click', e => {
   if (d.wait) {
     appState.waitSel = appState.waitSel === d.wait ? null : d.wait;
     renderLeft();
+    $('#plan').classList.toggle('seekseat', !!appState.waitSel);
     if (appState.waitSel) toast(t('tapEmpty'));
     return;
   }
@@ -1281,14 +1339,17 @@ window.addEventListener('pointermove', e => {
   if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 7) {
     drag.moved = true;
     if (drag.kind !== 'seat') hist.push(JSON.stringify(appState.S));
-    if (drag.kind === 'seat') drag.el.style.opacity = 0.45;
+    if (drag.kind === 'seat') {
+      drag.el.style.opacity = 0.45;
+      $('#plan').classList.add('seekseat');
+    }
     document.body.classList.add('dragging');
   }
   if (!drag.moved) return;
   if (drag.kind === 'seat') {
-    document.querySelectorAll('.seat .ring').forEach(r => r.setAttribute('opacity', 0));
+    document.querySelectorAll('.seat.target').forEach(r => r.classList.remove('target'));
     const o = document.elementFromPoint(e.clientX, e.clientY)?.closest('.seat');
-    if (o && o !== drag.el) o.querySelector('.ring').setAttribute('opacity', 0.35);
+    if (o && o !== drag.el) o.classList.add('target');
     return;
   }
   const p = wPt(e),
@@ -1338,6 +1399,7 @@ window.addEventListener('pointerup', e => {
   }
   if (!d.moved) return clickSeat(d.t, d.i);
   d.el.style.opacity = 1;
+  $('#plan').classList.toggle('seekseat', !!appState.waitSel);
   const o = document.elementFromPoint(e.clientX, e.clientY)?.closest('.seat');
   if (!o || (o.dataset.t === d.t && +o.dataset.i === d.i)) return renderPlan();
   commit(() => {
