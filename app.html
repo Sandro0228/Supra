@@ -128,7 +128,7 @@ p{margin:0}
 .seg button[aria-checked="true"]{background:var(--ink);color:var(--panel)}
 #savestate{font-size:12px;color:var(--muted)}
 #savestate[data-state="dirty"]{color:var(--accent)}
-.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn.danger{color:var(--danger)}
@@ -141,10 +141,12 @@ p{margin:0}
 .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.inp,.sec select{border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+/* One height for every one-line control, so date/time pickers line up with text boxes and dropdowns */
+.field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,input.inp,select.inp,.sec select{height:calc(1.45em + 16px)}
 textarea{resize:vertical}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row.between{justify-content:space-between}.row.end{justify-content:flex-end}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
-.static{padding:7px 0;font-weight:500}
+.static{display:flex;align-items:center;min-height:calc(1.45em + 16px);margin:0;font-weight:500}
 .check{display:flex;align-items:center;gap:6px;padding:6px 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:4px 10px;font-size:13px;display:inline-flex;align-items:center}
