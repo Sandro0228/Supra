@@ -431,12 +431,12 @@ function fig(L) {
   return `<g transform="${PERSON_T}" clip-path="url(#cBody)" mask="url(#mBody)">${g}</g>`;
 }
 /* Round and square glasses are drawn as shapes, not pictures: dark frames thick enough to read at seat size,
-   lenses centred on the eyes (see the eye positions in fig) and arms that stop at the edge of the face. */
+   lenses centred on the eyes (see the eye positions in fig), and no arms: only the frame and the bridge. */
 const EYES = [
   [486, 590],
   [767, 586]
 ];
-function glassesSVG({ col, w, lens, temple }) {
+function glassesSVG({ col, w, lens }) {
   const [[lx, ly], [rx, ry]] = EYES,
     hw = lens.w / 2,
     ty = (ly + ry) / 2 - lens.h * 0.22;
@@ -448,14 +448,14 @@ function glassesSVG({ col, w, lens, temple }) {
     `<path d="M${x - hw * 0.55},${y - lens.h * 0.12} q${hw * 0.18},${-lens.h * 0.28} ${hw * 0.5},${-lens.h * 0.32}" stroke="#FFFFFF" stroke-width="${w * 0.6}" opacity=".55" fill="none"/>`;
   return (
     `<g fill="#FFFFFF" fill-opacity=".06" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${one(lx, ly)}${one(rx, ry)}</g>` +
-    `<g fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"><path d="M${lx + hw - w * 0.3},${ty + 4} Q${(lx + rx) / 2},${ty - 26} ${rx - hw + w * 0.3},${ty + 4}"/><path d="M${lx - hw},${ty} L${temple[0]},${ty - 6}"/><path d="M${rx + hw},${ty} L${temple[1]},${ty - 6}"/></g>` +
+    `<g fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"><path d="M${lx + hw - w * 0.3},${ty + 4} Q${(lx + rx) / 2},${ty - 26} ${rx - hw + w * 0.3},${ty + 4}"/></g>` +
     glint(lx, ly) +
     glint(rx, ry)
   );
 }
 const GLASSES = {
-  round: glassesSVG({ col: '#2E211A', w: 14, lens: { round: true, w: 226, h: 226 }, temple: [334, 920] }),
-  square: glassesSVG({ col: '#3E2619', w: 18, lens: { w: 222, h: 160, rx: 40 }, temple: [334, 920] })
+  round: glassesSVG({ col: '#2E211A', w: 14, lens: { round: true, w: 226, h: 226 } }),
+  square: glassesSVG({ col: '#3E2619', w: 18, lens: { w: 222, h: 160, rx: 40 } })
 };
 function chairM() {
   const n = NAT.chair;
