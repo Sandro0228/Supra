@@ -203,7 +203,7 @@ function renderLeft() {
       dhead(t('event')) +
       `
     <label class="field"><span class="lbl">${t('eventName')}</span><input id="ev-name" class="inp" value="${esc(e.name)}"></label>
-    <div class="row2"><div class="field"><span class="lbl">${t('eventType')}</span>${
+    <div class="row2 top"><div class="field"><span class="lbl">${t('eventType')}</span>${
       EVENT_TYPES.filter(([, on]) => on).length > 1
         ? `<select id="ev-type" aria-label="${esc(t('eventType'))}">${EVENT_TYPES.filter(([, on]) => on)
             .map(([k]) => `<option value="${k}" ${e.type === k ? 'selected' : ''}>${t(k)}</option>`)
@@ -347,7 +347,7 @@ function renderLeft() {
       <div class="row"><button type="button" class="btn ${st === 'published' ? 'primary' : ''}" data-act="copylink">${t('copyLink')}</button>${st === 'published' ? `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t('openGuest')}<span class="sr"> ${t('newTab')}</span></a>` : ''}</div>
       <p id="copystate" class="muted small" role="status">${st === 'published' ? '' : esc(t('shNotLiveYet'))}</p></div>
       <div id="qr" class="qr" role="img" aria-label="${esc(t('qrAlt'))}"></div>
-      <div class="row">${btn('dlqr', t('dlQR'), 'sm')}${btn('rotate', t('shRotate'), 'sm')}${btn('revoke', t('shRevoke'), 'sm danger')}</div>
+      <div class="row">${btn('dlqr', t('dlQR'))}${btn('rotate', t('shRotate'))}${btn('revoke', t('shRevoke'), 'danger')}</div>
       ${st !== 'revoked' ? conf('rotate', t('shRotateQ'), t('shRotateYes')) : ''}
       ${conf('revoke', t('shRevokeQ'), t('shRevokeYes'), 'danger')}`
         : ''

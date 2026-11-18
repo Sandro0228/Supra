@@ -3,6 +3,8 @@ import { P, tName } from './state.js';
 import { bounds, brokenSet, dims, geo, rot } from './layout.js';
 import { gDate } from './guest.js';
 import { invGuestStatus } from './invites.js';
+// Vertical middle of a seated figure with its chair (chairM spans y −47…30), used to turn it upright in place.
+const FIG_CY = -8.6;
 /* Drawing the plan as SVG. Part of the planner (app.html); see js/README.md. */
 /* ---------------- plan drawing ---------------- */
 function decoAt(kind, x, y, w) {
@@ -319,6 +321,10 @@ function planSVG(opt = {}) {
         (opt.hi && opt.hi === gid);
       tb += `<g class="seat" data-t="${x.id}" data-i="${i}" ${opt.guest ? '' : `role="button" tabindex="0" aria-label="${esc(seatLabel(x, i, G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb += `<circle class="ring" r="40" fill="${p.accent}" opacity="${on ? 0.32 : 0}"/>`;
+      // The drawings are front-facing portraits: turn them back upright on screen, around their middle, so guests
+      // on the far side of a table aren't upside down. The seat itself still faces the table.
+      const up = (((-(R0 + ang) % 360) + 540) % 360) - 180;
+      if (Math.abs(up) > 0.5) tb += `<g transform="rotate(${up.toFixed(1)} 0 ${FIG_CY})">`;
       const no = opt.rsvp && G && !G.anon && invGuestStatus(gid) === 'no'; // on screen only, never in printed plans
       tb +=
         G && G.ghost
@@ -329,7 +335,7 @@ function planSVG(opt = {}) {
               : person(G, p)
             : chairM(p) +
               `<circle cx="0" cy="-8" r="13" fill="#FFFFFF" opacity=".7" stroke="${shade(p.chair, -30)}" stroke-dasharray="3 3"/><path d="M-5,-8 H5 M0,-13 V-3" stroke="${shade(p.chair, -35)}" stroke-width="1.5"/>`;
-      tb += `</g></g>`;
+      tb += Math.abs(up) > 0.5 ? `</g></g></g>` : `</g></g>`;
     });
     if (g.shape.type === 'round') {
       const r = g.shape.r;
