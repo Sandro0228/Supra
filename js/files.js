@@ -6,6 +6,7 @@ import { PDFLIB, XLSXLIB, loadScript, logSafe, renderTop } from './panels.js';
 import { gDate } from './guest.js';
 import { INV, eventCols } from './invites.js';
 import { resolveConflict, versioned } from './conflict.js';
+import { addRestorePoint } from './history.js';
 /* Saving, downloads (PNG, PDF, place cards, caterer list, CSV) and the modal. Part of the planner (app.html); see js/README.md. */
 /* ---------------- saving ---------------- */
 let savingNow = false,
@@ -604,6 +605,7 @@ function importModal() {
   };
   $('#xgo').onclick = () => {
     const mode = document.querySelector('input[name=xmode]:checked').value;
+    if (mode === 'replace') addRestorePoint('import', appState.S);
     const ok = commit(() => {
       if (mode === 'replace') {
         const keep = new Set(appState.S.tables.filter(x => x.shape === 'head').flatMap(x => x.seats.filter(Boolean)));

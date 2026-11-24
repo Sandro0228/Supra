@@ -81,7 +81,7 @@
     function run() {
       const d = db();
       const rs = d[table] || [];
-      const m = r => filters.every(([k, v]) => r[k] === v);
+      const m = r => filters.every(([k, v]) => r[k] === v || (r[k] != null && String(r[k]) === String(v)));
       if (!localStorage.getItem('mocksess'))
         return { data: op === 'select' ? [] : null, error: op === 'select' ? null : { message: 'not signed in' } };
       // mirrors migration 006: the server picks the token and new events start as private drafts (Balanced)
@@ -497,6 +497,26 @@
           await sleep(cfg().rpcDelay || 0);
           const evs = db().events;
           if (fn === 'rsvp_get' || fn === 'rsvp_answer') return rsvpRpc(fn, args);
+          // migration 013: a restore point (the planner's copy or the saved plan)
+          if (fn === 'add_restore_point') {
+            const d = db(),
+              ev = (d.events || []).find(e => e.id === args.p_event),
+              data = args.p_data || (ev && ev.data);
+            if (!ev) return { data: null, error: { message: 'not found', code: '42501' } };
+            const v = {
+              id: (d.event_versions || []).reduce((a, x) => Math.max(a, x.id), 0) + 1,
+              event_id: ev.id,
+              saved_at: new Date().toISOString(),
+              reason: args.p_reason,
+              guests: Object.keys(data.guests || {}).length,
+              tables: (data.tables || []).length,
+              data
+            };
+            d.event_versions = [v].concat(d.event_versions || []);
+            put(d);
+            window.__mockCalls.push([fn, args.p_reason]);
+            return { data: v.id, error: null };
+          }
           // migration 012: the user's events (and their invitations) go, then the account
           if (fn === 'delete_my_account') {
             const d = db(),

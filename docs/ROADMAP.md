@@ -62,7 +62,7 @@ Each stage is one reviewable commit (or a few), tests included.
 5. **P1A** — onboarding checklist, sample event (isolated, flagged), card metadata (Draft/Published, guests seated, last edited).
 6. **P1B** — minimap, search-and-zoom, table navigator, level-of-detail, roving-tabindex seats, list view; perf fixtures 50/300/500/1 000.
 7. **P1C** — import preview/mapping/validation/duplicates/undo; filters; multi-select; conflict queue.
-8. **P1D** — ✅ (2026-11-24, migration 010) optimistic concurrency: a server-side plan `version` precondition and a "which version to keep" prompt (no field-level merge). Still to do: version history + restore points.
+8. **P1D** — ✅ (2026-11-24, migration 010) optimistic concurrency: a server-side plan `version` precondition and a "which version to keep" prompt (no field-level merge). ✅ (2026-11-24, migration 013) version history + restore points (History in the Event panel).
 9. **P2** — WCAG 2.2 AA pass, non-colour category labels, mobile organiser priorities, full device/AT matrix.
 
 ## 4b. Deferred code work (agreed 2026-11-17, do when no feature is in progress)

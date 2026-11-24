@@ -51,6 +51,7 @@ def use_saved_version_then_undo_brings_mine_back(pw, base):
     assert p.evaluate("window.__supraState().event.name") == 'Other device'
     assert db_ev(p)['data']['event']['name'] == 'Other device' and db_ev(p)['version'] == 2
     assert p.evaluate("localStorage.getItem('supra.draft.ev1')") is None
+    p.wait_for_function("(JSON.parse(localStorage.getItem('mockdb')).event_versions||[]).some(v=>v.reason==='conflict'&&v.data.event.name==='Mine')", timeout=4000)
     p.click('#undo')
     assert p.evaluate("window.__supraState().event.name") == 'Mine'
     p.wait_for_function("JSON.parse(localStorage.getItem('mockdb')).events[0].data.event.name==='Mine'", timeout=6000)
