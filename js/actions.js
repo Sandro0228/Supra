@@ -1543,6 +1543,6 @@ document.addEventListener(
 );
 $('#undo').onclick = undo;
 $('#backdrop').onclick = () => closeDrawer();
-$('#save').onclick = () => savePlan();
+$('#save').onclick = () => savePlan(true);
 
 export { isPhone, keepView, renderAll, renderPlan };

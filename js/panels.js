@@ -124,17 +124,20 @@ function renderTop() {
   fb.setAttribute('aria-label', fb.title);
   const sb = $('#save'),
     st = $('#savestate');
-  sb.hidden = appState.saveState !== 'error';
+  sb.hidden = appState.saveState !== 'error' && appState.saveState !== 'conflict';
   sb.textContent = t('save');
   st.textContent =
     appState.saveState === 'saving'
       ? t('saving')
       : appState.saveState === 'error'
         ? t('notSaved')
-        : appState.dirty
-          ? t('unsaved')
-          : t('saved');
-  st.dataset.state = appState.saveState === 'error' || appState.dirty ? 'dirty' : 'ok';
+        : appState.saveState === 'conflict'
+          ? t('cfState')
+          : appState.dirty
+            ? t('unsaved')
+            : t('saved');
+  st.dataset.state =
+    appState.saveState === 'error' || appState.saveState === 'conflict' || appState.dirty ? 'dirty' : 'ok';
   const bk = $('#backlink');
   if (bk) {
     bk.setAttribute('aria-label', t('logoHome'));

@@ -5,13 +5,23 @@ import { BODYFONT, NAMEFONT, planSVG } from './draw.js';
 import { PDFLIB, XLSXLIB, loadScript, logSafe, renderTop } from './panels.js';
 import { gDate } from './guest.js';
 import { INV, eventCols } from './invites.js';
+import { resolveConflict, versioned } from './conflict.js';
 /* Saving, downloads (PNG, PDF, place cards, caterer list, CSV) and the modal. Part of the planner (app.html); see js/README.md. */
 /* ---------------- saving ---------------- */
 let savingNow = false,
   saveAgain = false;
-async function savePlan() {
+const isSaving = () => savingNow;
+/* manual: the organiser pressed Save. While a conflict waits for the organiser's choice (js/conflict.js), only
+   Save reopens it; automatic saves leave both versions alone. */
+async function savePlan(manual) {
   clearTimeout(appState.saveT);
   if (!appState.SB || !appState.ROW || appState.readOnly) return;
+  if (appState.conflict) {
+    appState.saveState = 'conflict';
+    renderTop();
+    if (manual === true) resolveConflict();
+    return;
+  }
   if (savingNow) {
     saveAgain = true;
     return;
@@ -19,9 +29,11 @@ async function savePlan() {
   savingNow = true;
   appState.saveState = 'saving';
   renderTop();
-  const snapshot = JSON.stringify(appState.S);
+  const snapshot = JSON.stringify(appState.S),
+    v = versioned();
+  let conflict = false;
   try {
-    const { data, error } = await appState.SB.from('events')
+    let q = appState.SB.from('events')
       .update({
         data: appState.S,
         name: appState.S.event.name || '',
@@ -29,22 +41,36 @@ async function savePlan() {
         type: appState.S.event.type,
         ...eventCols()
       })
-      .eq('id', appState.ROW.id)
-      .select('updated_at')
-      .single();
+      .eq('id', appState.ROW.id);
+    // Save only on top of the version this tab loaded (migration 010); without the column, last write wins.
+    if (v) q = q.eq('version', appState.ROW.version);
+    const { data, error } = await q.select(v ? 'updated_at,version' : 'updated_at').maybeSingle();
     if (error) throw error;
+    if (!data) {
+      if (!v) throw new Error('no row updated');
+      conflict = true;
+      throw new Error('conflict');
+    }
     appState.ROW.updated_at = data.updated_at;
+    if (v) appState.ROW.version = data.version;
     if (JSON.stringify(appState.S) === snapshot) {
       appState.dirty = false;
       clearDraft();
     }
     appState.saveState = 'idle';
   } catch (err) {
-    appState.saveState = 'error';
-    logSafe('save', err);
-    toast(t('couldntSave'));
+    if (!conflict) {
+      appState.saveState = 'error';
+      logSafe('save', err);
+      toast(t('couldntSave'));
+    }
   }
   savingNow = false;
+  if (conflict) {
+    saveAgain = false;
+    await resolveConflict();
+    return;
+  }
   renderTop();
   if (saveAgain || (appState.dirty && appState.saveState !== 'error')) {
     saveAgain = false;
@@ -682,6 +708,20 @@ function modal(html) {
     if (e.target.classList.contains('modal')) shut();
   };
   r.querySelector('.box').focus();
+  return shut;
 }
 
-export { catererModal, dlQR, exportX, fname, importModal, offerFile, placeCards, planImage, planPdf, savePlan };
+export {
+  catererModal,
+  dlQR,
+  exportX,
+  fname,
+  importModal,
+  isSaving,
+  modal,
+  offerFile,
+  placeCards,
+  planImage,
+  planPdf,
+  savePlan
+};

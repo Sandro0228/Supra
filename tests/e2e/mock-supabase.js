@@ -151,10 +151,14 @@
           'guest_page',
           'token',
           'deleted_at',
-          'trash_share_status'
+          'trash_share_status',
+          'version'
         ].forEach(k => delete p[k]);
         rs.forEach(r => {
           if (m(r)) {
+            // mirrors migration 010: version counts plan changes (only for rows that have the column)
+            if (r.version !== undefined && 'data' in p && JSON.stringify(p.data) !== JSON.stringify(r.data))
+              r.version++;
             Object.assign(r, p, { updated_at: new Date().toISOString() });
             if (table === 'invites') invDerive(r);
             out = r;
