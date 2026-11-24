@@ -22,6 +22,16 @@ def every_key_translated_with_same_placeholders(pw, base):
     assert not formal, formal
 
 @test
+def no_key_is_defined_twice(pw, base):
+    # A repeated key silently replaces the earlier text (2026-11-24: the privacy page's title replaced the preview's).
+    src = open(os.path.join(ROOT, 'i18n.js'), encoding='utf-8').read()
+    for lang in ('en', 'ka'):
+        start = src.index('  %s: {' % lang); body = src[start:src.index('\n  }', start)]
+        keys = re.findall(r"^    '([A-Za-z0-9_]+)':", body, flags=re.M)
+        dup = sorted({k for k in keys if keys.count(k) > 1})
+        assert not dup, (lang, dup)
+
+@test
 def georgian_choice_carries_from_dashboard_to_editor(pw, base):
     c = Ctx(pw, base, session=True, viewport=(1280, 720))
     p = c.goto('/', wait='.dashhead')

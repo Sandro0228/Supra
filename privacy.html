@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Privacy · Supra</title>
+<meta name="description" content="What Supra stores, who can see it and how long it is kept.">
+<script>try{var th=localStorage.getItem("supra.theme");if(th)document.documentElement.dataset.theme=th}catch(e){}</script>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="/brand.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<style>
+/* Privacy: what the code actually stores and sends. Same shell as pricing.html. Keep it true when data handling changes. */
+:root{
+  --bg:#F6F1EA; --panel:#FFFFFF; --ink:#2B2522; --muted:#6E655F; --line:#E4DACD;
+  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#FBF8F3;
+  --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
+  --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
+  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{margin-right:auto;display:flex;align-items:center;padding-block:4px}
+.hdrlogo{--bw:170px}@media (max-width:600px){.hdrlogo{--bw:130px}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:6px 10px;font-size:13px}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--panel)}
+.seg .short{display:none}@media (max-width:420px){.seg .full{display:none}.seg .short{display:inline}}
+.iconb{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0}.iconb svg{width:18px;height:18px}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;color:var(--ink)}
+h1{font-size:clamp(32px,5vw,52px);line-height:1.1;text-wrap:balance}
+.lead{max-width:56ch;color:var(--muted);font-size:17px;margin:12px 0 0}
+.plans{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-items:stretch}
+.plan{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:12px;position:relative}
+.plan.best{border-color:var(--accent);box-shadow:0 24px 50px -34px rgba(120,50,70,.45)}
+.badge{position:absolute;top:-11px;left:22px;background:var(--accent);color:var(--accent-ink);font-size:12px;border-radius:99px;padding:2px 10px}
+.plan h2{font-size:24px}
+.price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.price b{font-size:36px;font-weight:600;line-height:1}
+.price span,.sub{color:var(--muted);font-size:14px}
+.sub{margin:0}
+.ticks{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:9px}
+.ticks li{position:relative;padding-left:26px}
+.ticks li::before{content:"";position:absolute;left:2px;top:.5em;width:11px;height:11px;border-radius:50% 0 50% 50%;background:var(--accent);opacity:.8;transform:rotate(-45deg)}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.faq{display:grid;gap:10px;max-width:760px}
+.faq h2{font-size:28px;margin-bottom:6px}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+summary{cursor:pointer;font-weight:500}
+details p{margin:8px 0 0;color:var(--muted)}
+.doc{max-width:720px;margin:0!important;display:grid;gap:22px}.doc h2{font-size:24px}.doc p{margin:6px 0 0}.doc .small{color:var(--muted);font-size:14px}
+footer{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><a class="logo" href="/" id="home"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></a><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme"></button></header>
+  <main class="wrap doc" style="width:100%">
+    <section aria-labelledby="h"><h1 id="h" data-t="prvH"></h1><p class="lead" data-t="prvLead"></p><p class="small" data-t="prvUpdated"></p></section>
+    <section aria-labelledby="sAcc"><h2 id="sAcc" data-t="prvAccH"></h2><p data-t="prvAcc"></p></section>
+    <section aria-labelledby="sPlan"><h2 id="sPlan" data-t="prvPlanH"></h2><p data-t="prvPlan"></p></section>
+    <section aria-labelledby="sGuest"><h2 id="sGuest" data-t="prvGuestH"></h2><p data-t="prvGuest"></p></section>
+    <section aria-labelledby="sRsvp"><h2 id="sRsvp" data-t="prvRsvpH"></h2><p data-t="prvRsvp"></p></section>
+    <section aria-labelledby="sLook"><h2 id="sLook" data-t="prvLookH"></h2><p data-t="prvLook"></p></section>
+    <section aria-labelledby="sPay"><h2 id="sPay" data-t="prvPayH"></h2><p data-t="prvPay"></p></section>
+    <section aria-labelledby="sKeep"><h2 id="sKeep" data-t="prvKeepH"></h2><p data-t="prvKeep"></p></section>
+    <section aria-labelledby="sBrowser"><h2 id="sBrowser" data-t="prvBrowserH"></h2><p data-t="prvBrowser"></p></section>
+    <section aria-labelledby="sThird"><h2 id="sThird" data-t="prvThirdH"></h2><p data-t="prvThird"></p></section>
+    <section aria-labelledby="sYou"><h2 id="sYou" data-t="prvYouH"></h2><p data-t="prvYou"></p></section>
+    <section aria-labelledby="sAsk" id="ask" hidden><h2 id="sAsk" data-t="prvAskH"></h2><p><span data-t="prvAsk"></span><span id="mail"></span></p></section>
+  </main>
+  <footer><a href="/" data-t="ppBack"></a> · <a href="/pricing" data-t="lpPricing"></a></footer>
+</div>
+<script src="/config.js"></script>
+<script src="/i18n.js"></script>
+<script>
+(() => {
+  'use strict';
+  const L = window.SUPRA_I18N, $ = s => document.querySelector(s);
+  let lang = (() => { try { return localStorage.getItem('supra.lang'); } catch (e) { return null; } })() ||
+    ((navigator.language || '').startsWith('ka') ? 'ka' : 'en');
+  const t = k => (L[lang] || L.en)[k] ?? L.en[k] ?? k;
+  const SUN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    MOON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  const theme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  function render() {
+    document.documentElement.lang = lang;
+    document.title = t('prvTitle');
+    document.querySelector('meta[name=description]').content = t('prvMeta');
+    document.querySelectorAll('[data-t]').forEach(el => (el.textContent = t(el.dataset.t)));
+    $('#home').setAttribute('aria-label', t('ppBack'));
+    const mail = (window.SUPRA_CONFIG || {}).supportEmail;
+    $('#mail').innerHTML = '';
+    if (mail) { const a = document.createElement('a'); a.href = 'mailto:' + mail; a.textContent = mail; $('#mail').append(' ', a); }
+    $('#ask').hidden = !mail;
+    const dark = theme() === 'dark', th = $('#theme');
+    th.innerHTML = dark ? SUN : MOON;
+    th.setAttribute('aria-label', t(dark ? 'toLight' : 'toDark'));
+    th.title = t(dark ? 'toLight' : 'toDark');
+    $('#lang').setAttribute('aria-label', t('language'));
+    $('#lang').innerHTML = [['en', 'EN', 'English'], ['ka', 'ქარ', 'ქართული']].map(([k, s, full]) =>
+      `<button type="button" role="radio" data-lang="${k}" aria-checked="${lang === k}" tabindex="${lang === k ? 0 : -1}" aria-label="${full}" lang="${k}"><span class="full">${full}</span><span class="short" aria-hidden="true">${s}</span></button>`).join('');
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.lang && b.dataset.lang !== lang) {
+      lang = b.dataset.lang;
+      try { localStorage.setItem('supra.lang', lang); } catch (x) {}
+      render();
+      $(`[data-lang="${lang}"]`).focus();
+    }
+    if (b.id === 'theme') {
+      const n = theme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = n;
+      try { localStorage.setItem('supra.theme', n); } catch (x) {}
+      render();
+      $('#theme').focus();
+    }
+  });
+  document.addEventListener('keydown', e => {
+    const items = [...document.querySelectorAll('#lang [role=radio]')], i = items.indexOf(e.target);
+    if (i < 0) return;
+    const j = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (i + 1) % 2 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (i + 1) % 2 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    items[j].click();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
