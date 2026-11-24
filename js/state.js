@@ -3,6 +3,7 @@ import { autoArrange, resolveOverlaps } from './layout.js';
 import { renderTop } from './panels.js';
 import { renderAll } from './actions.js';
 import { savePlan } from './files.js';
+import { overAfter, paywall } from './access.js';
 /* The plan in memory (S), selection, undo history and drafts. Part of the planner (app.html); see js/README.md. */
 /* ---------------- state ---------------- */
 
@@ -111,13 +112,23 @@ function markDirty() {
   clearTimeout(appState.saveT);
   appState.saveT = setTimeout(savePlan, 1500);
 }
-function commit(fn) {
+/* One undoable change. Returns false when the step would take a free plan past its guest limit (js/access.js):
+   the step is undone and the "get the pass" panel opens. opts.allowOver: never refuse (RSVP answers from guests). */
+function commit(fn, opts) {
+  const before = Object.keys(appState.S.guests).length;
   hist.push(JSON.stringify(appState.S));
   if (hist.length > 80) hist.shift();
   fn();
+  if (!(opts && opts.allowOver) && overAfter(before)) {
+    appState.S = JSON.parse(hist.pop());
+    renderAll();
+    paywall('limit');
+    return false;
+  }
   resolveOverlaps();
   markDirty();
   renderAll();
+  return true;
 }
 function undo() {
   if (!hist.length) return;

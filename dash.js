@@ -78,6 +78,7 @@
   const D = {
     events: null,
     trash: [],
+    plans: null, // the owner's entitlements (migration 011); null = unknown
     trashOpen: false,
     forever: null,
     fverr: '',
@@ -445,6 +446,24 @@
           : ''
       }</li>`;
   }
+  // Plans (migration 011): free events seat up to 40 guests; an event pass or Pro removes the limit.
+  const FREE_LIMIT = 40;
+  const planOf = e => {
+    const now = Date.now(),
+      on = x =>
+        x.status === 'active' &&
+        new Date(x.starts_at).getTime() <= now &&
+        (!x.ends_at || new Date(x.ends_at).getTime() > now);
+    if (D.plans === null) return null; // unknown (older database): show nothing
+    if (D.plans.some(x => x.kind === 'pro' && on(x))) return 'pro';
+    return D.plans.some(x => x.kind === 'event_pass' && x.event_id === e.id && on(x)) ? 'pass' : 'free';
+  };
+  function planPill(e, n) {
+    const p = planOf(e);
+    if (!p) return '';
+    if (p !== 'free') return `<span class="pill plan paid">${esc(t(p === 'pro' ? 'dPlanPro' : 'dPlanPass'))}</span>`;
+    return `<span class="pill plan${n > FREE_LIMIT ? ' over' : ''}">${esc(t('dPlanFree', { n, max: FREE_LIMIT }))}</span>`;
+  }
   const pubOf = e => (e.share_status || (e.guest_page ? 'published' : 'draft')) === 'published';
   function evCard(e) {
     const n = e.guests ? Object.keys(e.guests).length : 0,
@@ -458,7 +477,7 @@
     return `<li class="ev" style="--pal:${pal};--pal-d:color-mix(in srgb,${pal} 55%,#FFFFFF)">
     <a class="cover" href="/edit/${esc(e.id)}" tabindex="-1" aria-hidden="true">${FLOWERS ? `<img src="${FLOWERS}" alt="" class="fl">` : ''}<span class="mono">${esc(initials(nm))}</span></a>
     <div class="evbody">
-      <div class="evtop"><span class="pill ${pub ? 'on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span><h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2></div>
+      <div class="evtop"><div class="pills"><span class="pill ${pub ? 'on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span>${planPill(e, n)}</div><h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2></div>
       <p class="when">${e.event_date ? `<span>${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span></p>
       <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>
       <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}<button type="button" class="linkish danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
@@ -476,12 +495,15 @@
   async function loadEvents() {
     const g = ++loadGen;
     D.loadErr = false;
+    const plans = SB.from('entitlements').select('kind,event_id,status,starts_at,ends_at');
     const { data, error } = await SB.from('events')
       .select(
         'id,name,event_date,slug,guest_page,share_status,updated_at,deleted_at,guests:data->guests,tables:data->tables,ev:data->event'
       )
       .order('updated_at', { ascending: false });
+    const pr = await plans;
     if (g !== loadGen || A.state !== 'authenticated') return;
+    D.plans = pr.error ? null : pr.data || [];
     if (error) {
       D.loadErr = true;
       D.events = [];

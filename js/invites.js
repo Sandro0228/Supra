@@ -4,6 +4,7 @@ import { det, dhead, focusKeyOf, logSafe, radios, renderLeft, renderRight } from
 import { renderPlan } from './actions.js';
 import { fmtDate } from './guest.js';
 import { fmtWhen } from './rsvp.js';
+import { needsPass, paywall } from './access.js';
 /* Invitations tab (RSVP M3): households, contacts, sending links, answers, recent changes and RSVP settings.
    Invitations live in their own table (public.invites, migration 008), not in the plan, so they are saved
    right away and are not part of undo. Part of the planner (app.html); see js/README.md. */
@@ -183,7 +184,8 @@ async function invCreate(rows) {
     .select();
   if (error) {
     logSafe('invcreate', error);
-    toast(t('invSaveErr'));
+    if (needsPass(error)) paywall('invite');
+    else toast(t('invSaveErr'));
     return false;
   }
   (data || []).forEach(invPut);
@@ -417,6 +419,10 @@ async function invSaveForm() {
   const { data, error } = await q.select().single();
   if (error) {
     logSafe('invsave', error);
+    if (needsPass(error)) {
+      paywall('invite');
+      return;
+    }
     return fail('invSaveErr', '[data-inv="save"]');
   }
   invPut(data);
@@ -693,31 +699,35 @@ function invApply() {
     i => !i.revoked && i.answer && i.answered_at && (!i.applied_at || i.answered_at > i.applied_at)
   );
   if (!fresh.length) return;
-  commit(() => {
-    appState.S.rsvpExtra = appState.S.rsvpExtra || {};
-    fresh.forEach(i => {
-      const a = i.answer;
-      Object.entries(a.members || {}).forEach(([gid, v]) => {
-        const g = appState.S.guests[gid];
-        if (g && v.coming && v.meal) g.meal = v.meal;
+  // guests' answers are never refused, even past the free limit
+  commit(
+    () => {
+      appState.S.rsvpExtra = appState.S.rsvpExtra || {};
+      fresh.forEach(i => {
+        const a = i.answer;
+        Object.entries(a.members || {}).forEach(([gid, v]) => {
+          const g = appState.S.guests[gid];
+          if (g && v.coming && v.meal) g.meal = v.meal;
+        });
+        const have = Object.entries(appState.S.rsvpExtra)
+          .filter(([, x]) => x.inv === i.id)
+          .map(([, x]) => skel(x.name));
+        (a.extras || []).forEach(e => {
+          if (have.includes(skel(e.name))) return;
+          const gid = mkGuest(e.name);
+          const g = appState.S.guests[gid];
+          if (g) {
+            g.meal = e.meal || '';
+            const fam = (appState.S.guests[(i.members || [])[0]] || {}).group;
+            if (fam) g.group = fam;
+          }
+          appState.S.waiting.push(gid);
+          appState.S.rsvpExtra[gid] = { inv: i.id, name: e.name };
+        });
       });
-      const have = Object.entries(appState.S.rsvpExtra)
-        .filter(([, x]) => x.inv === i.id)
-        .map(([, x]) => skel(x.name));
-      (a.extras || []).forEach(e => {
-        if (have.includes(skel(e.name))) return;
-        const gid = mkGuest(e.name);
-        const g = appState.S.guests[gid];
-        if (g) {
-          g.meal = e.meal || '';
-          const fam = (appState.S.guests[(i.members || [])[0]] || {}).group;
-          if (fam) g.group = fam;
-        }
-        appState.S.waiting.push(gid);
-        appState.S.rsvpExtra[gid] = { inv: i.id, name: e.name };
-      });
-    });
-  });
+    },
+    { allowOver: true }
+  );
   toast(tn('invApplied', fresh.length));
   const at = new Date().toISOString();
   fresh.forEach(async i => {

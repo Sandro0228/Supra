@@ -31,6 +31,7 @@ import { arrangeDefaults, arrangePreview, ruleBroken } from './layout.js';
 import { isPhone, keepView } from './actions.js';
 import { fmtDate } from './guest.js';
 import { INV, INV_AT, invGuestStatus, invOfGuest, invPanel, invRefresh, invSeatedNo, okMapUrl } from './invites.js';
+import { needsPass, paywall, planMeter } from './access.js';
 /* Top bar, side panels (Event, Guests, Share), guest-link settings and the inspector. Part of the planner (app.html); see js/README.md. */
 /* ---------------- top bar ---------------- */
 /* ---------------- top bar ---------------- */
@@ -285,6 +286,7 @@ function renderLeft() {
     const seatedG = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
     h =
       dhead(t('tabGuests'), esc(t('statGuests', { seatedGuests: seatedG, totalGuests: total }))) +
+      planMeter() +
       `
     ${(() => {
       const n = invSeatedNo().length;
@@ -530,8 +532,9 @@ async function shareCall(fn, args, okMsg, focusSel) {
   const { data, error } = await appState.SB.rpc(fn, Object.assign({ p_event: appState.ROW.id }, args || {}));
   if (error || !data) {
     logSafe('share:' + fn, error);
-    toast(t(/revoked/.test(error?.message || '') ? 'shRevokedErr' : 'shErr'));
     renderLeft();
+    if (needsPass(error)) paywall('publish');
+    else toast(t(/revoked/.test(error?.message || '') ? 'shRevokedErr' : 'shErr'));
     return false;
   }
   applyShare(data);
