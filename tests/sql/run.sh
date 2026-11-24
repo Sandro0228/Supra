@@ -3,6 +3,13 @@
 # The fixture plan is passed to psql as text, so the server does not need to see this folder.
 set -e
 cd "$(dirname "$0")"
+# A fresh Docker Postgres restarts once while it initialises: wait until it answers 3 times in a row (up to 60 s).
+ok=0
+for i in $(seq 1 60); do
+  if psql "$@" -q -tAc "select 1" postgres >/dev/null 2>&1; then ok=$((ok + 1)); [ $ok -ge 3 ] && break; else ok=0; fi
+  sleep 1
+done
+[ $ok -ge 3 ] || { echo "Postgres did not answer within 60 s" >&2; exit 1; }
 DB="supra_test_$$"
 psql "$@" -q -c "create database $DB" postgres
 trap 'psql "$@" -q -c "drop database $DB" postgres' EXIT
