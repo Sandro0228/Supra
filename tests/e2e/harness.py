@@ -15,6 +15,8 @@ class H(http.server.SimpleHTTPRequestHandler):
         if re.match(r'^/(edit|e|r)/[\w-]+$', p): s.path = '/app.html'
         elif p == '/app': s.path = '/app.html'
         elif p == '/pricing': s.path = '/pricing.html'
+        elif p == '/privacy': s.path = '/privacy.html'
+        elif p == '/account': s.path = '/index.html'
         elif p == '/': s.path = '/index.html' + ('?' + s.path.split('?', 1)[1] if '?' in s.path else '')
         return super().do_GET()
     def log_message(s, *a): pass

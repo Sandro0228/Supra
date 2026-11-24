@@ -497,6 +497,16 @@
           await sleep(cfg().rpcDelay || 0);
           const evs = db().events;
           if (fn === 'rsvp_get' || fn === 'rsvp_answer') return rsvpRpc(fn, args);
+          // migration 012: the user's events (and their invitations) go, then the account
+          if (fn === 'delete_my_account') {
+            const d = db(),
+              mine = new Set((d.events || []).filter(e => e.owner === user.id).map(e => e.id));
+            d.events = (d.events || []).filter(e => !mine.has(e.id));
+            d.invites = (d.invites || []).filter(i => !mine.has(i.event_id));
+            put(d);
+            window.__mockCalls.push([fn]);
+            return { data: null, error: null };
+          }
           if (fn === 'rotate_invite_link') {
             const d = db(),
               i = (d.invites || []).find(x => x.id === args.p_invite);
@@ -699,13 +709,16 @@
           async resetPasswordForEmail() {
             return { error: { message: 'email rate limit exceeded' } };
           },
-          async updateUser() {
+          async updateUser(u) {
+            window.__mockCalls.push(['updateUser', Object.keys(u || {})]);
             return { error: null };
           },
           async signInWithOtp() {
             return { error: null };
           },
-          async signOut() {
+          async signOut(o) {
+            window.__mockCalls.push(['signOut', (o && o.scope) || 'local']);
+            localStorage.setItem('mocklastsignout', (o && o.scope) || 'local'); // survives the reload after signing out
             localStorage.removeItem('mocksess');
             emit('SIGNED_OUT', null);
             return {};

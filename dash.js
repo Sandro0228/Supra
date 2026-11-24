@@ -192,6 +192,7 @@
     document.querySelectorAll('.landing').forEach(el => (el.hidden = authed));
     $('#hdrstart').hidden = authed;
     $('#who').textContent = authed ? A.session.user.email || '' : '';
+    $('#who').setAttribute('aria-label', authed ? t('acTitle') + ': ' + (A.session.user.email || '') : '');
     $('#who').hidden = !authed;
     const so = $('#signout');
     so.hidden = !authed;
@@ -201,7 +202,12 @@
     chrome();
     if (A.state === 'initializing') return renderLoading();
     if (A.state === 'error') return renderInitError();
-    if (A.state === 'authenticated') return renderDash();
+    if (A.state === 'authenticated') return ROUTE === 'account' ? renderAccount() : renderDash();
+    if (ROUTE === 'account') {
+      // the account page needs a signed-in user: sign in first, then come back here
+      location.replace('/?next=/account');
+      return;
+    }
     renderSignIn();
   }
   function renderLoading() {
@@ -557,11 +563,158 @@
     ($('[data-trashtog]') || $('#yourh'))?.focus();
   }
 
+  /* ---------------- account (/account) ----------------
+     Email, password, sign out everywhere, plans, "download all my data" and "delete my account" (migration 012). */
+  const ROUTE = location.pathname.replace(/\/+$/, '') === '/account' ? 'account' : 'home';
+  const AC = { data: null, loading: false, err: false, pwErr: '', pwOk: false, delOpen: false, delErr: '' };
+  async function loadAccount() {
+    AC.loading = true;
+    const [ev, pl] = await Promise.all([
+      SB.from('events').select('id,name,deleted_at'),
+      SB.from('entitlements').select('kind,event_id,status,starts_at,ends_at')
+    ]);
+    AC.loading = false;
+    if (A.state !== 'authenticated') return;
+    AC.err = !!ev.error;
+    AC.data = { events: ev.data || [], plans: pl.error ? null : pl.data || [] };
+    render();
+  }
+  const fmtDay = iso => fmtDate(String(iso || '').slice(0, 10));
+  function plansList() {
+    const P = AC.data.plans;
+    if (P === null) return '';
+    const now = Date.now(),
+      on = x => x.status === 'active' && new Date(x.starts_at) <= now && (!x.ends_at || new Date(x.ends_at) > now);
+    const pro = P.filter(x => x.kind === 'pro' && on(x)).sort((a, b) => (a.ends_at < b.ends_at ? 1 : -1))[0];
+    const names = Object.fromEntries(AC.data.events.map(e => [e.id, e.name || '—']));
+    const passes = P.filter(x => x.kind === 'event_pass' && on(x) && names[x.event_id]);
+    const rows = [];
+    if (pro)
+      rows.push(
+        `<li><b>${esc(t('dPlanPro'))}</b> <span class="small">${esc(t('acProUntil', { d: fmtDay(pro.ends_at) }))}</span></li>`
+      );
+    passes.forEach(x =>
+      rows.push(`<li><b>${esc(t('dPlanPass'))}</b> <span class="small">${esc(names[x.event_id])}</span></li>`)
+    );
+    return `<section class="acsec" aria-labelledby="ac-plans"><h2 id="ac-plans">${esc(t('acPlans'))}</h2>
+      ${rows.length ? `<ul class="aclist" role="list">${rows.join('')}</ul>` : `<p class="small">${esc(t('acNoPlans'))}</p>`}
+      <p><a href="/pricing">${esc(t('lpPricing'))}</a></p></section>`;
+  }
+  function renderAccount() {
+    if (!AC.data && !AC.loading) loadAccount();
+    const email = A.session.user.email || '';
+    const body = !AC.data
+      ? `<p class="empty" role="status"><span class="spinner" aria-hidden="true"></span> ${esc(t('dLoading'))}</p>`
+      : `
+    <section class="acsec" aria-labelledby="ac-signin"><h2 id="ac-signin">${esc(t('acSignIn'))}</h2>
+      <p>${esc(t('acEmail'))}: <b>${esc(email)}</b></p>
+      <form id="pwform" class="acform" novalidate aria-labelledby="ac-pw"><h3 id="ac-pw">${esc(t('acPwTitle'))}</h3>
+        <label class="field"><span class="lbl">${esc(t('acPwNew'))}</span><input class="inp" id="pw1" type="password" autocomplete="new-password" minlength="6"${AC.pwErr ? ' aria-invalid="true" aria-describedby="pwerr"' : ''}></label>
+        <label class="field"><span class="lbl">${esc(t('acPwAgain'))}</span><input class="inp" id="pw2" type="password" autocomplete="new-password" minlength="6"${AC.pwErr ? ' aria-invalid="true" aria-describedby="pwerr"' : ''}></label>
+        ${AC.pwErr ? `<p class="msg err" id="pwerr" role="alert">${esc(AC.pwErr)}</p>` : ''}${AC.pwOk ? `<p class="msg" role="status">${esc(t('acPwDone'))}</p>` : ''}
+        <div class="row"><button type="submit" class="btn">${esc(t('acPwSave'))}</button></div></form>
+      <div class="row"><button type="button" class="btn" data-acglobal>${esc(t('acSignOutAll'))}</button><span class="small">${esc(t('acSignOutAllHint'))}</span></div>
+    </section>
+    ${plansList()}
+    <section class="acsec" aria-labelledby="ac-data"><h2 id="ac-data">${esc(t('acData'))}</h2>
+      <p class="small">${esc(t('acExportHint'))}</p>
+      <div class="row"><button type="button" class="btn" data-acexport>${esc(t('acExport'))}</button><a href="/privacy">${esc(t('acPrivacy'))}</a></div>
+    </section>
+    <section class="acsec danger" aria-labelledby="ac-del"><h2 id="ac-del">${esc(t('acDelete'))}</h2>
+      <p class="small">${esc(t('acDeleteHint'))}</p>
+      ${
+        AC.delOpen
+          ? `<form class="confirm" id="delform" novalidate aria-labelledby="ac-delq"><p id="ac-delq">${esc(t('acDeleteQ'))}</p>
+        <label class="field"><span class="lbl">${esc(t('dForeverType', { n: '\u0000' })).replace('\u0000', `<b class="fvword">${esc(email)}</b>`)}</span><input class="inp" id="delemail" type="email" autocomplete="off" spellcheck="false"${AC.delErr ? ' aria-invalid="true" aria-describedby="delerr"' : ''}></label>
+        ${AC.delErr ? `<p class="msg err" id="delerr" role="alert">${esc(AC.delErr)}</p>` : ''}
+        <div class="row"><button type="submit" class="btn sm danger">${esc(t('acDeleteBtn'))}</button><button type="button" class="btn sm" data-acdelcancel>${esc(t('dKeep'))}</button></div></form>`
+          : `<div class="row"><button type="button" class="btn danger" data-acdel>${esc(t('acDeleteBtn'))}</button></div>`
+      }
+    </section>`;
+    $('#main').innerHTML =
+      `<div class="dash account"><div class="dashhead"><h1 id="ach">${esc(t('acTitle'))}</h1><a class="btn" href="/">${esc(t('myEvents'))}</a></div>${body}</div>`;
+  }
+  async function savePassword() {
+    const a = $('#pw1').value,
+      b = $('#pw2').value;
+    AC.pwOk = false;
+    AC.pwErr = a.length < 6 ? t('dWeak') : a !== b ? t('acPwMismatch') : '';
+    if (!AC.pwErr) {
+      const { error } = await SB.auth.updateUser({ password: a });
+      if (error) AC.pwErr = friendly(error).text;
+      else AC.pwOk = true;
+    }
+    render();
+    (AC.pwErr ? $('#pw1') : $('#pwform [type=submit]'))?.focus();
+  }
+  async function exportAll() {
+    const [ev, inv, log, pl] = await Promise.all([
+      SB.from('events').select('*'),
+      SB.from('invites').select('*'),
+      SB.from('invite_log').select('*'),
+      SB.from('entitlements').select('*')
+    ]);
+    if (ev.error) {
+      toast(t('dErr'));
+      return;
+    }
+    const out = {
+      exported_at: new Date().toISOString(),
+      account: { email: A.session.user.email || '' },
+      events: ev.data || [],
+      invitations: inv.data || [],
+      invitation_changes: log.data || [],
+      plans: pl.data || []
+    };
+    const u = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' })),
+      a = document.createElement('a');
+    a.href = u;
+    a.download = 'supra-data-' + out.exported_at.slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000);
+    toast(t('acExported'));
+  }
+  async function deleteAccount() {
+    const typed = $('#delemail')?.value || '';
+    if (!same(typed, A.session.user.email || '')) {
+      AC.delErr = t('acDeleteBad');
+      render();
+      const i = $('#delemail');
+      if (i) {
+        i.value = typed;
+        i.focus();
+      }
+      return;
+    }
+    const btn = $('#delform [type=submit]');
+    if (btn) btn.disabled = true;
+    const { error } = await SB.rpc('delete_my_account');
+    if (error) {
+      AC.delErr = t('dErr');
+      render();
+      return;
+    }
+    try {
+      await SB.auth.signOut();
+    } catch (e) {}
+    location.replace('/?deleted=1');
+  }
+
   /* ---------------- events ---------------- */
   document.addEventListener('submit', e => {
     e.preventDefault();
     if (e.target.id === 'sform') {
       if (A.state !== 'authenticating') submitAuth();
+      return;
+    }
+    if (e.target.id === 'pwform') {
+      savePassword();
+      return;
+    }
+    if (e.target.id === 'delform') {
+      deleteAccount();
       return;
     }
     if (e.target.id === 'fvform') {
@@ -728,6 +881,24 @@
       $(`[data-del="${id}"]`)?.focus();
       return;
     }
+    if ('acexport' in d) {
+      b.disabled = true;
+      await exportAll();
+      b.disabled = false;
+      return;
+    }
+    if ('acglobal' in d) {
+      b.disabled = true;
+      await SB.auth.signOut({ scope: 'global' });
+      return;
+    }
+    if ('acdel' in d || 'acdelcancel' in d) {
+      AC.delOpen = 'acdel' in d;
+      AC.delErr = '';
+      render();
+      (AC.delOpen ? $('#delemail') : $('[data-acdel]'))?.focus();
+      return;
+    }
     if (d.delyes) {
       b.disabled = true;
       const { error } = await SB.rpc('trash_event', { p_event: d.delyes });
@@ -804,6 +975,10 @@
   });
 
   function boot() {
+    if (new URLSearchParams(location.search).get('deleted')) {
+      history.replaceState(null, '', '/');
+      setTimeout(() => toast(t('acDeletedDone')), 0);
+    }
     render();
     if (!CFG.supabaseUrl || CFG.supabaseUrl.startsWith('YOUR_')) {
       $('#main').innerHTML = '<p class="empty">Supra is not connected to its database yet.</p>';

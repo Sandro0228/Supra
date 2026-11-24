@@ -12,6 +12,10 @@
     {
       "source": "/r/:token",
       "destination": "/app"
+    },
+    {
+      "source": "/account",
+      "destination": "/"
     }
   ],
   "headers": [

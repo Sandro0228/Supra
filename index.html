@@ -175,6 +175,15 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .tact .linkish.danger:hover,.tact .linkish.danger:focus-visible{color:var(--danger)}
 .titem .confirm{grid-column:1/-1}
 @media (max-width:560px){.titem{grid-template-columns:1fr}}
+/* account */
+.account .acsec{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:clamp(16px,3vw,24px);display:grid;gap:12px;max-width:720px}
+.account .acsec.danger{border-color:color-mix(in srgb,var(--danger) 35%,var(--line))}
+.account .acsec h2{font-size:22px}.account h3{font-size:15px;font-weight:600;margin:0}
+.account .acsec p{margin:0}
+.acform{display:grid;gap:10px;max-width:420px}
+.account .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.account a{color:var(--accent)}.account a.btn{color:var(--ink)}
+.aclist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}footer.foot a{color:inherit}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
@@ -209,13 +218,14 @@ h2+.field{margin-top:4px}
 @media (max-width:420px){.newgrid{grid-template-columns:minmax(0,1fr)}}
 .newgrid .field{min-width:0}
 :lang(ka) .lbl{text-transform:none;letter-spacing:.02em;font-size:12px}
+.who{color:var(--muted);text-decoration:none}.who:hover{text-decoration:underline}
 .who{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 @media (max-width:600px){.who{order:10;flex-basis:100%;text-align:left}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><span class="who" id="who"></span><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
+  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><a class="who" id="who" href="/account"></a><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
   <main class="lp">
   <section class="hero2 landing" aria-labelledby="tag">
     <div class="herotext">
@@ -255,7 +265,7 @@ h2+.field{margin-top:4px}
     <div class="splittext landing"><h2 id="starth" data-t="lpStartH"></h2><p class="lead" data-t="lpStartP"></p></div>
     <div id="main" aria-live="polite"></div>
   </section>
-  <footer class="foot landing"><span data-t="lpFoot"></span> · <a href="/pricing" data-t="lpPricing"></a></footer>
+  <footer class="foot landing"><span data-t="lpFoot"></span> · <a href="/pricing" data-t="lpPricing"></a> · <a href="/privacy" data-t="lpPrivacy"></a></footer>
   </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
