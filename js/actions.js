@@ -48,6 +48,7 @@ import { GERR, guestClick, setGuestErr } from './guest.js';
 import { rsvpClick, rsvpInput } from './rsvp.js';
 import { invClick, invInput, invSettingChange } from './invites.js';
 import { paywall } from './access.js';
+import { addRestorePoint, loadVersions, restoreVersion, saveVersionNow } from './history.js';
 /* Rendering everything, and every click, key and input in the planner. Part of the planner (app.html); see js/README.md. */
 /* ---------------- render ---------------- */
 /* Motion that answers what the organiser did: a guest who lands in a seat settles into the chair, empty seats
@@ -488,6 +489,7 @@ function act(a) {
       break;
     case 'reset-yes':
       appState.confirmK = null;
+      addRestorePoint('clear', appState.S);
       commit(() => {
         appState.S = {
           event: { ...appState.S.event },
@@ -525,6 +527,9 @@ function act(a) {
       appState.hintOpen = false;
       renderTop();
       $('#help').focus();
+      break;
+    case 'ver-save':
+      saveVersionNow($('[data-act="ver-save"]'));
       break;
     case 'getpass':
       paywall('info');
@@ -779,6 +784,11 @@ document.addEventListener('click', e => {
   const d = b.dataset;
   if (invClick(b)) return;
   if (d.act) return act(d.act);
+  if (d.ver) {
+    b.disabled = true;
+    restoreVersion(d.ver);
+    return;
+  }
   if (d.panel) {
     const k = d.panel;
     if (!drawerOpen) appState.drawerOpener = '#tab-' + k;
@@ -1539,6 +1549,8 @@ document.addEventListener(
   e => {
     const d = e.target;
     if (d.matches && d.matches('details[data-sec]')) {
+      // a re-render of an already open section fires 'toggle' too: load the history only when it is opened
+      if (d.open && d.dataset.sec === 'history' && !OPEN.has('history')) loadVersions();
       d.open ? OPEN.add(d.dataset.sec) : OPEN.delete(d.dataset.sec);
     }
   },

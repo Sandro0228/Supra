@@ -3,6 +3,7 @@ import { clearDraft, hist, normalize, toast } from './state.js';
 import { renderAll } from './actions.js';
 import { renderTop } from './panels.js';
 import { isSaving, modal, savePlan } from './files.js';
+import { addRestorePoint } from './history.js';
 /* Two tabs or devices editing one plan (risk R8, migration 010). The server counts plan changes in events.version;
    savePlan() saves only on top of the version it loaded. When another tab or device saved first, nothing is
    overwritten: if this tab has no unsaved changes it quietly loads the newer plan, otherwise the organiser chooses
@@ -55,6 +56,7 @@ function showConflict(row) {
     </div>`);
   $('#modalroot [data-cf=theirs]').onclick = () => {
     shut();
+    addRestorePoint('conflict', appState.S); // the discarded version stays in the history too
     adopt(row, true);
     toast(t('cfTheirsDone'));
   };

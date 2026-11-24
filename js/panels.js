@@ -32,6 +32,7 @@ import { isPhone, keepView } from './actions.js';
 import { fmtDate } from './guest.js';
 import { INV, INV_AT, invGuestStatus, invOfGuest, invPanel, invRefresh, invSeatedNo, okMapUrl } from './invites.js';
 import { needsPass, paywall, planMeter } from './access.js';
+import { historyBody } from './history.js';
 /* Top bar, side panels (Event, Guests, Share), guest-link settings and the inspector. Part of the planner (app.html); see js/README.md. */
 /* ---------------- top bar ---------------- */
 /* ---------------- top bar ---------------- */
@@ -247,7 +248,8 @@ function renderLeft() {
         .filter(k => !['stage', 'bar', 'dance'].includes(k))
         .map(k => `<button type="button" class="chip" data-addvenue="${k}">+ ${t(k)}</button>`)
         .join('')}</div><button type="button" class="btn sm" data-act="arrange">${t('autoArrange')}</button>`
-    )}`;
+    )}
+    ${appState.readOnly ? '' : det('history', t('verTitle'), historyBody())}`;
   } else if (appState.panel === 'arrange') {
     const o = appState.ARR || (appState.ARR = arrangeDefaults()),
       pv = arrangePreview(o),
