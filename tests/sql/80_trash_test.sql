@@ -8,7 +8,7 @@ set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 set role authenticated;
 insert into public.events (id, name, slug) values ('cccccccc-0000-0000-0000-000000000003', 'Trash test', 'x');
 reset role;
-update public.events set data = pg_read_file(:'fixture')::jsonb where id = 'cccccccc-0000-0000-0000-000000000003';
+update public.events set data = (:'fixture')::jsonb where id = 'cccccccc-0000-0000-0000-000000000003';
 set role authenticated;
 select public.publish_guest_page('cccccccc-0000-0000-0000-000000000003');
 insert into public.invites (event_id, name, members) values ('cccccccc-0000-0000-0000-000000000003', 'Trash family', array['g01']);

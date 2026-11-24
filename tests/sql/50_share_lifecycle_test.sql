@@ -18,7 +18,7 @@ set role authenticated;
 insert into public.events (id, name, slug, guest_page, lookup_mode, show_tablemates)
 values ('bbbbbbbb-0000-0000-0000-000000000002', 'New wedding', 'weak', true, 'prefix', true);
 reset role;
-update public.events set data = pg_read_file(:'fixture')::jsonb where id = 'bbbbbbbb-0000-0000-0000-000000000002';
+update public.events set data = (:'fixture')::jsonb where id = 'bbbbbbbb-0000-0000-0000-000000000002';
 create temp table tok as select slug as s from public.events where id = 'bbbbbbbb-0000-0000-0000-000000000002';
 grant select, update on tok to anon, authenticated;
 do $$ declare r record; begin
