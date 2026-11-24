@@ -87,6 +87,8 @@
       // mirrors migration 006: the server picks the token and new events start as private drafts (Balanced)
       if (op === 'insert' && table === 'invites') {
         if (cfg().invFail) return { data: null, error: { message: 'network' } };
+        const ie = (d.events || []).find(e => e.id === (Array.isArray(payload) ? payload[0] : payload).event_id);
+        if (ie && overFree(ie)) return { data: null, error: { message: 'event pass required', code: 'P0001' } };
         // mirrors migration 008: server-made token, pending state, cleaned members
         const out = (Array.isArray(payload) ? payload : [payload]).map(p =>
           invDerive(
@@ -131,7 +133,8 @@
             lookup_mode: 'exact',
             lookup_pin_hash: null,
             show_tablemates: false,
-            show_layout: false
+            show_layout: false,
+            plan: 'free' // migration 011: new events are free (seeded events count as launch passes)
           }
         );
         rs.push(r);
@@ -175,6 +178,21 @@
         put(d);
         return { error: null };
       }
+      // migration 011: the owner's plans; seeded events without a plan field count as launch passes
+      if (table === 'entitlements' && op === 'select')
+        return {
+          data: (d.events || [])
+            .filter(e => !e.plan || e.plan === 'pass')
+            .map(e => ({
+              kind: 'event_pass',
+              event_id: e.id,
+              status: 'active',
+              starts_at: '2026-01-01',
+              ends_at: null
+            }))
+            .concat(d.entitlements || []),
+          error: null
+        };
       let out = rs.filter(m);
       if (cols !== '*') {
         out = out.map(r => {
@@ -203,6 +221,10 @@
     const st = ev.share_status || (ev.guest_page === false ? 'draft' : 'published');
     return st === 'published' && ev.share_expires_at && new Date(ev.share_expires_at) <= new Date() ? 'expired' : st;
   };
+  // migration 011: plans
+  const planOf = ev => ev.plan || 'pass';
+  const guestsOf = ev => Object.keys((ev.data && ev.data.guests) || {}).length;
+  const overFree = ev => planOf(ev) === 'free' && guestsOf(ev) > 40;
   const live = ev => statusOf(ev) === 'published' && !ev.deleted_at;
   const layoutOn = ev => (ev.show_layout === undefined ? true : !!ev.show_layout);
   const shareState = ev => ({
@@ -554,8 +576,17 @@
             !ev
           )
             return { data: null, error: { message: 'not found', code: '42501' } };
+          if (fn === 'event_access') {
+            if (!ev) return { data: null, error: { message: 'not found', code: '42501' } };
+            const pl = planOf(ev);
+            return {
+              data: Object.assign({ plan: pl, guests: guestsOf(ev) }, pl === 'free' ? { limit: 40 } : {}),
+              error: null
+            };
+          }
           if (fn === 'publish_guest_page') {
             if (statusOf(ev) === 'revoked') return { data: null, error: { message: 'revoked: make a new link first' } };
+            if (overFree(ev)) return { data: null, error: { message: 'event pass required', code: 'P0001' } };
             Object.assign(ev, {
               share_status: 'published',
               guest_page: true,

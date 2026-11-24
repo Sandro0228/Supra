@@ -24,12 +24,14 @@ Plain static site (no build step) + [Supabase](https://supabase.com) for sign-in
 | `supabase/008_rsvp.sql` | RSVP: one link per household, answers, deadline |
 | `supabase/009_trash.sql` | Trash: deleted events can be restored for 30 days |
 | `supabase/010_plan_version.sql` | Plan version, so two tabs or devices never overwrite each other's work |
+| `supabase/011_entitlements.sql` | Plans: free up to 40 guests, event pass, Pro; grant functions for passes |
+| `pricing.html` | Pricing page |
 | `docs/ROADMAP.md` | Findings, risk register and staged plan toward a commercial release |
 | `tests/` | Database tests (`tests/sql/run.sh`) and browser tests (`python3 tests/e2e/run_all.py`) |
 | `vercel.json` | Clean URLs for `/edit/…` and `/e/…` |
 
 ## One-time setup
-1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql`, `003_public_looks.sql`, `004_seat_choice.sql`, `005_table_people.sql`, `006_share_lifecycle.sql`, `007_name_skeleton.sql`, `008_rsvp.sql`, `009_trash.sql` and `010_plan_version.sql` (rollback notes are at the top of each file). Optional: schedule `select public.supra_purge_trash()` and `select public.supra_purge_rsvp_contacts()` daily with pg_cron (see the end of `009` and `008`).
+1. **Supabase**: create a project, open **SQL Editor**, run `supabase/schema.sql`, then `supabase/002_guest_lookup.sql`, `003_public_looks.sql`, `004_seat_choice.sql`, `005_table_people.sql`, `006_share_lifecycle.sql`, `007_name_skeleton.sql`, `008_rsvp.sql`, `009_trash.sql`, `010_plan_version.sql` and `011_entitlements.sql` (rollback notes are at the top of each file). Optional: schedule `select public.supra_purge_trash()` and `select public.supra_purge_rsvp_contacts()` daily with pg_cron (see the end of `009` and `008`).
 2. **Supabase → Authentication → URL Configuration**: set **Site URL** to your Vercel address (e.g. `https://supra.vercel.app`) and add `https://supra.vercel.app/**` to **Redirect URLs**.
 3. Put the **Project URL** and **anon public key** (Project Settings → API) in `config.js`.
 4. **Vercel**: Add New → Project → import this GitHub repo → Deploy. No settings needed.

@@ -140,6 +140,9 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pill{flex:none;font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .pill::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px;opacity:.6}
 .pill.on{color:var(--sage);border-color:color-mix(in srgb,var(--sage) 40%,var(--line))}.pill.on::before{background:var(--sage);opacity:1}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill.plan::before{display:none}.pill.plan.paid{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.pill.plan.over{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
 .when{margin:0;display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:14px}
 .when .count{color:var(--ink);font-weight:500}.when .count.soon{color:var(--accent)}
 .prog{display:grid;gap:6px}
@@ -172,7 +175,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .tact .linkish.danger:hover,.tact .linkish.danger:focus-visible{color:var(--danger)}
 .titem .confirm{grid-column:1/-1}
 @media (max-width:560px){.titem{grid-template-columns:1fr}}
-footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
+footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}footer.foot a{color:inherit}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
 .field{display:flex;flex-direction:column;gap:5px}
@@ -252,7 +255,7 @@ h2+.field{margin-top:4px}
     <div class="splittext landing"><h2 id="starth" data-t="lpStartH"></h2><p class="lead" data-t="lpStartP"></p></div>
     <div id="main" aria-live="polite"></div>
   </section>
-  <footer class="foot landing"><span data-t="lpFoot"></span></footer>
+  <footer class="foot landing"><span data-t="lpFoot"></span> · <a href="/pricing" data-t="lpPricing"></a></footer>
   </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>

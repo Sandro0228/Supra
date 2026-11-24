@@ -132,6 +132,7 @@ function shade(hex, p) {
 
 /* State that several files change (one object, because modules can't reassign each other's variables). */
 const appState = {
+  ACCESS: null, // the event's plan from event_access (js/access.js); null = unknown, no limit
   ARR: null,
   DRAFT: 'supra.draft',
   FINDQ: '',

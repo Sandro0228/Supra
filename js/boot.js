@@ -8,6 +8,7 @@ import { route } from './guest.js';
 import { rsvpDraftFrom } from './rsvp.js';
 import { invRefresh } from './invites.js';
 import { showConflict } from './conflict.js';
+import { loadAccess } from './access.js';
 /* Startup: decides the page (planner, guest page or RSVP) and loads its data. Part of the planner (app.html); see js/README.md. */
 /* ---------------- boot ---------------- */
 function measure() {
@@ -227,6 +228,7 @@ async function boot() {
       document.title = t('pvTitle') + ' · ' + (appState.S.event.name || 'Supra');
     }
   }
+  if (appState.MODE === 'edit' && !appState.readOnly) await loadAccess();
   appState.hintOpen = !hintSeen();
   // The guest page shows its search box at once; results wait for the drawings (guestSearch). The planner waits here.
   if (appState.MODE === 'edit') await allImages;

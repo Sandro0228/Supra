@@ -604,7 +604,7 @@ function importModal() {
   };
   $('#xgo').onclick = () => {
     const mode = document.querySelector('input[name=xmode]:checked').value;
-    commit(() => {
+    const ok = commit(() => {
       if (mode === 'replace') {
         const keep = new Set(appState.S.tables.filter(x => x.shape === 'head').flatMap(x => x.seats.filter(Boolean)));
         Object.keys(appState.S.guests).forEach(id => {
@@ -655,6 +655,7 @@ function importModal() {
       }
       if (newT.length || mode === 'replace') autoArrange();
     });
+    if (!ok) return; // over the free limit: the "get the pass" panel replaced this one
     $('#modalroot').innerHTML = '';
     toast(t('importDone', { n: parsed.length }));
   };

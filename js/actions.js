@@ -47,6 +47,7 @@ import { catererModal, dlQR, exportX, importModal, placeCards, planImage, planPd
 import { GERR, guestClick, setGuestErr } from './guest.js';
 import { rsvpClick, rsvpInput } from './rsvp.js';
 import { invClick, invInput, invSettingChange } from './invites.js';
+import { paywall } from './access.js';
 /* Rendering everything, and every click, key and input in the planner. Part of the planner (app.html); see js/README.md. */
 /* ---------------- render ---------------- */
 /* Motion that answers what the organiser did: a guest who lands in a seat settles into the chair, empty seats
@@ -446,8 +447,7 @@ function act(a) {
         return;
       }
       const tid = $('#bulk-t').value;
-      commit(() => placeNames(names, tid));
-      toast(t('added', { n: names.length }));
+      if (commit(() => placeNames(names, tid))) toast(t('added', { n: names.length }));
       break;
     }
     case 'randall': {
@@ -525,6 +525,9 @@ function act(a) {
       appState.hintOpen = false;
       renderTop();
       $('#help').focus();
+      break;
+    case 'getpass':
+      paywall('info');
       break;
     case 'addguest': {
       const n = ($('#newname').value || '').trim();
@@ -623,11 +626,11 @@ function act(a) {
       break;
     case 'fillgroup': {
       const g = ($('#grp').value || '').trim() || 'Guest';
-      commit(() => {
+      const ok = commit(() => {
         let k = Object.values(appState.S.guests).filter(v => v.group === g).length;
         x.seats = x.seats.map(v => v || mkGuest(`${g} ${++k}`, randLook(), { group: g }));
       });
-      toast(t('filledWith', { g }));
+      if (ok) toast(t('filledWith', { g }));
       break;
     }
     case 'shuffle':
