@@ -70,7 +70,9 @@ begin
   select coalesce(p_data, data) into d from public.events where id = p_event and owner = auth.uid() and deleted_at is null;
   if not found then raise exception 'not found' using errcode = '42501'; end if;
   if p_reason not in ('manual', 'import', 'clear', 'conflict', 'restore') then raise exception 'bad reason' using errcode = '22023'; end if;
-  if jsonb_typeof(d->'tables') <> 'array' or jsonb_typeof(d->'guests') <> 'object' then raise exception 'not a plan' using errcode = '22023'; end if;
+  if coalesce(jsonb_typeof(d->'tables'), '') <> 'array' or coalesce(jsonb_typeof(d->'guests'), '') <> 'object' then
+    raise exception 'not a plan' using errcode = '22023';
+  end if;
   if pg_column_size(d) > 2000000 then raise exception 'plan too large' using errcode = '22023'; end if;
   insert into public.event_versions (event_id, reason, guests, tables, data)
   values (p_event, p_reason, public.supra_guest_count(d), jsonb_array_length(d->'tables'), d)
