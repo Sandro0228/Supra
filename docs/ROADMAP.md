@@ -26,8 +26,8 @@ Status: P0A in progress (this document is updated as phases land).
 | R4 | Organiser cannot see exactly what is public before publishing | High | Medium | Preview only works once published | **P0A** |
 | R5 | Rate limit is flat (30/10 min); no backoff; IP stored in clear | Medium | Medium | `seat_lookups.client` = raw IP | **P0A** |
 | R6 | Different wording/latency for “not found”, “wrong code”, “too many” | Medium | Medium | Distinct statuses, no padding | **P0A** |
-| R7 | One-click delete of a whole wedding plan, no restore | Medium | High | Inline confirm | P0B |
-| R8 | Last-write-wins between two tabs/devices silently loses work | Medium | High | Debounced full-plan overwrite | P1D |
+| R7 | One-click delete of a whole wedding plan, no restore | Medium | High | ✅ Trash with 30-day restore, delete for good only from the trash after typing the name (009) | P0B |
+| R8 | Last-write-wins between two tabs/devices silently loses work | Medium | High | ✅ Version precondition on save; organiser chooses which version to keep (010) | P1D |
 | R9 | 300+ guest plans: ~1 000 focusable SVG nodes, heavy DOM | High | Medium | Every seat is a button | P1B |
 | R10 | Import with no preview/undo; Georgian round-trip not verified for CSV | Medium | Medium | Direct import | P1C |
 | R11 | Colour-only side indicators in the header | High | Low | Pink/blue dots | P2 |
@@ -58,11 +58,11 @@ Each stage is one reviewable commit (or a few), tests included.
 1. **P0A-1 Database** — migration 006, SQL tests (unpublished, revoked, expired, wrong code, backoff, exact match, generic outcomes, authorization, token immutability, defaults). ✅ this round
 2. **P0A-2 Share panel** — status badge, publish/unpublish/expiry, rotate/revoke with confirmations, presets (Open needs explicit confirmation), organiser preview, semantic preview link. ✅ this round
 3. **P0A-3 Guest page** — submit-only search, empty/short validation (`aria-invalid`, live), generic no-match, retry-after on rate limit, layout-off card. ✅ this round
-4. **P0B** — soft delete + trash (30 days), typed confirmation, overflow menu; account/security/data/legal/pricing shells; entitlement interface; audit events.
+4. **P0B** — ✅ (2026-11-24, migration 009) soft delete + trash (30 days), typed confirmation; still to do: overflow menu; account/security/data/legal/pricing shells; entitlement interface; audit events.
 5. **P1A** — onboarding checklist, sample event (isolated, flagged), card metadata (Draft/Published, guests seated, last edited).
 6. **P1B** — minimap, search-and-zoom, table navigator, level-of-detail, roving-tabindex seats, list view; perf fixtures 50/300/500/1 000.
 7. **P1C** — import preview/mapping/validation/duplicates/undo; filters; multi-select; conflict queue.
-8. **P1D** — explicit save states, version history + restore points, optimistic concurrency (`updated_at` precondition + merge prompt).
+8. **P1D** — ✅ (2026-11-24, migration 010) optimistic concurrency: a server-side plan `version` precondition and a "which version to keep" prompt (no field-level merge). Still to do: version history + restore points.
 9. **P2** — WCAG 2.2 AA pass, non-colour category labels, mobile organiser priorities, full device/AT matrix.
 
 ## 4b. Deferred code work (agreed 2026-11-17, do when no feature is in progress)

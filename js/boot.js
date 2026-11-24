@@ -7,6 +7,7 @@ import { savePlan } from './files.js';
 import { route } from './guest.js';
 import { rsvpDraftFrom } from './rsvp.js';
 import { invRefresh } from './invites.js';
+import { showConflict } from './conflict.js';
 /* Startup: decides the page (planner, guest page or RSVP) and loads its data. Part of the planner (app.html); see js/README.md. */
 /* ---------------- boot ---------------- */
 function measure() {
@@ -188,6 +189,10 @@ async function boot() {
       fatal(t('notFound'));
       return;
     }
+    if (data.deleted_at) {
+      fatal(t('inTrash'));
+      return;
+    }
     appState.ROW = data;
     appState.DRAFT = 'supra.draft.' + appState.ROW.id;
     const fromRow = data.data && data.data.tables ? normalize(data.data) : normalize(emptyPlan(data));
@@ -195,9 +200,14 @@ async function boot() {
     try {
       draft = JSON.parse(localStorage.getItem(appState.DRAFT) || 'null');
     } catch (e) {}
-    if (draft && draft.data && draft.base === appState.ROW.updated_at) {
+    if (draft && draft.data && (draft.base === appState.ROW.version || draft.base === appState.ROW.updated_at)) {
       appState.S = normalize(draft.data);
       appState.dirty = true;
+    } else if (draft && draft.data && JSON.stringify(normalize(draft.data)) !== JSON.stringify(fromRow)) {
+      // Unsaved changes on this device, but the plan was saved elsewhere since: let the organiser choose (R8).
+      appState.S = normalize(draft.data);
+      appState.dirty = true;
+      appState.conflict = data;
     } else appState.S = fromRow;
     if (!appState.S.event.name) appState.S.event.name = appState.ROW.name;
     // Organiser preview: exactly what an anonymous guest would get, whether or not the page is published.
@@ -230,6 +240,7 @@ async function boot() {
     appState.dirty = true;
     savePlan();
   }
+  if (appState.MODE === 'edit' && appState.conflict) showConflict(appState.conflict);
   if (appState.MODE === 'edit' && !appState.readOnly) invRefresh();
   window.__supraState = () => appState.S;
 }

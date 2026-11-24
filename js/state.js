@@ -91,7 +91,10 @@ function normalize(o) {
 }
 function saveDraft() {
   try {
-    localStorage.setItem(appState.DRAFT, JSON.stringify({ base: appState.ROW?.updated_at || null, data: appState.S }));
+    localStorage.setItem(
+      appState.DRAFT,
+      JSON.stringify({ base: appState.ROW?.version ?? appState.ROW?.updated_at ?? null, data: appState.S })
+    );
   } catch (e) {}
 }
 function clearDraft() {

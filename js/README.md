@@ -12,6 +12,7 @@ The planner, the public "find my seat" page and the RSVP page are one program ma
 | `panels.js` | Top bar, side panels (Event, Guests, Invitations, Share), guest-link settings, inspector, `ICON` |
 | `actions.js` | `renderAll`, `renderPlan` and every click, key and input handler in the planner |
 | `files.js` | Saving (`savePlan`), downloads (PNG, PDF, place cards, caterer list, CSV), the modal |
+| `conflict.js` | Two tabs or devices: the version check behind `savePlan`, the "which version to keep" question, loading a newer plan when the tab comes back |
 | `guest.js` | Public "find my seat" page (`/e/<token>`), `route()` |
 | `rsvp.js` | Household RSVP page (`/r/<token>`) |
 | `invites.js` | Invitations tab, `eventCols()`, and answers flowing into the plan (`invRefresh`, `invApply`) |

@@ -155,6 +155,23 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ev{--c:var(--pal)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ev{--c:var(--pal-d)}}
 :root[data-theme="dark"] .ev{--c:var(--pal-d)}
+.confirm .row{display:flex;gap:8px;flex-wrap:wrap}.confirm p{margin:0}
+/* trash: deleted events, 30 days to restore */
+.trash{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+.lp .trashh{font:inherit;font-family:var(--body);margin:0}.trashtog{font-family:var(--body)}
+.fvword{text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink);font-size:13px}
+.trashtog{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:4px 0;color:var(--muted);font-size:14px}
+.trashtog:hover{color:var(--ink)}
+.trashtog::after{content:"";width:7px;height:7px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);margin:-3px 0 0 2px}
+.trashtog[aria-expanded="true"]::after{transform:rotate(-135deg);margin-top:3px}
+.tcount{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:0 7px;line-height:18px}
+.tlist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.titem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tmain{display:grid;gap:2px;min-width:0}.tname{overflow-wrap:anywhere}
+.tact{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tact .linkish.danger:hover,.tact .linkish.danger:focus-visible{color:var(--danger)}
+.titem .confirm{grid-column:1/-1}
+@media (max-width:560px){.titem{grid-template-columns:1fr}}
 footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}

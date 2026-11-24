@@ -143,11 +143,22 @@
         if (table === 'invites' && cfg().invFail) return { data: null, error: { message: 'network' } };
         let out = null;
         const p = JSON.parse(JSON.stringify(payload));
-        ['slug', 'lookup_pin_hash', 'share_status', 'share_expires_at', 'guest_page', 'token'].forEach(
-          k => delete p[k]
-        );
+        [
+          'slug',
+          'lookup_pin_hash',
+          'share_status',
+          'share_expires_at',
+          'guest_page',
+          'token',
+          'deleted_at',
+          'trash_share_status',
+          'version'
+        ].forEach(k => delete p[k]);
         rs.forEach(r => {
           if (m(r)) {
+            // mirrors migration 010: version counts plan changes (only for rows that have the column)
+            if (r.version !== undefined && 'data' in p && JSON.stringify(p.data) !== JSON.stringify(r.data))
+              r.version++;
             Object.assign(r, p, { updated_at: new Date().toISOString() });
             if (table === 'invites') invDerive(r);
             out = r;
@@ -158,7 +169,9 @@
         return { data: out, error: null };
       }
       if (op === 'delete') {
-        d[table] = rs.filter(r => !m(r));
+        // mirrors migration 009: events are deleted for good only from the trash
+        d[table] = rs.filter(r => !m(r) || (table === 'events' && !r.deleted_at));
+        window.__mockCalls.push(['delete:' + table, filters]);
         put(d);
         return { error: null };
       }
@@ -190,7 +203,7 @@
     const st = ev.share_status || (ev.guest_page === false ? 'draft' : 'published');
     return st === 'published' && ev.share_expires_at && new Date(ev.share_expires_at) <= new Date() ? 'expired' : st;
   };
-  const live = ev => statusOf(ev) === 'published';
+  const live = ev => statusOf(ev) === 'published' && !ev.deleted_at;
   const layoutOn = ev => (ev.show_layout === undefined ? true : !!ev.show_layout);
   const shareState = ev => ({
     status: statusOf(ev),
@@ -426,8 +439,8 @@
     const d = db(),
       inv = (d.invites || []).find(i => i.token === args.p_token && !i.revoked);
     window.__mockCalls.push([fn, args]);
-    if (!inv) return { data: { status: 'unavailable' }, error: null };
-    const ev = d.events.find(e => e.id === inv.event_id);
+    const ev = inv && d.events.find(e => e.id === inv.event_id);
+    if (!inv || !ev || ev.deleted_at) return { data: { status: 'unavailable' }, error: null };
     if (fn === 'rsvp_get') return { data: rsvpPayload(inv, ev), error: null };
     const p = rsvpPayload(inv, ev);
     if (p.closed) return { data: Object.assign(p, { status: 'closed' }), error: null };
@@ -506,6 +519,26 @@
               window.__mockCalls.push([fn, args]);
               return { data: shareState(ev), error: null };
             };
+          // migration 009: trash and restore (owner only; share functions refuse trashed events)
+          if (fn === 'trash_event' || fn === 'restore_event') {
+            if (!ev || !!ev.deleted_at !== (fn === 'restore_event'))
+              return { data: null, error: { message: 'not found', code: '42501' } };
+            if (fn === 'trash_event')
+              Object.assign(ev, {
+                deleted_at: new Date().toISOString(),
+                trash_share_status: ev.share_status,
+                share_status: ev.share_status === 'published' ? 'draft' : ev.share_status,
+                guest_page: false
+              });
+            else {
+              if (ev.share_status === 'draft' && ev.trash_share_status === 'published')
+                Object.assign(ev, { share_status: 'published', guest_page: true });
+              Object.assign(ev, { deleted_at: null, trash_share_status: null });
+            }
+            put(d);
+            window.__mockCalls.push([fn, args]);
+            return { data: ev.deleted_at, error: null };
+          }
           if (
             [
               'publish_guest_page',

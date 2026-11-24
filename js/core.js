@@ -148,6 +148,7 @@ const appState = {
   SB: null,
   SLUG: '',
   confirmK: null,
+  conflict: null, // the newer row from the server while the organiser chooses a version (js/conflict.js)
   dirty: false,
   drawerOpener: null,
   fitMode: null,
