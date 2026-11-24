@@ -75,7 +75,19 @@
   let SB = null,
     sub = null;
   const F = { mode: 'signin', email: '', sent: false, recovery: false }; // sign-in form state survives re-renders and language changes
-  const D = { events: null, loadErr: false, confirmId: null, name: '', date: '', nerr: '', newOpen: false }; // dashboard state
+  const D = {
+    events: null,
+    trash: [],
+    trashOpen: false,
+    forever: null,
+    fverr: '',
+    loadErr: false,
+    confirmId: null,
+    name: '',
+    date: '',
+    nerr: '',
+    newOpen: false
+  }; // dashboard state
 
   function setAuth(state, patch) {
     Object.assign(A, patch || {}, { state });
@@ -397,7 +409,41 @@
     $('#main').innerHTML = `<div class="dash">
   <div class="dashhead"><h1 id="yourh">${esc(t('dYour'))}</h1>${first || D.newOpen ? '' : `<button type="button" class="btn primary" data-newopen>${PLUS}${esc(t('dNew'))}</button>`}</div>
   ${first || D.newOpen ? newPanel(first) : ''}
-  <section aria-labelledby="yourh" class="yours">${list}</section></div>`;
+  <section aria-labelledby="yourh" class="yours">${list}</section>${D.trash.length ? trashSection() : ''}</div>`;
+  }
+  /* Trash: deleted events stay 30 days (the server empties it), can be restored, or deleted for good after typing
+     the event's name. */
+  const TRASH_DAYS = 30;
+  const trashLeft = e => Math.max(0, TRASH_DAYS - Math.floor((Date.now() - new Date(e.deleted_at).getTime()) / 864e5));
+  const foreverWord = e => (e.name || '').trim() || t('dForeverWord');
+  const same = (a, b) => {
+    const n = s =>
+      String(s || '')
+        .normalize('NFC')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    return n(a) === n(b);
+  };
+  function trashSection() {
+    const n = D.trash.length;
+    return `<section class="trash" aria-labelledby="trashh"><h2 class="trashh" id="trashh"><button type="button" class="trashtog" data-trashtog aria-expanded="${D.trashOpen}" aria-controls="trashlist">${TRASH}<span>${esc(t('dTrash'))}</span><span class="tcount">${n}</span></button></h2>
+    <div id="trashlist"${D.trashOpen ? '' : ' hidden'}><p class="small">${esc(t('dTrashHint'))}</p><ul class="tlist" role="list">${D.trash.map(trashItem).join('')}</ul></div></section>`;
+  }
+  function trashItem(e) {
+    const nm = e.name || '—',
+      left = trashLeft(e),
+      w = foreverWord(e);
+    return `<li class="titem"><div class="tmain"><span class="tname">${esc(nm)}</span><span class="small">${esc(t('dTrashedOn', { d: fmtDate(String(e.deleted_at).slice(0, 10)) }))} · ${esc(left ? tn('dTrashLeft', left) : t('dTrashLeft0'))}</span></div>
+      <div class="tact"><button type="button" class="btn sm" data-restore="${esc(e.id)}" aria-label="${esc(t('dRestore') + ': ' + nm)}">${esc(t('dRestore'))}</button><button type="button" class="linkish danger" data-forever="${esc(e.id)}" aria-label="${esc(t('dForever') + ': ' + nm)}">${esc(t('dForever'))}</button></div>
+      ${
+        D.forever === e.id
+          ? `<form class="confirm" id="fvform" data-id="${esc(e.id)}" novalidate aria-labelledby="fvq"><p id="fvq">${esc(t('dForeverQ', { n: nm }))}</p>
+        <label class="field"><span class="lbl">${esc(t('dForeverType', { n: '\u0000' })).replace('\u0000', `<b class="fvword" lang="${lang}">${esc(w)}</b>`)}</span><input class="inp" id="fvname" autocomplete="off" spellcheck="false"${D.fverr ? ' aria-invalid="true" aria-describedby="fverr"' : ''}></label>
+        ${D.fverr ? `<p class="msg err" id="fverr" role="alert">${esc(D.fverr)}</p>` : ''}
+        <div class="row"><button type="submit" class="btn sm danger">${esc(t('dForever'))}</button><button type="button" class="btn sm" data-fvcancel>${esc(t('dKeep'))}</button></div></form>`
+          : ''
+      }</li>`;
   }
   const pubOf = e => (e.share_status || (e.guest_page ? 'published' : 'draft')) === 'published';
   function evCard(e) {
@@ -416,13 +462,15 @@
       <p class="when">${e.event_date ? `<span>${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span></p>
       <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>
       <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}<button type="button" class="linkish danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
-      ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dDelete'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}
+      ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dToTrash'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}
     </div></li>`;
   }
   const PLUS =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     LINK =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+    TRASH =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
     FLOWERS = (window.SUPRA_IMG_FILES || {}).flowers_top || '';
   let loadGen = 0;
   async function loadEvents() {
@@ -430,14 +478,19 @@
     D.loadErr = false;
     const { data, error } = await SB.from('events')
       .select(
-        'id,name,event_date,slug,guest_page,share_status,updated_at,guests:data->guests,tables:data->tables,ev:data->event'
+        'id,name,event_date,slug,guest_page,share_status,updated_at,deleted_at,guests:data->guests,tables:data->tables,ev:data->event'
       )
       .order('updated_at', { ascending: false });
     if (g !== loadGen || A.state !== 'authenticated') return;
     if (error) {
       D.loadErr = true;
       D.events = [];
-    } else D.events = data || [];
+      D.trash = [];
+    } else {
+      D.events = (data || []).filter(e => !e.deleted_at);
+      D.trash = (data || []).filter(e => e.deleted_at).sort((a, b) => (a.deleted_at < b.deleted_at ? 1 : -1));
+      if (!D.trash.length) D.trashOpen = false;
+    }
     render();
   }
   async function create(fields) {
@@ -457,11 +510,40 @@
     }
   }
 
+  async function deleteForever(id) {
+    const ev = D.trash.find(x => x.id === id),
+      typed = $('#fvname')?.value || '';
+    if (!ev) return;
+    if (!same(typed, foreverWord(ev))) {
+      D.fverr = t('dForeverBad');
+      render();
+      const i = $('#fvname');
+      if (i) {
+        i.value = typed;
+        i.focus();
+      }
+      return;
+    }
+    const btn = $('#fvform [type=submit]');
+    if (btn) btn.disabled = true;
+    const { error } = await SB.from('events').delete().eq('id', id);
+    D.forever = null;
+    D.fverr = '';
+    if (error) toast(t('dErr'));
+    else toast(t('dDeletedForever'));
+    await loadEvents();
+    ($('[data-trashtog]') || $('#yourh'))?.focus();
+  }
+
   /* ---------------- events ---------------- */
   document.addEventListener('submit', e => {
     e.preventDefault();
     if (e.target.id === 'sform') {
       if (A.state !== 'authenticating') submitAuth();
+      return;
+    }
+    if (e.target.id === 'fvform') {
+      deleteForever(e.target.dataset.id);
       return;
     }
     if (e.target.id === 'nform') {
@@ -480,6 +562,12 @@
   });
   document.addEventListener('input', e => {
     if (e.target.id === 'email') F.email = e.target.value;
+    if (e.target.id === 'fvname' && D.fverr) {
+      D.fverr = '';
+      e.target.removeAttribute('aria-invalid');
+      e.target.removeAttribute('aria-describedby');
+      $('#fverr')?.remove();
+    }
     if (e.target.id === 'nname') {
       D.name = e.target.value;
       if (D.nerr) {
@@ -620,10 +708,48 @@
     }
     if (d.delyes) {
       b.disabled = true;
-      const { error } = await SB.from('events').delete().eq('id', d.delyes);
-      if (error) toast(t('dErr'));
+      const { error } = await SB.rpc('trash_event', { p_event: d.delyes });
       D.confirmId = null;
-      loadEvents();
+      if (error) toast(t('dErr'));
+      else toast(t('dTrashed'));
+      await loadEvents();
+      ($('[data-trashtog]') || $('#yourh'))?.focus();
+      return;
+    }
+    if ('trashtog' in d) {
+      D.trashOpen = !D.trashOpen;
+      D.forever = null;
+      render();
+      $('[data-trashtog]')?.focus();
+      return;
+    }
+    if (d.restore) {
+      b.disabled = true;
+      const ev = D.trash.find(x => x.id === d.restore);
+      const { error } = await SB.rpc('restore_event', { p_event: d.restore });
+      if (error) {
+        toast(t('dErr'));
+        b.disabled = false;
+        return;
+      }
+      toast(t('dRestored', { n: ev?.name || '—' }));
+      await loadEvents();
+      ($(`.ev .evname a[href="/edit/${d.restore}"]`) || $('#yourh'))?.focus();
+      return;
+    }
+    if (d.forever) {
+      D.forever = d.forever;
+      D.fverr = '';
+      render();
+      $('#fvname')?.focus();
+      return;
+    }
+    if ('fvcancel' in d) {
+      const id = D.forever;
+      D.forever = null;
+      D.fverr = '';
+      render();
+      $(`[data-forever="${id}"]`)?.focus();
       return;
     }
   });

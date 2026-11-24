@@ -188,6 +188,10 @@ async function boot() {
       fatal(t('notFound'));
       return;
     }
+    if (data.deleted_at) {
+      fatal(t('inTrash'));
+      return;
+    }
     appState.ROW = data;
     appState.DRAFT = 'supra.draft.' + appState.ROW.id;
     const fromRow = data.data && data.data.tables ? normalize(data.data) : normalize(emptyPlan(data));
