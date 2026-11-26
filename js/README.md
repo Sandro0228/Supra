@@ -11,8 +11,9 @@ The planner, the public "find my seat" page and the RSVP page are one program ma
 | `draw.js` | Drawing the plan as SVG (`planSVG`) |
 | `panels.js` | Top bar, side panels (Event, Guests, Invitations, Share), guest-link settings, inspector, `ICON` |
 | `actions.js` | `renderAll`, `renderPlan` and every click, key and input handler in the planner |
-| `files.js` | Saving (`savePlan`), downloads (PNG, PDF, place cards, caterer list, CSV), the modal |
+| `files.js` | Saving (`savePlan`), downloads (PNG, PDF, place cards, caterer list, CSV, Excel export), the modal |
 | `access.js` | Plans: the event's plan (`loadAccess`), the free guest limit used by `commit()`, the Guests-panel meter and the "get the event pass" panel |
+| `import.js` | Guest import: reading Excel/CSV (own CSV reader for Georgian text), column detection, the preview with column mapping and duplicates, applying it as one undoable change |
 | `history.js` | Version history: the History section of the Event panel, Restore, restore points (`addRestorePoint`) |
 | `conflict.js` | Two tabs or devices: the version check behind `savePlan`, the "which version to keep" question, loading a newer plan when the tab comes back |
 | `guest.js` | Public "find my seat" page (`/e/<token>`), `route()` |
