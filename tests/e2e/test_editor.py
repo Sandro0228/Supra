@@ -168,3 +168,15 @@ def organiser_search_matches_latin_and_georgian(pw, base):
     p.fill('#find', 'მარ'); p.wait_for_timeout(200)
     assert p.inner_text('#findres').count('მარიამ') == 4
     c.close()
+
+@test
+def side_counts_say_which_side_in_words(pw, base):
+    c, p = editor(pw, base)
+    s = p.locator('#stats .sides')
+    assert s.inner_text().split() == ['Bride', '1', 'Groom', '1'], s.inner_text()   # not colour alone (R11)
+    assert s.locator('span[title]').evaluate_all('xs => xs.map(x => x.title)') == ["Bride's side", "Groom's side"]
+    c.close()
+    for vp in PHONES[:1]:                                              # still fits the phone's top bar
+        c, p = editor(pw, base, vp=vp)
+        assert p.evaluate('document.documentElement.scrollWidth <= innerWidth'), vp
+        c.close()
