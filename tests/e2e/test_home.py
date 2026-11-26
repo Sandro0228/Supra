@@ -147,3 +147,40 @@ def place_cards_quick_action_opens_the_cards(pw, base):
     assert 'do=cards' not in p.url, p.url                               # a reload won't open them again
     assert not c.errors, c.errors
     c.close()
+
+@test
+def sample_wedding_to_explore(pw, base):
+    c = Ctx(pw, base, events=[]); p = c.goto('/', '#nform')           # first run: the new-event panel is open
+    p.click('[data-sample]')
+    p.wait_for_selector('#plan .tbody')
+    S = p.evaluate('window.__supraState()')
+    assert S['event']['sample'] is True and S['event']['name'] == 'Sample wedding'
+    assert len(S['guests']) == 32 and len(S['waiting']) == 4 and len(S['tables']) == 5
+    assert all(g.get('look') for g in S['guests'].values())            # every guest got a drawing
+    p.wait_for_function("JSON.parse(localStorage.getItem('mockdb')).events[0].data.guests.s01.look")   # and it was saved
+    assert not c.errors, c.errors
+    p.goto(base + '/'); p.wait_for_selector('.ev')
+    assert p.inner_text('.ev .smptag') == 'Sample' and p.inner_text('.ev .mono') == 'N & G'
+    p.click('[data-newopen]')
+    assert p.locator('[data-sample]').count() == 0                      # only one sample at a time
+    c.close()
+
+@test
+def the_hero_skips_the_sample(pw, base):
+    smp = ev('smp', 'Sample wedding', day(5)); smp['data']['event']['sample'] = True
+    c, p = home(pw, base, [smp, ev('real', 'Ana & Levan', day(60))])
+    assert p.inner_text('#homeh') == 'Ana & Levan'
+    c.close()
+    c, p = home(pw, base, [smp])                                        # only the sample: it comes first
+    assert p.inner_text('#homeh') == 'Sample wedding'
+    c.close()
+
+@test
+def sample_wedding_in_georgian(pw, base):
+    c = Ctx(pw, base, events=[], extra="localStorage.setItem('supra.lang','ka');"); p = c.goto('/', '#nform')
+    assert p.inner_text('[data-sample]') == 'ან ჯერ ქორწილის ნიმუში დაათვალიერე'
+    p.click('[data-sample]'); p.wait_for_selector('#plan .tbody')
+    S = p.evaluate('window.__supraState()')
+    assert S['event']['name'] == 'ქორწილის ნიმუში' and S['guests']['s01']['name'] == 'ნინო ბერიძე'
+    assert not c.errors, c.errors
+    c.close()
