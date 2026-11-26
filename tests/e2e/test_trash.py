@@ -7,7 +7,7 @@ def db(p):
     return json.loads(p.evaluate("localStorage.getItem('mockdb')"))
 
 def trash_one(p):
-    p.click('[data-del=ev1]'); p.wait_for_selector('[data-delyes=ev1]')
+    p.click('[data-more=ev1]'); p.click('[data-del=ev1]'); p.wait_for_selector('[data-delyes=ev1]')
     assert 'trash' in p.inner_text('.ev .confirm').lower()
     p.click('[data-delyes=ev1]')
     p.wait_for_selector('[data-trashtog]')
@@ -84,6 +84,6 @@ def keep_cancels_delete_forever(pw, base):
 @test
 def trash_in_georgian(pw, base):
     c = Ctx(pw, base, extra="localStorage.setItem('supra.lang','ka');"); p = c.goto('/', '.ev')
-    p.click('[data-del=ev1]'); p.click('[data-delyes=ev1]'); p.wait_for_selector('[data-trashtog]')
+    p.click('[data-more=ev1]'); p.click('[data-del=ev1]'); p.click('[data-delyes=ev1]'); p.wait_for_selector('[data-trashtog]')
     assert 'ნაგავი' in p.inner_text('[data-trashtog]')
     c.close()

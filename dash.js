@@ -79,6 +79,7 @@
     events: null,
     trash: [],
     plans: null, // the owner's entitlements (migration 011); null = unknown
+    menuId: null, // the event whose ⋯ menu is open
     trashOpen: false,
     forever: null,
     fverr: '',
@@ -500,10 +501,18 @@
     return `<li class="ev" style="--pal:${pal};--pal-d:color-mix(in srgb,${pal} 55%,#FFFFFF)">
     <a class="cover" href="/edit/${esc(e.id)}" tabindex="-1" aria-hidden="true">${FLOWERS ? `<img src="${FLOWERS}" alt="" class="fl">` : ''}<span class="mono">${esc(initials(nm))}</span></a>
     <div class="evbody">
-      <div class="evtop"><div class="pills"><span class="pill ${pub ? 'on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span>${planPill(e, n)}</div><h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2></div>
-      <p class="when">${e.event_date ? `<span>${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span></p>
-      <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}${free ? ' · ' + esc(tn('nFree', free)) : ''}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>${edited ? `<p class="small edited">${esc(edited)}</p>` : ''}
-      <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}<button type="button" class="linkish danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
+      <span class="pill status${pub ? ' on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span>
+      <h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2>
+      <p class="when">${e.event_date ? `<span class="date">${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span>${edited ? `<span class="edited">${esc(edited)}</span>` : ''}</p>
+      ${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}
+      <p class="facts progtxt"><span class="seated">${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span>${esc(tn('nTables', (e.tables || []).length))}</span>${free ? `<span>${esc(tn('nFree', free))}</span>` : ''}${planPill(e, n)}</p>
+      <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}
+        <div class="evmore"><button type="button" class="btn more" data-more="${esc(e.id)}" aria-haspopup="menu" aria-expanded="${D.menuId === e.id}" aria-label="${esc(t('dMore', { n: nm }))}">${DOTS}</button>
+        ${
+          D.menuId === e.id
+            ? `<div class="evmenu" role="menu" aria-label="${esc(t('dMore', { n: nm }))}">${pub ? `<a role="menuitem" tabindex="-1" href="/e/${esc(e.slug)}" target="_blank" rel="noopener noreferrer">${esc(t('dOpenGuestPage'))}</a>` : ''}<button type="button" role="menuitem" tabindex="-1" class="danger" data-del="${esc(e.id)}">${TRASH}${esc(t('dToTrash'))}</button></div>`
+            : ''
+        }</div></div>
       ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dToTrash'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}
     </div></li>`;
   }
@@ -511,6 +520,8 @@
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     LINK =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+    DOTS =
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
     TRASH =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
     FLOWERS = (window.SUPRA_IMG_FILES || {}).flowers_top || '';
@@ -719,6 +730,43 @@
     location.replace('/?deleted=1');
   }
 
+  // The card's ⋯ menu closes without redrawing the list, so focus moving out of it (Tab, a click elsewhere) stays put.
+  function closeMenu(focusButton) {
+    const id = D.menuId;
+    if (!id) return;
+    D.menuId = null;
+    document.querySelector('.evmenu')?.remove();
+    const b = document.querySelector(`[data-more="${CSS.escape(id)}"]`);
+    if (b) {
+      b.setAttribute('aria-expanded', 'false');
+      if (focusButton) b.focus();
+    }
+  }
+  document.addEventListener('pointerdown', e => {
+    if (D.menuId && !e.target.closest('.evmore')) closeMenu(false);
+  });
+  document.addEventListener('focusin', e => {
+    if (D.menuId && !e.target.closest('.evmore')) closeMenu(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (!D.menuId || !e.target.closest('.evmore')) return;
+    const items = [...document.querySelectorAll('.evmenu [role=menuitem]')],
+      i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeMenu(true);
+    } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) && items.length) {
+      e.preventDefault();
+      const j =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? items.length - 1
+            : (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[j].focus();
+    }
+  });
+
   /* ---------------- events ---------------- */
   document.addEventListener('submit', e => {
     e.preventDefault();
@@ -885,7 +933,15 @@
       );
       return;
     }
+    if (d.more) {
+      if (D.menuId === d.more) return closeMenu(true);
+      D.menuId = d.more;
+      render();
+      $('.evmenu [role=menuitem]')?.focus();
+      return;
+    }
     if (d.del) {
+      D.menuId = null;
       D.confirmId = d.del;
       render();
       $('[data-cancel]')?.focus();
@@ -895,7 +951,7 @@
       const id = D.confirmId;
       D.confirmId = null;
       render();
-      $(`[data-del="${id}"]`)?.focus();
+      $(`[data-more="${id}"]`)?.focus();
       return;
     }
     if ('acexport' in d) {

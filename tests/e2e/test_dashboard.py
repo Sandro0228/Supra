@@ -76,3 +76,24 @@ def card_without_a_readable_edit_time_shows_nothing(pw, base):
     c = Ctx(pw, base); p = c.goto('/', '.ev')                          # the fixture's updated_at is 'seed'
     assert p.locator('.ev .edited').count() == 0
     c.close()
+
+@test
+def card_menu_holds_delete_and_works_with_the_keyboard(pw, base):
+    c = Ctx(pw, base); p = c.goto('/', '.ev')
+    assert p.locator('.ev [data-del]').count() == 0                     # delete is not a bare link on the card
+    more = p.locator('[data-more=ev1]')
+    assert more.get_attribute('aria-haspopup') == 'menu' and more.get_attribute('aria-expanded') == 'false'
+    more.focus(); p.keyboard.press('Enter')
+    assert more.get_attribute('aria-expanded') == 'true'
+    assert p.evaluate("document.activeElement.getAttribute('role')") == 'menuitem'
+    first = p.evaluate("document.activeElement.textContent")
+    p.keyboard.press('ArrowDown'); assert 'trash' in p.evaluate("document.activeElement.textContent").lower()
+    p.keyboard.press('ArrowDown'); assert p.evaluate("document.activeElement.textContent") == first   # wraps
+    p.keyboard.press('Escape')
+    assert p.locator('.evmenu').count() == 0 and p.evaluate("document.activeElement.dataset.more") == 'ev1'
+    p.click('[data-more=ev1]'); p.click('#yourh')                        # a click elsewhere closes it
+    assert p.locator('.evmenu').count() == 0
+    p.click('[data-more=ev1]'); p.click('[data-del=ev1]'); p.wait_for_selector('[data-delyes=ev1]')
+    p.click('[data-cancel]')
+    assert p.evaluate("document.activeElement.dataset.more") == 'ev1'
+    c.close()
