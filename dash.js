@@ -406,6 +406,7 @@
     <div class="newfoot">
       <div class="filepick"><input type="file" id="nfile" class="fileinput" accept=".json,application/json" aria-label="${esc(t('dImport'))}" aria-describedby="nfilehint"><label for="nfile" class="linkish" id="nfile-btn" aria-hidden="true">${esc(t('dImportOpen'))}</label><span class="small fname" id="nfile-name" aria-live="polite"></span></div>
       <span class="small" id="nfilehint">${esc(t('dImportHint'))}</span>
+      ${(D.events || []).some(isSample) ? '' : `<button type="button" class="linkish smp" data-sample>${esc(t('smpTry'))}</button>`}
       <span class="small soon">${esc(t('soonLine'))} ${SOON.map(k => esc(t(k))).join(', ')}.</span>
       ${first ? '' : `<button type="button" class="btn sm" data-newclose>${esc(t('dCancel'))}</button>`}
     </div>
@@ -441,6 +442,8 @@
   }
   // the nearest wedding still to come; otherwise the one edited last (the list is sorted by last edit)
   function nextEvent(evs) {
+    const real = evs.filter(e => !isSample(e));
+    if (real.length) evs = real; // the sample wedding comes first only when it is the only one
     const up = evs
       .filter(e => e.event_date && daysTo(e.event_date) >= 0)
       .sort((a, b) => (a.event_date < b.event_date ? -1 : 1));
@@ -646,9 +649,9 @@
       pub = pubOf(e),
       pct = n ? Math.round((Math.min(seated, n) / n) * 100) : 0;
     return `<li class="ev" style="--pal:${pal};--pal-d:color-mix(in srgb,${pal} 55%,#FFFFFF)">
-    <a class="cover" href="/edit/${esc(e.id)}" tabindex="-1" aria-hidden="true">${FLOWERS ? `<img src="${FLOWERS}" alt="" class="fl">` : ''}<span class="mono">${esc(initials(nm))}</span></a>
+    <a class="cover" href="/edit/${esc(e.id)}" tabindex="-1" aria-hidden="true">${FLOWERS ? `<img src="${FLOWERS}" alt="" class="fl">` : ''}<span class="mono">${esc(initials(isSample(e) ? sampleCouple() : nm))}</span></a>
     <div class="evbody">
-      <span class="pill status${pub ? ' on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span>
+      <span class="pill status${pub ? ' on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}${isSample(e) ? `<span class="smptag">${esc(t('smpTag'))}</span>` : ''}</span>
       <h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2>
       <p class="when">${e.event_date ? `<span class="date">${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span>${edited ? `<span class="edited">${esc(edited)}</span>` : ''}</p>
       ${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}
@@ -712,6 +715,82 @@
       if (!D.trash.length) D.trashOpen = false;
     }
     render();
+  }
+  /* A4 sample wedding: a ready plan to explore (32 guests, five tables, a few still unseated, meals, one seating rule),
+     created as an ordinary event in the account and marked with event.sample. Under the free limit on purpose. The
+     planner gives each guest a drawing on first open (guests here are made without one). */
+  const SAMPLE = {
+    en: {
+      couple: ['Nino Beridze', 'Giorgi Kapanadze'],
+      fam: ['Beridze', 'Kapanadze', 'Lomidze', 'Japaridze', 'Tsereteli', 'Abashidze'],
+      f: ['Ana', 'Mariam', 'Tamar', 'Natia', 'Salome', 'Eka', 'Teona', 'Ketevan', 'Elene', 'Sopo', 'Lela', 'Nana'],
+      m: ['Levan', 'Davit', 'Irakli', 'Lasha', 'Zurab', 'Nika', 'Aleksandre', 'Beka', 'Tornike', 'Vakhtang', 'Guram'],
+      groups: ["Bride's family", "Groom's family", 'University friends', 'Work'],
+      tables: ['Head table', 'Family', 'Family', 'Friends', 'Colleagues']
+    },
+    ka: {
+      couple: ['ნინო ბერიძე', 'გიორგი კაპანაძე'],
+      fam: ['ბერიძე', 'კაპანაძე', 'ლომიძე', 'ჯაფარიძე', 'წერეთელი', 'აბაშიძე'],
+      f: ['ანა', 'მარიამ', 'თამარ', 'ნათია', 'სალომე', 'ეკა', 'თეონა', 'ქეთევან', 'ელენე', 'სოფო', 'ლელა', 'ნანა'],
+      m: ['ლევან', 'დავით', 'ირაკლი', 'ლაშა', 'ზურაბ', 'ნიკა', 'ალექსანდრე', 'ბექა', 'თორნიკე', 'ვახტანგ', 'გურამ'],
+      groups: ['პატარძლის ოჯახი', 'სიძის ოჯახი', 'უნივერსიტეტის მეგობრები', 'სამსახური'],
+      tables: ['მთავარი მაგიდა', 'ოჯახი', 'ოჯახი', 'მეგობრები', 'კოლეგები']
+    }
+  };
+  function samplePlan() {
+    const L = SAMPLE[lang] || SAMPLE.en,
+      guests = {},
+      meals = ['meat', 'meat', 'fish', 'meat', 'veg', 'meat', 'fish', 'vegan'];
+    let n = 0;
+    const add = (name, side, group, extra) => {
+      const id = 's' + String(++n).padStart(2, '0');
+      guests[id] = Object.assign(
+        { id, name, side, group, kid: false, meal: meals[n % meals.length], allergies: '' },
+        extra || {}
+      );
+      return id;
+    };
+    const head = [add(L.couple[0], 'bride', L.groups[0]), add(L.couple[1], 'groom', L.groups[1])];
+    // family tables: each side's relatives share a surname; friends and colleagues mix
+    const people = (k, side, group, fam0, i0) =>
+      Array.from({ length: k }, (_, i) => {
+        const j = i0 + i,
+          nm = (j % 2 ? L.f[j % L.f.length] : L.m[j % L.m.length]) + ' ' + L.fam[fam0 + (i % 2)];
+        return add(nm, side, group);
+      });
+    const t1 = people(6, 'bride', L.groups[0], 0, 0),
+      t2 = people(6, 'groom', L.groups[1], 1, 3),
+      t3 = people(7, 'both', L.groups[2], 2, 7),
+      t4 = people(7, 'both', L.groups[3], 4, 13),
+      waiting = people(4, 'both', L.groups[2], 3, 20);
+    guests[t1[1]].kid = true;
+    guests[t1[1]].meal = 'kids';
+    guests[t3[2]].allergies = lang === 'ka' ? 'თხილი' : 'Nuts';
+    const pad = (seats, k) => seats.concat(Array(Math.max(0, k - seats.length)).fill(null));
+    return {
+      event: { name: t('smpName'), type: 'wedding', palette: 'sage', lang, sample: true },
+      guests,
+      waiting,
+      rules: [{ type: 'apart', a: t2[0], b: t4[0] }],
+      venue: [{ id: 'v1', type: 'dance', label: '', x: 0, y: 380, w: 300, h: 170 }],
+      tables: [
+        { id: 'th', name: L.tables[0], shape: 'head', deco: 'flowers', seats: head },
+        { id: 't1', name: L.tables[1], shape: 'round', deco: 'flowers', seats: pad(t1, 8) },
+        { id: 't2', name: L.tables[2], shape: 'round', deco: 'greenery', seats: pad(t2, 8) },
+        { id: 't3', name: L.tables[3], shape: 'rect', deco: 'mixed', seats: pad(t3, 8) },
+        { id: 't4', name: L.tables[4], shape: 'rect', deco: 'flowers', seats: pad(t4, 8) }
+      ]
+    };
+  }
+  const isSample = e => !!(e && e.ev && e.ev.sample),
+    // the sample's cover shows its couple's initials, like any other wedding (its name has no "&" to split)
+    sampleCouple = () => (SAMPLE[lang] || SAMPLE.en).couple.map(x => x.split(' ')[0]).join(' & ');
+  async function createSample() {
+    const d = new Date();
+    d.setDate(d.getDate() + 90);
+    const plan = samplePlan();
+    plan.event.date = d.toISOString().slice(0, 10);
+    await create({ name: plan.event.name, type: 'wedding', event_date: plan.event.date, data: plan });
   }
   async function create(fields) {
     for (let i = 0; i < 4; i++) {
@@ -1053,6 +1132,12 @@
     const b = e.target.closest('button');
     if (!b) return;
     const d = b.dataset;
+    if ('sample' in d) {
+      b.disabled = true;
+      await createSample();
+      b.disabled = false;
+      return;
+    }
     if ('newopen' in d || 'newclose' in d) {
       D.newOpen = 'newopen' in d;
       D.nerr = '';

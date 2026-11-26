@@ -1,4 +1,18 @@
-import { $, appState, esc, imageDefs, L10N, loadImages, lookImages, randLook, t, uid, UL, setDocLang } from './core.js';
+import {
+  $,
+  appState,
+  esc,
+  imageDefs,
+  L10N,
+  loadImages,
+  lookImages,
+  randLook,
+  smartLook,
+  t,
+  uid,
+  UL,
+  setDocLang
+} from './core.js';
 import { CFG, normalize } from './state.js';
 import { autoArrange, resolveOverlaps } from './layout.js';
 import { hintSeen, logSafe, portraitLook, shareInfo } from './panels.js';
@@ -211,6 +225,12 @@ async function boot() {
       appState.conflict = data;
     } else appState.S = fromRow;
     if (!appState.S.event.name) appState.S.event.name = appState.ROW.name;
+    // Guests that arrive without a drawing (the sample wedding from "Your events") get one now, and it is saved.
+    if (!appState.readOnly) {
+      const bare = Object.values(appState.S.guests).filter(g => !g.look);
+      bare.forEach(g => (g.look = smartLook(g.name, g.group)));
+      if (bare.length) appState.dirty = true;
+    }
     // Organiser preview: exactly what an anonymous guest would get, whether or not the page is published.
     if (qs.get('preview')) {
       const pv = await appState.SB.rpc('preview_public_plan', { p_event: appState.ROW.id });
