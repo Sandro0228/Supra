@@ -26,7 +26,7 @@ import {
   t,
   tn
 } from './core.js';
-import { P, T, V, headName, hist, tName, toast } from './state.js';
+import { P, T, V, headName, hist, tName, toast, where } from './state.js';
 import { arrangeDefaults, arrangePreview, ruleBroken } from './layout.js';
 import { isPhone, keepView } from './actions.js';
 import { fmtDate } from './guest.js';
@@ -86,7 +86,7 @@ function renderTop() {
   $('#evname').textContent = appState.S.event.name || 'Supra';
   if (!appState.guestMode) document.title = t('editTitle', { event: appState.S.event.name || 'Supra' });
   $('#stats').innerHTML =
-    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${appState.S.waiting.length ? ` · ${esc(tn('nUnseated', appState.S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides">${['bride', 'groom'].map(k => `<span title="${esc(t(k))}"><i style="background:${SIDE_COL[k]}" aria-hidden="true"></i>${esc(t(k === 'bride' ? 'statBride' : 'statGroom', { n: sides[k] }))}</span>`).join('')}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>` : ''}`;
+    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${appState.S.waiting.length ? ` · ${esc(tn('nUnseated', appState.S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides">${['bride', 'groom'].map(k => `<span title="${esc(t(k))}"><i style="background:${SIDE_COL[k]}" aria-hidden="true"></i>${esc(t(k === 'bride' ? 'statBride' : 'statGroom', { n: sides[k] }))}</span>`).join('')}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests" data-open="rules" aria-label="${esc(tn('rulesBrokenN', nb))}" title="${esc(tn('rulesBrokenN', nb))}"><span aria-hidden="true">⚠ ${nb}</span></button>` : ''}`;
   const cur = !appState.sel.kind && appState.panel,
     tabs = [
       ['event', 'event'],
@@ -307,20 +307,7 @@ function renderLeft() {
       <div class="row"><button type="button" class="btn primary" data-act="bulk">${t('addNames')}</button></div>
       <div class="row"><button type="button" class="btn sm" data-act="import">${t('importX')}</button><button type="button" class="btn sm" data-act="export">${t('exportX')}</button></div>`
     )}
-    ${det(
-      'rules',
-      `${t('rules')}${appState.S.rules.length ? ` · ${appState.S.rules.length}` : ''}`,
-      `${
-        appState.S.rules.length
-          ? `<div class="rules">${appState.S.rules
-              .map(r => {
-                const b = ruleBroken(r);
-                return `<div class="rule ${b ? 'bad' : ''}"><span>${esc(appState.S.guests[r.a]?.name)} <b>${r.type === 'together' ? '＋' : '≠'}</b> ${esc(appState.S.guests[r.b]?.name)}</span><span class="pill ${b ? 'bad' : ''}">${b ? t('ruleBroken') : t('ruleOk')}</span><button type="button" class="x" data-delrule="${r.id}" aria-label="${t('remove')}">×</button></div>`;
-              })
-              .join('')}</div>`
-          : ''
-      }<p class="muted">${t('rulesHint')}</p>`
-    )}
+    ${det('rules', `${t('rules')}${appState.S.rules.length ? ` · ${appState.S.rules.length}` : ''}`, rulesList())}
     ${(() => {
       const n = Object.values(appState.S.guests).filter(lookMismatch).length;
       return n
@@ -467,6 +454,33 @@ function findFilters() {
       ? `<select id="ffgroup" class="ffgroup${F.group ? ' on' : ''}" aria-label="${esc(t('ffGroup'))}"><option value="">${esc(t('ffAllGroups'))}</option>${groups.map(g => `<option${g === F.group ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>`
       : ''
   }${filtersOn() ? `<button type="button" class="linkbtn" data-ff="clear">${esc(t('ffClear'))}</button>` : ''}</div>`;
+}
+/* C5: every seating rule in words, broken ones first with where the two guests sit now, and "Show me" to go to
+   the first guest's seat. A rule with someone unseated can't be broken yet. */
+function ruleState(r) {
+  const a = where(r.a),
+    b = where(r.b);
+  if (!a || !b) return { k: 'wait', a, b };
+  return { k: ruleBroken(r) ? 'bad' : 'ok', a, b };
+}
+function rulesList() {
+  const S = appState.S,
+    rank = { bad: 0, wait: 1, ok: 2 },
+    L = S.rules.map(r => ({ r, st: ruleState(r) })).sort((x, y) => rank[x.st.k] - rank[y.st.k]);
+  const nm = id => `<b>${esc(S.guests[id]?.name || '—')}</b>`;
+  const rows = L.map(({ r, st }) => {
+    const what = esc(t(r.type === 'together' ? 'ruleTogetherRow' : 'ruleApartRow', { a: '\u0001', b: '\u0002' }))
+        .replace('\u0001', nm(r.a))
+        .replace('\u0002', nm(r.b)),
+      now =
+        st.k !== 'bad'
+          ? ''
+          : r.type === 'together'
+            ? t('ruleSplit', { a: tName(st.a.t), b: tName(st.b.t) })
+            : t('ruleSameAt', { table: tName(st.a.t) });
+    return `<li class="rule ${st.k}"><span class="rtxt"><span>${what}</span>${now ? `<small>${esc(now)}</small>` : ''}</span><span class="pill ${st.k === 'bad' ? 'bad' : ''}">${esc(t(st.k === 'bad' ? 'ruleBroken' : st.k === 'wait' ? 'ruleWait' : 'ruleOk'))}</span>${st.k === 'bad' ? `<button type="button" class="btn sm" data-rshow="${esc(r.id)}">${esc(t('ruleShow'))}</button>` : '<span></span>'}<button type="button" class="x" data-delrule="${esc(r.id)}" aria-label="${esc(t('ruleRemove'))}">×</button></li>`;
+  }).join('');
+  return `${rows ? `<ul class="rules" role="list">${rows}</ul>` : ''}<p class="muted">${t('rulesHint')}</p>`;
 }
 function doFind() {
   const q = ($('#find')?.value || '').trim().toLowerCase(),
