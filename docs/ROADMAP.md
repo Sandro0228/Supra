@@ -1,37 +1,82 @@
 # Supra — path to a commercially ready product
 
-Status: P0A in progress (this document is updated as phases land).
+This document is updated as work lands. Section 0 is the current status and the backlog; the rest is the original
+plan, findings and risk register.
+
+## 0. Status and what's next (2026-11-26)
+
+### Done
+- **Privacy and sharing (P0A):** server-made guest links, draft/publish/revoke/rotate, privacy presets, organiser preview, backoff, counts-only telemetry (006); Latin/Georgian name matching (007).
+- **RSVP (008):** one link per household, answers flow into the plan.
+- **Safety (P0B, P1D):** trash with 30-day restore (009); saving from two tabs never overwrites newer work (010); version history with restore points (013).
+- **Plans and account (P0B):** free up to 40 guests, event pass 79 ₾, Pro 99 ₾/month, pricing page, launch passes (011); account page and privacy page (012).
+- **Big weddings (P1B):** partial redraws, one Tab stop per table, table search with zoom.
+- **Safer import (P1C):** preview, column mapping, duplicates, seats, Georgian CSV.
+- **Redesign, direction A** ("a calm table, warm guests"), nine steps: shared theme, sentence-case labels, the guest's seat reveal, RSVP thank-you, landing, event cards with ⋯ menu, planner top bar, selection toolbar, pricing/account/privacy.
+- **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting.
+
+### Waiting on the owner
+- `supportEmail` in `config.js` (how to buy a pass until online payment exists).
+- pg_cron schedules for `supra_purge_trash()` and `supra_purge_rsvp_contacts()`.
+- The feast painting: generate it from the prompt in `docs/ART.md`, save as `new-art/feast.png`.
+- Who runs Supra and from where (privacy page, terms).
+- Terms of service text.
+- A TBC or Bank of Georgia merchant account with test credentials (bank checkout).
+
+### Next, in small steps (one PR each)
+Signed-in home (in order):
+1. **Checklist and RSVP on cards:** next-steps checklist with a progress ring; coming / can't come / no answer counts.
+2. **Activity and quick actions:** recent RSVP answers ("Beridze family: 2 coming"); copy link, place cards, invitations from home.
+3. **Feast painting:** convert and add `art/feast.webp` once the owner has generated it.
+
+Planner and pages:
+- **A4** sample wedding to explore.
+- **B1** text labels next to the bride/groom side colours (R11).
+- **B2** accessibility pass of account, pricing and privacy.
+- **B3** phone planner priorities.
+- **C1** guest filters (unseated, side, group, allergies).
+- **C2** list view.
+- **C3** simpler drawings when zoomed far out.
+- **C4** minimap.
+- **C5** seating-rules list with "show me".
+- **C6** select several guests at once.
+- **D1** ESLint in the test run.
+- **D2** reuse unchanged table drawings in big plans.
+
+Needs owner input first:
+- **E1** bank checkout.
+- **E2** terms page.
 
 ## 1. Architecture findings
 
 | Area | What exists today |
 |---|---|
-| Front end | Static site, no build step: `index.html` + `dash.js` (landing, sign-in, dashboard); `app.html` + `app.js` (planner at `/edit/:id`, guest page at `/e/:slug`). Plain ES2020, no framework, string-template rendering, one global plan object `S`. |
-| Shared code | `i18n.js` (≈490 keys, EN/KA), `names.js` (gender guess from names), `brand.js/.css` (logo), `assets.js` (embedded illustrations). |
-| Hosting | Vercel static, `vercel.json` clean URLs + rewrites `/edit/*`, `/e/*` → `/app`. Auto-deploy from `main`. |
+| Front end | Static site, no build step: `index.html` + `dash.js` (landing, sign-in, Your events, account); `app.html` + ES modules in `js/` (planner `/edit/:id`, guest page `/e/:token`, RSVP `/r/:token`); `pricing.html`, `privacy.html`. Plain ES2020, no framework, string-template rendering; shared state in `appState` (`js/core.js`). |
+| Shared code | `theme.css` (design tokens), `i18n.js` (≈990 keys, EN/KA), `names.js` (gender guess from names), `brand.js/.css` (logo), `assets.js` + `img/*.webp` (drawings as cached files). |
+| Hosting | Vercel static, `vercel.json` clean URLs + rewrites `/edit/*`, `/e/*`, `/r/*` → `/app`, `/account` → `/`. Auto-deploy from `main`. |
 | Auth | Supabase Auth, email + password (email confirmation currently off), optional magic link. Session in supabase-js local storage. |
 | Database | One table `public.events` (owner uuid, name, type, event_date, `slug` = guest-link token, `data` jsonb = whole plan, `guest_page` bool, lookup settings). RLS: owner-only select/insert/update/delete. |
-| Server logic | Postgres functions only (no API server): `public_plan(slug)`, `find_seat(slug, query, pin)` (anon), `set_guest_lookup(...)` (owner). Rate-limit log `seat_lookups` (anon has no access). Migrations 002–005 are additive `create or replace`. |
-| Saving | Whole-plan `update events set data=…` debounced 1.5 s; draft copy in localStorage; last write wins. |
-| Tests | `tests/sql` (Postgres 16 + Supabase stub; privacy/authorization of the public functions), `tests/e2e` (Python Playwright against a supabase-js stand-in; ≈50 tests: auth races, guest page, editor a11y, l10n, PDF, arrange, gender). No linter/typecheck/build exists (no build step). |
-| Design tokens | CSS custom properties per page (`--bg --panel --ink --muted --line --accent --soft`), light/dark via `data-theme` + `prefers-color-scheme`; plan palettes in `PALETTES`. |
+| Server logic | Postgres functions only (no API server): guests call `public_plan`, `find_seat`, `rsvp_get`, `rsvp_answer`; owners use share, trash, restore-point and account functions. Migrations 002–013 are additive. |
+| Saving | Whole-plan update debounced 1.5 s with a version precondition (010); draft copy in localStorage; version history (013). |
+| Tests | `tests/sql` (Postgres 16 + Supabase stub; privacy and authorization, all migrations), `tests/e2e` (Python Playwright against a supabase-js stand-in; 166 tests in 27 files). No linter/typecheck/build yet (D1 proposes ESLint). |
+| Design tokens | One shared `theme.css` (design direction A) with light/dark via `data-theme` + `prefers-color-scheme`; the event's own plan palettes in `PALETTES`. |
 
 ## 2. Risk register
 
 | # | Risk | Likelihood | Impact | Current state | Phase |
 |---|---|---|---|---|---|
-| R1 | Guest enumeration through 3-letter prefix search, “many” status and search-as-you-type | High | High | Prefix default, debounced live search | **P0A** |
-| R2 | Guest link can't be revoked/rotated; 10-char token (~51 bits) chosen by the client | Medium | High | Slug fixed for life, client-generated | **P0A** |
-| R3 | New events publish immediately with layout and drawings | High | Medium | `guest_page` defaults to true | **P0A** |
-| R4 | Organiser cannot see exactly what is public before publishing | High | Medium | Preview only works once published | **P0A** |
-| R5 | Rate limit is flat (30/10 min); no backoff; IP stored in clear | Medium | Medium | `seat_lookups.client` = raw IP | **P0A** |
-| R6 | Different wording/latency for “not found”, “wrong code”, “too many” | Medium | Medium | Distinct statuses, no padding | **P0A** |
+| R1 | Guest enumeration through 3-letter prefix search, “many” status and search-as-you-type | High | High | ✅ Submit-only search, full-name default, generic outcomes (006) | **P0A** |
+| R2 | Guest link can't be revoked/rotated; 10-char token (~51 bits) chosen by the client | Medium | High | ✅ Server-made 128-bit token; rotate and revoke (006) | **P0A** |
+| R3 | New events publish immediately with layout and drawings | High | Medium | ✅ New events start as private drafts (006) | **P0A** |
+| R4 | Organiser cannot see exactly what is public before publishing | High | Medium | ✅ Organiser preview while still a draft (006) | **P0A** |
+| R5 | Rate limit is flat (30/10 min); no backoff; IP stored in clear | Medium | Medium | ✅ Backoff, per-link cap, hashed addresses kept 1 day (006) | **P0A** |
+| R6 | Different wording/latency for “not found”, “wrong code”, “too many” | Medium | Medium | ✅ One wording and ~250 ms response for every outcome (006) | **P0A** |
 | R7 | One-click delete of a whole wedding plan, no restore | Medium | High | ✅ Trash with 30-day restore, delete for good only from the trash after typing the name (009) | P0B |
 | R8 | Last-write-wins between two tabs/devices silently loses work | Medium | High | ✅ Version precondition on save; organiser chooses which version to keep (010) | P1D |
 | R9 | 300+ guest plans: ~1 000 focusable SVG nodes, heavy DOM | High | Medium | ✅ Partial redraws, one Tab stop per table, table search with zoom (2026-11-26); 500 guests: typing 572→33 ms, selecting a seat 164→88 ms | P1B |
 | R10 | Import with no preview/undo; Georgian round-trip not verified for CSV | Medium | Medium | ✅ Preview, column mapping, duplicates, seats, undo; Georgian CSV/UTF-16 and export round trip tested (2026-11-26) | P1C |
-| R11 | Colour-only side indicators in the header | High | Low | Pink/blue dots | P2 |
-| R12 | Console logging of raw error objects | Low | Medium | `console.error(err)` in 5 places | **P0A** |
+| R11 | Colour-only side indicators in the header | High | Low | Pink/blue dots (backlog B1) | P2 |
+| R12 | Console logging of raw error objects | Low | Medium | ✅ `logSafe` logs only an error code; no raw objects | **P0A** |
 
 ## 3. Schema and API changes
 
@@ -49,7 +94,7 @@ All changes are additive, `create … if not exists` / `create or replace`, and 
 
 **Rollback (006):** the new columns/tables can stay (nothing reads them in older clients). To restore 005 behaviour, re-run `005_table_people.sql` and `004_seat_choice.sql` (they replace the two public functions), then `drop trigger events_share_defaults, events_share_guard on public.events`.
 
-Later phases: `events.deleted_at` + `purge_after` (P0B), `event_versions` (P1D), `audit_log`, `account_settings`, entitlement table (P0B).
+Later migrations (all landed): 007 name skeleton, 008 RSVP, 009 trash, 010 plan version, 011 entitlements, 012 account deletion, 013 version history. Still open: `audit_log`, account settings (names for the greeting), bank checkout callback.
 
 ## 4. Staged implementation plan
 
@@ -58,12 +103,12 @@ Each stage is one reviewable commit (or a few), tests included.
 1. **P0A-1 Database** — migration 006, SQL tests (unpublished, revoked, expired, wrong code, backoff, exact match, generic outcomes, authorization, token immutability, defaults). ✅ this round
 2. **P0A-2 Share panel** — status badge, publish/unpublish/expiry, rotate/revoke with confirmations, presets (Open needs explicit confirmation), organiser preview, semantic preview link. ✅ this round
 3. **P0A-3 Guest page** — submit-only search, empty/short validation (`aria-invalid`, live), generic no-match, retry-after on rate limit, layout-off card. ✅ this round
-4. **P0B** — ✅ (2026-11-24, migration 009) soft delete + trash (30 days), typed confirmation; still to do: overflow menu; ✅ (2026-11-24, migration 011) entitlements: free up to 40 guests, event pass 79 ₾, Pro 99 ₾/month, pricing page, launch passes for existing events; ✅ (2026-11-24, migration 012) account page (password, sign out everywhere, plans, download all data, delete account) and privacy page; next: bank checkout (TBC / Bank of Georgia), terms of service; entitlement interface; audit events.
-5. **P1A** — ✅ (2026-11-26) card metadata (guest page, plan, seated, free seats, last edited); still to do: onboarding checklist, sample event (isolated, flagged).
+4. **P0B** — ✅ (2026-11-24, migration 009) soft delete + trash (30 days), typed confirmation; ✅ (2026-11-26) overflow menu (⋯ on event cards); ✅ (2026-11-24, migration 011) entitlements: free up to 40 guests, event pass 79 ₾, Pro 99 ₾/month, pricing page, launch passes for existing events; ✅ (2026-11-24, migration 012) account page (password, sign out everywhere, plans, download all data, delete account) and privacy page; next: bank checkout (TBC / Bank of Georgia), terms of service; entitlement interface; audit events.
+5. **P1A** — ✅ (2026-11-26) card metadata (guest page, plan, seated, free seats, last edited); ✅ (2026-11-26) next step on the signed-in home; still to do: onboarding checklist on cards, sample event (isolated, flagged).
 6. **P1B** — ✅ (2026-11-26) partial redraws, roving-tabindex seats, search-and-zoom with tables, perf fixture (`tests/e2e/bigplan.py`); still to do: minimap, level-of-detail, list view.
 7. **P1C** — ✅ (2026-11-26) import preview/mapping/validation/duplicates/undo; still to do: filters; multi-select; conflict queue.
 8. **P1D** — ✅ (2026-11-24, migration 010) optimistic concurrency: a server-side plan `version` precondition and a "which version to keep" prompt (no field-level merge). ✅ (2026-11-24, migration 013) version history + restore points (History in the Event panel).
-9. **P2** — WCAG 2.2 AA pass, non-colour category labels, mobile organiser priorities, full device/AT matrix.
+9. **P2** — ✅ (2026-11-26) contrast of every theme colour checked (AA), sentence-case labels, choice icons on RSVP; still to do: non-colour side labels (B1), remaining WCAG 2.2 AA pass (B2), mobile organiser priorities (B3), full device/AT matrix.
 
 ## 4b. Deferred code work (agreed 2026-11-17, do when no feature is in progress)
 Do these between features, not during one, because each touches almost every line:
