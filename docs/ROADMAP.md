@@ -29,7 +29,7 @@ Status: P0A in progress (this document is updated as phases land).
 | R7 | One-click delete of a whole wedding plan, no restore | Medium | High | ✅ Trash with 30-day restore, delete for good only from the trash after typing the name (009) | P0B |
 | R8 | Last-write-wins between two tabs/devices silently loses work | Medium | High | ✅ Version precondition on save; organiser chooses which version to keep (010) | P1D |
 | R9 | 300+ guest plans: ~1 000 focusable SVG nodes, heavy DOM | High | Medium | ✅ Partial redraws, one Tab stop per table, table search with zoom (2026-11-26); 500 guests: typing 572→33 ms, selecting a seat 164→88 ms | P1B |
-| R10 | Import with no preview/undo; Georgian round-trip not verified for CSV | Medium | Medium | Direct import | P1C |
+| R10 | Import with no preview/undo; Georgian round-trip not verified for CSV | Medium | Medium | ✅ Preview, column mapping, duplicates, seats, undo; Georgian CSV/UTF-16 and export round trip tested (2026-11-26) | P1C |
 | R11 | Colour-only side indicators in the header | High | Low | Pink/blue dots | P2 |
 | R12 | Console logging of raw error objects | Low | Medium | `console.error(err)` in 5 places | **P0A** |
 
@@ -61,7 +61,7 @@ Each stage is one reviewable commit (or a few), tests included.
 4. **P0B** — ✅ (2026-11-24, migration 009) soft delete + trash (30 days), typed confirmation; still to do: overflow menu; ✅ (2026-11-24, migration 011) entitlements: free up to 40 guests, event pass 79 ₾, Pro 99 ₾/month, pricing page, launch passes for existing events; ✅ (2026-11-24, migration 012) account page (password, sign out everywhere, plans, download all data, delete account) and privacy page; next: bank checkout (TBC / Bank of Georgia), terms of service; entitlement interface; audit events.
 5. **P1A** — onboarding checklist, sample event (isolated, flagged), card metadata (Draft/Published, guests seated, last edited).
 6. **P1B** — ✅ (2026-11-26) partial redraws, roving-tabindex seats, search-and-zoom with tables, perf fixture (`tests/e2e/bigplan.py`); still to do: minimap, level-of-detail, list view.
-7. **P1C** — import preview/mapping/validation/duplicates/undo; filters; multi-select; conflict queue.
+7. **P1C** — ✅ (2026-11-26) import preview/mapping/validation/duplicates/undo; still to do: filters; multi-select; conflict queue.
 8. **P1D** — ✅ (2026-11-24, migration 010) optimistic concurrency: a server-side plan `version` precondition and a "which version to keep" prompt (no field-level merge). ✅ (2026-11-24, migration 013) version history + restore points (History in the Event panel).
 9. **P2** — WCAG 2.2 AA pass, non-colour category labels, mobile organiser priorities, full device/AT matrix.
 

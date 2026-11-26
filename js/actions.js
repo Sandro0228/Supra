@@ -45,7 +45,8 @@ import {
   shareCall,
   shareInfo
 } from './panels.js';
-import { catererModal, dlQR, exportX, importModal, placeCards, planImage, planPdf, savePlan } from './files.js';
+import { catererModal, dlQR, exportX, placeCards, planImage, planPdf, savePlan } from './files.js';
+import { importModal } from './import.js';
 import { GERR, guestClick, setGuestErr } from './guest.js';
 import { rsvpClick, rsvpInput } from './rsvp.js';
 import { invClick, invInput, invSettingChange } from './invites.js';

@@ -10,6 +10,7 @@ import './files.js';
 import './conflict.js';
 import './access.js';
 import './history.js';
+import './import.js';
 import './guest.js';
 import './rsvp.js';
 import './invites.js';

@@ -1,12 +1,10 @@
-import { $, MEALS, MEAL_LBL, SIDE_COL, UL, allDefs, appState, esc, person, seatMode, shade, t, uid } from './core.js';
-import { P, clearDraft, commit, mkGuest, tName, toast } from './state.js';
-import { autoArrange } from './layout.js';
+import { $, MEALS, MEAL_LBL, SIDE_COL, UL, allDefs, appState, esc, person, seatMode, shade, t } from './core.js';
+import { P, clearDraft, tName, toast } from './state.js';
 import { BODYFONT, NAMEFONT, planSVG } from './draw.js';
 import { PDFLIB, XLSXLIB, loadScript, logSafe, renderTop } from './panels.js';
 import { gDate } from './guest.js';
 import { INV, eventCols } from './invites.js';
 import { resolveConflict, versioned } from './conflict.js';
-import { addRestorePoint } from './history.js';
 /* Saving, downloads (PNG, PDF, place cards, caterer list, CSV) and the modal. Part of the planner (app.html); see js/README.md. */
 /* ---------------- saving ---------------- */
 let savingNow = false,
@@ -519,154 +517,9 @@ async function exportX() {
     })
   );
 }
-function parseRows(rows) {
-  const re = {
-    name: /^(name|names|guest|სახელი|სტუმარი|სახელი გვარი)/i,
-    table: /(table|მაგიდ)/i,
-    group: /(group|ჯგუფ)/i,
-    side: /(side|მხარე)/i,
-    meal: /(meal|menu|კერძ|კვებ|მენიუ)/i,
-    kid: /(child|kid|ბავშ)/i,
-    allergies: /(allerg|ალერგ)/i
-  };
-  let hr = -1,
-    col = {};
-  for (let r = 0; r < Math.min(rows.length, 10) && hr < 0; r++)
-    (rows[r] || []).forEach((c, i) => {
-      if (typeof c === 'string' && re.name.test(c.trim())) {
-        hr = r;
-      }
-    });
-  if (hr >= 0) {
-    (rows[hr] || []).forEach((c, i) => {
-      if (typeof c !== 'string') return;
-      for (const k in re) if (col[k] === undefined && re[k].test(c.trim())) col[k] = i;
-    });
-  } else {
-    const r0 = rows.find(r => r && r.some(v => v !== null && v !== '')) || [];
-    r0.forEach((v, i) => {
-      if (col.name === undefined && typeof v === 'string') col.name = i;
-      else if (col.table === undefined && typeof v === 'number') col.table = i;
-    });
-    hr = rows.indexOf(r0) - 1;
-  }
-  const sideMap = v => {
-    v = String(v || '').toLowerCase();
-    return /bride|პატარძ/.test(v) ? 'bride' : /groom|სიძ/.test(v) ? 'groom' : /both|ორივ/.test(v) ? 'both' : '';
-  };
-  const mealMap = v => {
-    v = String(v || '').toLowerCase();
-    return /meat|ხორც/.test(v)
-      ? 'meat'
-      : /fish|თევზ/.test(v)
-        ? 'fish'
-        : /vegan|ვეგან/.test(v)
-          ? 'vegan'
-          : /veg|ვეგეტ/.test(v)
-            ? 'veg'
-            : /kid|საბავშ/.test(v)
-              ? 'kids'
-              : '';
-  };
-  return rows
-    .slice(hr + 1)
-    .filter(r => r && col.name !== undefined && r[col.name] && String(r[col.name]).trim())
-    .map(r => ({
-      name: String(r[col.name]).trim(),
-      table: col.table !== undefined ? r[col.table] : '',
-      group: col.group !== undefined ? String(r[col.group] || '') : '',
-      side: sideMap(r[col.side]),
-      meal: mealMap(r[col.meal]),
-      kid: col.kid !== undefined && /^(y|yes|1|true|კი|დიახ)/i.test(String(r[col.kid] || '')),
-      allergies: col.allergies !== undefined ? String(r[col.allergies] || '') : ''
-    }));
-}
-function importModal() {
-  modal(`<h2>${t('importTitle')}</h2><p class="muted">${t('importHint')}</p>
-  <div class="field"><span class="lbl" id="xfile-l">${t('chooseFile')}</span>${filePick('xfile', '.xlsx,.xls,.csv', 'xfile-l')}</div>
-  <p id="xinfo" class="muted"></p>
-  <div class="field"><span class="lbl">${t('importMode')}</span><label class="check"><input type="radio" name="xmode" value="add" checked> ${t('importAdd')}</label><label class="check"><input type="radio" name="xmode" value="replace"> ${t('importReplace')}</label></div>
-  <div class="row"><button type="button" class="btn primary" id="xgo" disabled>${t('importGo')}</button></div>`);
-  let parsed = [];
-  $('#xfile').onchange = async e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    $('#xinfo').textContent = t('loadingLib');
-    try {
-      await loadScript(XLSXLIB);
-      const wb = XLSX.read(await f.arrayBuffer());
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, blankrows: false });
-      parsed = parseRows(rows);
-      $('#xinfo').textContent = parsed.length ? t('importFound', { n: parsed.length }) : t('importNone');
-      $('#xgo').disabled = !parsed.length;
-    } catch (err) {
-      $('#xinfo').textContent = t('importNone');
-    }
-  };
-  $('#xgo').onclick = () => {
-    const mode = document.querySelector('input[name=xmode]:checked').value;
-    if (mode === 'replace') addRestorePoint('import', appState.S);
-    const ok = commit(() => {
-      if (mode === 'replace') {
-        const keep = new Set(appState.S.tables.filter(x => x.shape === 'head').flatMap(x => x.seats.filter(Boolean)));
-        Object.keys(appState.S.guests).forEach(id => {
-          if (!keep.has(id)) delete appState.S.guests[id];
-        });
-        appState.S.waiting = [];
-        appState.S.rules = appState.S.rules.filter(r => keep.has(r.a) && keep.has(r.b));
-        appState.S.tables = appState.S.tables.filter(x => x.shape === 'head');
-      }
-      const byTable = {};
-      parsed.forEach(r => {
-        const k = r.table === '' || r.table === undefined || r.table === null ? '' : String(r.table).trim();
-        (byTable[k] = byTable[k] || []).push(r);
-      });
-      const newT = [];
-      for (const k in byTable) {
-        const list = byTable[k];
-        if (k === '') {
-          list.forEach(r =>
-            appState.S.waiting.push(
-              mkGuest(r.name, null, { group: r.group, side: r.side, meal: r.meal, kid: r.kid, allergies: r.allergies })
-            )
-          );
-          continue;
-        }
-        const nm = /^\d+$/.test(k) ? 'Table ' + k : k;
-        let x = appState.S.tables.find(
-          y => y.name.toLowerCase() === nm.toLowerCase() || tName(y).toLowerCase() === nm.toLowerCase()
-        );
-        if (!x) {
-          x = { id: uid(), name: nm, shape: 'rect', deco: 'flowers', seats: [] };
-          appState.S.tables.push(x);
-          newT.push(x);
-        }
-        list.forEach(r => {
-          const id = mkGuest(r.name, null, {
-            group: r.group,
-            side: r.side,
-            meal: r.meal,
-            kid: r.kid,
-            allergies: r.allergies
-          });
-          let i = x.seats.indexOf(null);
-          if (i < 0) {
-            x.seats.push(id);
-          } else x.seats[i] = id;
-        });
-      }
-      if (newT.length || mode === 'replace') autoArrange();
-    });
-    if (!ok) return; // over the free limit: the "get the pass" panel replaced this one
-    $('#modalroot').innerHTML = '';
-    toast(t('importDone', { n: parsed.length }));
-  };
-}
-
 /* ---------------- modal ---------------- */
-/* File chooser with interface-language text: the native input stays (keyboard, screen readers, drag-and-drop), its browser-language button is hidden. */
-const filePick = (id, accept, labelled) =>
-  `<div class="filepick"><input type="file" id="${id}" accept="${accept}" class="fileinput" aria-labelledby="${labelled} ${id}-btn"><label for="${id}" class="btn" id="${id}-btn" aria-hidden="true">${t('pickFile')}</label><span class="fname" id="${id}-name" aria-live="polite">${t('noFile')}</span></div>`;
+/* File inputs keep the browser's own control (keyboard, screen readers, drag-and-drop) with the chosen file's name
+   shown next to an interface-language button (see js/import.js). */
 document.addEventListener(
   'change',
   e => {
@@ -714,17 +567,4 @@ function modal(html) {
   return shut;
 }
 
-export {
-  catererModal,
-  dlQR,
-  exportX,
-  fname,
-  importModal,
-  isSaving,
-  modal,
-  offerFile,
-  placeCards,
-  planImage,
-  planPdf,
-  savePlan
-};
+export { catererModal, dlQR, exportX, fname, isSaving, modal, offerFile, placeCards, planImage, planPdf, savePlan };

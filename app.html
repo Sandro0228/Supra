@@ -208,6 +208,15 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .passcard p{margin:0}
 .ticks2{margin:4px 0 0;padding-left:18px;display:grid;gap:3px}
 .paysoon{background:var(--soft);border-radius:8px;padding:8px 10px;margin:0}
+/* import preview (js/import.js) */
+#xprev{display:grid;gap:14px}#xprev:empty{display:none}
+.imcols{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0;display:grid;gap:8px;min-width:0}
+.imcols legend{padding:0 4px;font-weight:600}
+.imgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.imgrid .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imstats{margin:0;padding-left:18px;display:grid;gap:2px}
+.imtab{border-collapse:collapse;width:100%;font-size:13px}.imtab th,.imtab td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+.imtab caption{text-align:left;padding-bottom:4px}.imtab tr.dup td{color:var(--muted);text-decoration:line-through}.imtab tr.dup td:last-child{text-decoration:none}
 /* save conflict (js/conflict.js) */
 .modal .box:has(.cfopts){max-width:640px}
 .cfcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
