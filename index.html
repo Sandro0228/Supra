@@ -178,7 +178,7 @@ footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted)
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
 .field{display:flex;flex-direction:column;gap:5px}
-.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lbl{font-size:13px;font-weight:500;color:var(--ink);letter-spacing:0}
 .inp,select{border:1px solid var(--line);background:var(--soft);border-radius:var(--r-control);padding:10px 12px;width:100%;min-width:0}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
 .msg{font-size:14px;color:var(--muted)}.msg.err{color:var(--danger)}
@@ -207,7 +207,6 @@ h2+.field{margin-top:4px}
 @media (max-width:420px){.seg .full{display:none}.seg .short{display:inline}}
 @media (max-width:420px){.newgrid{grid-template-columns:minmax(0,1fr)}}
 .newgrid .field{min-width:0}
-:lang(ka) .lbl{text-transform:none;letter-spacing:.02em;font-size:12px}
 .who{color:var(--muted);text-decoration:none}.who:hover{text-decoration:underline}
 .who{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 @media (max-width:600px){.who{order:10;flex-basis:100%;text-align:left}}
