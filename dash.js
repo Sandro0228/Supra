@@ -419,10 +419,63 @@
           : evs.length
             ? `<ul class="events${evs.length === 1 ? ' one' : ''}" role="list">${evs.map(evCard).join('')}</ul>`
             : '';
-    $('#main').innerHTML = `<div class="dash">
-  <div class="dashhead"><h1 id="yourh">${esc(t('dYour'))}</h1>${first || D.newOpen ? '' : `<button type="button" class="btn primary" data-newopen>${PLUS}${esc(t('dNew'))}</button>`}</div>
+    const hero = evs && evs.length && !D.loadErr ? homeHero(nextEvent(evs)) : '',
+      H = hero ? 'h2' : 'h1';
+    $('#main').innerHTML = `<div class="dash">${hero}
+  <div class="dashhead"><${H} id="yourh">${esc(t('dYour'))}</${H}>${first || D.newOpen ? '' : `<button type="button" class="btn${hero ? '' : ' primary'}" data-newopen>${PLUS}${esc(t('dNew'))}</button>`}</div>
   ${first || D.newOpen ? newPanel(first) : ''}
   <section aria-labelledby="yourh" class="yours">${list}</section>${D.trash.length ? trashSection() : ''}</div>`;
+    showFeast();
+  }
+  /* The top of "Your events": a greeting, the next wedding large, and the one next step for it. The feast painting
+     (art/feast.webp, made from the Gemini prompt in docs) appears above it once the file exists. */
+  const FEAST = '/art/feast.webp';
+  function showFeast() {
+    const img = document.querySelector('.feast img');
+    if (!img) return;
+    const show = () => (img.closest('.feast').hidden = false);
+    if (img.complete && img.naturalWidth) show();
+    else img.addEventListener('load', show, { once: true });
+  }
+  // the nearest wedding still to come; otherwise the one edited last (the list is sorted by last edit)
+  function nextEvent(evs) {
+    const up = evs
+      .filter(e => e.event_date && daysTo(e.event_date) >= 0)
+      .sort((a, b) => (a.event_date < b.event_date ? -1 : 1));
+    return up[0] || evs[0];
+  }
+  function greeting() {
+    const h = new Date().getHours();
+    return t(h >= 5 && h < 12 ? 'hiMorning' : h >= 12 && h < 18 ? 'hiAfternoon' : 'hiEvening');
+  }
+  // what to do next for this event, in the order a wedding plan comes together
+  function nextStep(e) {
+    const n = e.guests ? Object.keys(e.guests).length : 0,
+      seated = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0),
+      open = Math.max(0, n - seated),
+      go = (panel, label) =>
+        `<a class="btn primary" href="/edit/${esc(e.id)}${panel ? '?panel=' + panel : ''}">${esc(t(label))}</a>`;
+    if (!n) return { text: t('nsGuests'), btn: go('guests', 'nsGuestsBtn') };
+    if (open) return { text: tn('nsSeat', open), btn: go('', 'nsSeatBtn') };
+    if (!pubOf(e)) return { text: t('nsPublish'), btn: go('share', 'nsPublishBtn') };
+    if (!e.event_date) return { text: t('nsDate'), btn: go('event', 'nsDateBtn') };
+    return {
+      text: t('nsDone'),
+      btn: `<button type="button" class="btn primary" data-copy="${esc(e.slug)}">${LINK}${esc(t('dCopyLink'))}</button>`
+    };
+  }
+  function homeHero(e) {
+    const nm = e.name || '—',
+      dd = daysTo(e.event_date),
+      when = dd === null ? '' : dd === 0 ? t('dToday') : dd > 0 ? tn('dInDays', dd) : tn('dDaysAgo', -dd),
+      step = nextStep(e);
+    return `<section class="home" aria-labelledby="homeh">
+    <figure class="feast" hidden><img src="${FEAST}" alt="${esc(t('feastAlt'))}" width="2400" height="800" decoding="async"></figure>
+    <div class="homerow">
+      <div class="hometext"><p class="hello">${esc(greeting())}</p><h1 id="homeh">${esc(nm)}</h1>
+        ${e.event_date ? `<p class="homewhen"><span>${esc(fmtDate(e.event_date))}</span>${when ? `<span class="count">${esc(when)}</span>` : ''}</p>` : ''}</div>
+      <div class="nextstep" role="group" aria-label="${esc(t('nsA11y'))}"><p>${esc(step.text)}</p>${step.btn}</div>
+    </div></section>`;
   }
   /* Trash: deleted events stay 30 days (the server empties it), can be restored, or deleted for good after typing
      the event's name. */
