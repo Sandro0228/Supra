@@ -55,32 +55,34 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 /* ---- landing ---- */
 .lp{display:flex;flex-direction:column;gap:clamp(56px,9vw,112px);margin-top:clamp(12px,3vw,32px)}
 .lp h1,.lp h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;color:var(--ink)}
-.lp h1{font-size:clamp(38px,6vw,72px);line-height:1.02;max-width:13ch;letter-spacing:-.01em}
-:lang(ka) .lp h1{font-size:clamp(32px,4.4vw,54px);line-height:1.12;max-width:17ch}
+.lp h1{font-size:clamp(42px,7vw,80px);line-height:1.02;max-width:12ch;letter-spacing:-.015em;font-weight:500}
+:lang(ka) .lp h1{font-size:clamp(34px,5vw,60px);line-height:1.12;max-width:15ch}
 :lang(ka) .lp h2{font-size:clamp(25px,2.8vw,34px)}
 @media (max-width:480px){header{gap:8px}.hdrlogo{--bw:108px}}
 @media (max-width:400px){.hdrlogo{--bw:92px}.logo{padding-right:0}}
 .lp h2{font-size:clamp(28px,3.4vw,40px);line-height:1.12;max-width:20ch}
 .lp p{margin:0}
 .lead{font-size:clamp(17px,1.6vw,19px);line-height:1.6;color:var(--muted);max-width:56ch}
-.hero2{display:grid;gap:clamp(24px,4vw,40px)}
-.herotext{display:grid;gap:20px;justify-items:start}
-.heroside{display:grid;gap:20px;justify-items:start}
-.ctas{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.btn.big{padding:13px 22px;font-size:16px;border-radius:11px}
-.btn.quiet{background:transparent;color:var(--ink)}
+.hero2{display:grid;gap:clamp(32px,5vw,56px)}
+.herotext{display:grid;gap:22px;justify-items:start}
+.herotext .lead{max-width:48ch}
+.ctas{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+.btn.big{padding:14px 24px;font-size:16px}
+.textlink{color:var(--ink);font-weight:500;text-decoration:underline;text-decoration-color:var(--line);text-decoration-thickness:2px;text-underline-offset:5px;padding:6px 0}
+.textlink:hover{text-decoration-color:var(--ink)}
 .note{font-size:14px;color:var(--muted)}
+.hdrnav{display:flex;gap:22px;font-size:14px;margin-right:8px}
+.hdrnav a{color:var(--muted);text-decoration:none}.hdrnav a:hover{color:var(--ink)}
+@media (max-width:720px){.hdrnav{display:none}}
 /* the hall: the one bold thing on the page */
-.hallframe{margin:0;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#EADBC6;
-  box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 30px 60px -30px rgba(70,45,25,.35)}
+.hallframe{margin:0;border-radius:var(--r-panel);overflow:hidden;background:#EADBC6;
+  outline:1px solid color-mix(in srgb,var(--gold) 45%,transparent);outline-offset:6px;
+  box-shadow:0 30px 60px -36px rgba(36,23,31,.45)}
 .hallframe img{display:block;width:100%;height:auto}
-@media (min-width:900px){
-  .herotext{grid-template-columns:minmax(0,7fr) minmax(0,5fr);column-gap:48px;align-items:center}
-}
 .steps{list-style:none;margin:0;padding:0;display:grid;gap:28px;counter-reset:step}
 @media (min-width:760px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .steps li{display:grid;gap:8px;align-content:start;counter-increment:step;padding-top:18px;border-top:1px solid var(--line)}
-.steps li::before{content:counter(step);font-family:var(--display);font-size:30px;line-height:1;color:var(--accent)}
+.steps li::before{content:counter(step);font-family:var(--display);font-size:32px;line-height:1;color:var(--gold)}
 .steps h3{font-size:18px;font-weight:500;margin:0}
 .steps p{color:var(--muted)}
 .howhead{display:grid;gap:28px}
@@ -89,11 +91,11 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .splittext{display:grid;gap:18px;justify-items:start}
 .ticks{list-style:none;margin:0;padding:0;display:grid;gap:12px;max-width:52ch}
 .ticks li{position:relative;padding-left:28px}
-.ticks li::before{content:"";position:absolute;left:2px;top:.55em;width:12px;height:12px;border-radius:50% 0 50% 50%;background:var(--accent);opacity:.8;transform:rotate(-45deg)}
-.phone{justify-self:center;width:min(300px,78vw);border-radius:38px;border:10px solid #2B2522;background:#2B2522;overflow:hidden;
-  box-shadow:0 30px 60px -28px rgba(40,25,20,.45);margin:0}
+.ticks li::before{content:"";position:absolute;left:3px;top:.62em;width:9px;height:9px;border-radius:50% 0 50% 50%;background:var(--gold);transform:rotate(-45deg)}
+.phone{justify-self:center;width:min(300px,78vw);border-radius:38px;border:10px solid #24171F;background:#24171F;overflow:hidden;
+  box-shadow:0 30px 60px -28px rgba(36,23,31,.45);margin:0}
 .phone img{display:block;width:100%;height:auto;border-radius:28px}
-.cardsimg{margin:0;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:0 24px 50px -30px rgba(70,45,25,.35)}
+.cardsimg{margin:0;border-radius:var(--r-panel);overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:0 24px 50px -30px rgba(36,23,31,.35)}
 .cardsimg img{display:block;width:100%;height:auto}
 .start{display:grid;gap:24px;align-items:start;scroll-margin-top:24px}
 @media (min-width:860px){.start{grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:48px;align-items:center}}
@@ -214,20 +216,18 @@ h2+.field{margin-top:4px}
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><a class="who" id="who" href="/account"></a><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
+  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><nav class="hdrnav landing"><a href="#how" data-t="lpNavHow"></a><a href="/pricing" data-t="lpPricing"></a></nav><a class="who" id="who" href="/account"></a><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
   <main class="lp">
   <section class="hero2 landing" aria-labelledby="tag">
     <div class="herotext">
       <h1 id="tag" data-t="lpH1"></h1>
-      <div class="heroside">
-        <p class="lead" data-t="lpLead"></p>
-        <div class="ctas"><button type="button" class="btn primary big" data-start="signup" data-t="lpCta"></button><a class="btn big quiet" href="#guests" data-t="lpCta2"></a></div>
-        <p class="note" data-t="lpNote"></p>
-      </div>
+      <p class="lead" data-t="lpLead"></p>
+      <div class="ctas"><button type="button" class="btn primary big" data-start="signup" data-t="lpCta"></button><a class="textlink" href="#guests" data-t="lpCta2"></a></div>
+      <p class="note" data-t="lpNote"></p>
     </div>
     <figure class="hallframe"><img data-img="hall" src="/landing/hall-en.webp" width="1400" height="1085" alt="" fetchpriority="high"></figure>
   </section>
-  <section class="howhead landing" aria-labelledby="howh">
+  <section class="howhead landing" id="how" aria-labelledby="howh">
     <h2 id="howh" data-t="lpHowH"></h2>
     <ol class="steps">
       <li><h3 data-t="lpS1"></h3><p data-t="lpS1p"></p></li>
