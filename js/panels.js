@@ -297,7 +297,7 @@ function renderLeft() {
         ? `<div class="confirm"><span>${esc(tn('invNoSeated', n))}</span><div class="row"><button type="button" class="btn sm primary" data-inv="move-declined">${esc(tn('invMoveBtn', n))}</button></div></div>`
         : '';
     })()}
-    <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(appState.FINDQ)}"><div class="search-res" id="findres"></div>
+    <input id="find" type="search" class="inp" placeholder="${t('findPh')}" aria-label="${t('findGuest')}" value="${esc(appState.FINDQ)}">${findFilters()}<div class="search-res" id="findres" aria-live="polite"></div>
     ${appState.S.waiting.length ? `<div class="field"><span class="lbl">${t('waitingTitle')}</span><p class="muted">${t('waitingHint')}</p><div class="waiting">${appState.S.waiting.map(id => `<button type="button" class="wchip" data-wait="${id}" aria-pressed="${appState.waitSel === id}">${esc(appState.S.guests[id]?.name)}</button>`).join('')}</div></div>` : ''}
     ${det(
       'add',
@@ -439,14 +439,51 @@ function renderLeft() {
   if (appState.panel === 'guests') doFind();
   if (appState.panel === 'share') drawQR();
 }
+/* C1 filters under the guest search: unseated, a side, a group, has allergies. They combine with each other and
+   with the typed text; tables are listed only for a plain text search. */
+const groupsOf = () =>
+  [...new Set(Object.values(appState.S.guests).map(g => (g.group || '').trim()))]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+const filtersOn = () => {
+  const F = appState.FINDF;
+  return F.unseated || F.side || F.group || F.allergy;
+};
+function findFilters() {
+  const F = appState.FINDF,
+    groups = groupsOf();
+  if (F.group && !groups.includes(F.group)) F.group = '';
+  const chip = (k, on, label) =>
+    `<button type="button" class="chip" data-ff="${k}" aria-pressed="${on}">${label}</button>`;
+  return `<div class="ffilters" role="group" aria-label="${esc(t('ffA11y'))}">${chip('unseated', F.unseated, esc(t('ffUnseated')))}${[
+    'bride',
+    'groom'
+  ]
+    .map(k =>
+      chip(k, F.side === k, `<i class="dot" style="background:${SIDE_COL[k]}" aria-hidden="true"></i>${esc(t(k))}`)
+    )
+    .join('')}${chip('allergy', F.allergy, esc(t('ffAllergy')))}${
+    groups.length
+      ? `<select id="ffgroup" class="ffgroup${F.group ? ' on' : ''}" aria-label="${esc(t('ffGroup'))}"><option value="">${esc(t('ffAllGroups'))}</option>${groups.map(g => `<option${g === F.group ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>`
+      : ''
+  }${filtersOn() ? `<button type="button" class="linkbtn" data-ff="clear">${esc(t('ffClear'))}</button>` : ''}</div>`;
+}
 function doFind() {
   const q = ($('#find')?.value || '').trim().toLowerCase(),
-    box = $('#findres');
+    box = $('#findres'),
+    F = appState.FINDF,
+    on = filtersOn();
   if (!box) return;
-  if (!q) {
+  if (!q && !on) {
     box.innerHTML = '';
     return;
   }
+  const keep = (G, seated) =>
+    (!F.unseated || !seated) &&
+    (!F.side || G.side === F.side) &&
+    (!F.group || (G.group || '').trim() === F.group) &&
+    (!F.allergy || !!(G.allergies || '').trim());
+  const extra = G => (F.allergy && G.allergies ? ` · ${esc(G.allergies)}` : '');
   const qk = skel(q),
     has = v => {
       v = String(v || '');
@@ -455,6 +492,7 @@ function doFind() {
   const res = [];
   // tables first: "12" or "table 12" jumps to that table in a big hall
   appState.S.tables.forEach(x => {
+    if (on) return;
     const nm = tName(x),
       num = (nm.match(/\d+/) || [])[0];
     if (has(nm) || (num && num === q.replace(/\D/g, '') && /^\D*\d+$/.test(q)))
@@ -465,24 +503,25 @@ function doFind() {
   appState.S.tables.forEach(x =>
     x.seats.forEach((id, i) => {
       const G = id && appState.S.guests[id];
-      if (G && (has(G.name) || has(G.group)))
+      if (G && (!q || has(G.name) || has(G.group)) && keep(G, true))
         res.push(
-          `<button type="button" data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i + 1}</small></button>`
+          `<button type="button" data-goto="${x.id}:${i}"><span>${esc(G.name)}</span><small>${esc(tName(x))} · ${t('seat')} ${i + 1}${extra(G)}</small></button>`
         );
     })
   );
   appState.S.waiting.forEach(id => {
     const G = appState.S.guests[id];
-    if (G && has(G.name))
+    if (G && (!q || has(G.name) || has(G.group)) && keep(G, false))
       res.push(
-        `<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`
+        `<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}${extra(G)}</small></button>`
       );
   });
+  if (on && res.length) res.unshift(`<span class="muted small ffcount">${esc(tn('ffCount', res.length))}</span>`);
   const MAX = 50; // a one-letter search in a 1000-guest plan would otherwise list hundreds
   box.innerHTML =
     res.length > MAX
       ? res.slice(0, MAX).join('') + `<span class="muted">${esc(tn('findMore', res.length - MAX))}</span>`
-      : res.join('') || `<span class="muted">${t('noOne')}</span>`;
+      : res.join('') || `<span class="muted">${t(on ? 'ffNone' : 'noOne')}</span>`;
 }
 function loadScript(src) {
   return new Promise((ok, no) => {

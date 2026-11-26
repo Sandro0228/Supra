@@ -1017,6 +1017,15 @@ document.addEventListener('click', e => {
       })
     );
   if (d.delrule) return commit(() => (appState.S.rules = appState.S.rules.filter(r => r.id !== d.delrule)));
+  if (d.ff) {
+    const F = appState.FINDF;
+    if (d.ff === 'clear') Object.assign(F, { unseated: false, side: '', group: '', allergy: false });
+    else if (d.ff === 'unseated' || d.ff === 'allergy') F[d.ff] = !F[d.ff];
+    else F.side = F.side === d.ff ? '' : d.ff;
+    renderLeft();
+    $(d.ff === 'clear' ? '#find' : `[data-ff="${d.ff}"]`)?.focus();
+    return;
+  }
   if (d.gototable) {
     const x = T(d.gototable);
     if (!x) return;
@@ -1088,6 +1097,12 @@ document.addEventListener('change', e => {
   }
   const id = e.target.id;
   if (invInput(e) || invSettingChange(e)) return;
+  if (id === 'ffgroup') {
+    appState.FINDF.group = e.target.value;
+    renderLeft();
+    $('#ffgroup')?.focus();
+    return;
+  }
   if (id === 'ev-time') {
     commit(() => (appState.S.event.time = e.target.value));
     return;

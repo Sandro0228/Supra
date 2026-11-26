@@ -141,6 +141,7 @@ const appState = {
   ARR: null,
   DRAFT: 'supra.draft',
   FINDQ: '',
+  FINDF: { unseated: false, side: '', group: '', allergy: false }, // Guests panel filters (combine with FINDQ)
   GL: { mode: 'prefix', pin: false },
   LANG: storedLang(),
   MODE: 'edit',
