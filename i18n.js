@@ -223,6 +223,10 @@ window.SUPRA_I18N = {
     'copyLink': 'Copy link',
     'guestPageOn': 'Guest page is on',
     'notSaved': 'Not saved',
+    'findMore_one': 'and {count} more: type more of the name',
+    'findMore_other': 'and {count} more: type more of the name',
+    'nSeatsTaken_one': '{count} seat taken',
+    'nSeatsTaken_other': '{count} seats taken',
     'verTitle': 'History',
     'verHint':
       'Earlier versions of this plan, kept every 30 minutes while you edit and before big changes. Restoring is a normal change: Undo takes it back.',
@@ -1187,6 +1191,10 @@ window.SUPRA_I18N = {
     'copyLink': 'ბმულის კოპირება',
     'guestPageOn': 'სტუმრებისთვის გვერდი ჩართულია',
     'notSaved': 'ვერ შეინახა',
+    'findMore_one': 'და კიდევ {count}: ჩაწერე სახელის მეტი ნაწილი',
+    'findMore_other': 'და კიდევ {count}: ჩაწერე სახელის მეტი ნაწილი',
+    'nSeatsTaken_one': '{count} ადგილი დაკავებულია',
+    'nSeatsTaken_other': '{count} ადგილი დაკავებულია',
     'verTitle': 'ისტორია',
     'verHint':
       'ამ გეგმის წინა ვერსიები, რომლებიც რედაქტირებისას ყოველ 30 წუთში და დიდი ცვლილებების წინ ინახება. აღდგენა ჩვეულებრივი ცვლილებაა: ბოლო მოქმედების გაუქმებით ისევ დაბრუნდება.',

@@ -1,4 +1,4 @@
-import { $, MEAL_LBL, UL, appState, esc, setLang, t, tn, uid } from './core.js';
+import { $, MEAL_LBL, UL, appState, esc, setLang, t, tn, uid, setDocLang } from './core.js';
 import { toast } from './state.js';
 import { logSafe, portrait } from './panels.js';
 import { fname, offerFile } from './files.js';
@@ -118,7 +118,7 @@ function rsvpDone() {
 }
 function rsvpRender() {
   document.body.classList.add('guestmode');
-  document.documentElement.lang = UL();
+  setDocLang(UL());
   const ev = appState.R.event,
     a = appState.R.invite.answer;
   document.title = [t('rsvpTitle'), ev.name, 'Supra'].filter(Boolean).join(' · ');

@@ -33,7 +33,11 @@ function setting(x, y, ang) {
     w = 40,
     sc = w / n[0],
     h = n[1] * sc;
-  return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang + 180})"><g transform="translate(${-w / 2} ${(-h / 2).toFixed(1)}) scale(${sc.toFixed(4)})">${use('setting')}</g></g>`;
+  // one element per place setting (a plan has one per seat): the three transforms in a single attribute
+  return use(
+    'setting',
+    `transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang + 180}) translate(${-w / 2} ${(-h / 2).toFixed(1)}) scale(${sc.toFixed(4)})"`
+  );
 }
 function clothRect(id, shape, w, h, isSel, p) {
   // plain cloth crop: surface spans x 90..1640, y 8..400 of 1723x544; slices L 0-262, M 258-1462, R 1458-1723
@@ -68,10 +72,10 @@ function nameCard(x, y, G, p, bad) {
     b = parts.slice(1).join(' ');
   const fit = (s, sz) => (s.length * sz * 0.62 > 76 ? `textLength="76" lengthAdjust="spacingAndGlyphs"` : '');
   const sc = SIDE_COL[G.side];
-  return `<g><rect x="${x - 45}" y="${y - 16}" width="90" height="32" rx="6" fill="#FFFFFF" stroke="${bad ? '#C0392B' : p.edge}" stroke-width="${bad ? 2 : 0.9}"/>
+  return `<rect x="${x - 45}" y="${y - 16}" width="90" height="32" rx="6" fill="#FFFFFF" stroke="${bad ? '#C0392B' : p.edge}" stroke-width="${bad ? 2 : 0.9}"/>
   ${sc ? `<rect x="${x - 45}" y="${y - 16}" width="5" height="32" rx="2" fill="${sc}"/>` : ''}
   <text x="${x + 2}" y="${b ? y - 2 : y + 4}" text-anchor="middle" font-family="${NAMEFONT}" font-weight="700" font-size="11" fill="${p.ink}" ${fit(a, 11)}>${esc(a)}</text>
-  ${b ? `<text x="${x + 2}" y="${y + 10}" text-anchor="middle" font-family="${BODYFONT}" font-size="8.6" fill="${shade(p.ink, 30)}" ${fit(b, 8.6)}>${esc(b)}</text>` : ''}</g>`;
+  ${b ? `<text x="${x + 2}" y="${y + 10}" text-anchor="middle" font-family="${BODYFONT}" font-size="8.6" fill="${shade(p.ink, 30)}" ${fit(b, 8.6)}>${esc(b)}</text>` : ''}`;
 }
 function handle(kind, id, x, y, p) {
   return `<g class="rothandle" data-rk="${kind}" data-rid="${id}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle r="15" fill="#FFFFFF" stroke="${p.accent}" stroke-width="2"/><path d="M-6,-3 A7,7 0 1,1 -4,5" fill="none" stroke="${p.accent}" stroke-width="2" stroke-linecap="round"/><path d="M-9,-6 L-6,-2 L-2,-5" fill="none" stroke="${p.accent}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`;
@@ -288,20 +292,30 @@ function planSVG(opt = {}) {
   const p = P(),
     B = bounds(),
     broken = opt.guest ? new Set() : brokenSet();
-  let s = hall(B, p);
+  // The drawing is a list of pieces (hall, title, each venue item, each table, legend). renderPlan() replaces only
+  // the pieces whose markup changed, so typing a name or seating one guest doesn't rebuild a 1000-guest hall.
+  const parts = [],
+    add = (k, h) => parts.push({ k, h });
+  add('hall', hall(B, p));
+  let s = '';
   const seated = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
   const date = gDate();
   const cx = B.x + B.w / 2;
   s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(appState.S.event.name || t('wedding'))}</text>`;
   s += `<text x="${cx}" y="${B.y + 102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date, tn('nGuests', seated), tn('nTables', appState.S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
   s += `<path d="M${cx - 70},${B.y + 116} H${cx + 70}" stroke="${p.accent}" stroke-width="1"/>`;
+  add('title', s);
+  s = '';
   appState.S.tables.forEach(x => {
     const [w, h] = dims(x);
     s += `<ellipse cx="${x.x}" cy="${x.y}" rx="${(w * 0.62).toFixed(0)}" ry="${(h * 0.62).toFixed(0)}" fill="url(#gPool)"/>`;
   });
-  appState.S.venue.forEach(
-    v =>
-      (s += `<g opacity="${opt.dim ? 0.5 : 1}">${venueM(v, p, !opt.guest && appState.sel.kind === 'venue' && appState.sel.v === v.id, opt.guest)}</g>`)
+  add('pools', s);
+  appState.S.venue.forEach(v =>
+    add(
+      'v:' + v.id,
+      `<g opacity="${opt.dim ? 0.5 : 1}">${venueM(v, p, !opt.guest && appState.sel.kind === 'venue' && appState.sel.v === v.id, opt.guest)}</g>`
+    )
   );
   appState.S.tables.forEach(x => {
     const g = geo(x),
@@ -319,7 +333,9 @@ function planSVG(opt = {}) {
       const on =
         (!opt.guest && appState.sel.kind === 'seat' && appState.sel.t === x.id && appState.sel.i === i) ||
         (opt.hi && opt.hi === gid);
-      tb += `<g class="seat${G && !G.ghost ? '' : ' empty'}" data-t="${x.id}" data-i="${i}" ${opt.guest ? '' : `role="button" tabindex="0" aria-label="${esc(seatLabel(x, i, G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
+      // one seat per table is in the Tab order (the last one used there); arrow keys move between the others
+      const tabi = i === Math.min(appState.seatFocus[x.id] || 0, x.seats.length - 1) ? 0 : -1;
+      tb += `<g class="seat${G && !G.ghost ? '' : ' empty'}" data-t="${x.id}" data-i="${i}" ${opt.guest ? '' : `role="button" tabindex="${tabi}" aria-label="${esc(seatLabel(x, i, G))}"`}><g transform="translate(${st.x.toFixed(1)} ${st.y.toFixed(1)}) rotate(${ang.toFixed(1)})">`;
       tb += `<circle class="ring" r="40" fill="${p.accent}" opacity="${on ? 0.32 : 0}"/>`;
       // The drawings are front-facing portraits: turn them back upright on screen, around their middle, so guests
       // on the far side of a table aren't upside down. The seat itself still faces the table.
@@ -403,8 +419,9 @@ function planSVG(opt = {}) {
         `<path d="M0,0 L${hx.toFixed(1)},${hy.toFixed(1)}" stroke="${p.accent}" stroke-width="1" stroke-dasharray="3 3" opacity=".5" pointer-events="none"/>` +
         handle('table', x.id, hx, hy, p);
     }
-    s += tb + `</g>`;
+    add('t:' + x.id, tb + `</g>`);
   });
+  s = '';
   if (Object.values(appState.S.guests).some(g => g.side)) {
     const ly = B.y + B.h - 22;
     let lx = B.x + (IMG.tree_top ? WALL + TREE + 24 : 30);
@@ -413,7 +430,8 @@ function planSVG(opt = {}) {
       lx += t(k).length * 7 + 46;
     });
   }
-  return { B, inner: s };
+  add('legend', s);
+  return { B, parts, inner: parts.map(c => `<g data-chunk="${esc(c.k)}">${c.h}</g>`).join('') };
 }
 
 export { BODYFONT, NAMEFONT, planSVG };
