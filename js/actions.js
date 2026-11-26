@@ -140,7 +140,64 @@ function renderPlan() {
   if (all && wasAllSeated === false && !appState.readOnly) celebrate();
   wasAllSeated = all;
   applyZoom();
+  renderSelBar();
 }
+/* Selection toolbar: the selected table's quick actions float next to it on the plan (contextual tools, design
+   direction A). Same data-act / data-rot buttons as the inspector, so the existing handlers do the work. */
+const SB_ICON = {
+  rot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/></svg>',
+  dup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  mix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>'
+};
+function renderSelBar() {
+  const bar = $('#selbar');
+  if (!bar) return;
+  const x = appState.sel.kind === 'table' && !appState.readOnly ? T(appState.sel.t) : null;
+  if (!x) {
+    bar.hidden = true;
+    bar.dataset.for = '';
+    return;
+  }
+  const occ = x.seats.filter(Boolean).length,
+    nm = tName(x);
+  if (bar.dataset.for !== x.id + ':' + occ + ':' + nm + ':' + UL()) {
+    bar.dataset.for = x.id + ':' + occ + ':' + nm + ':' + UL();
+    bar.setAttribute('aria-label', t('sbA11y', { n: nm }));
+    bar.innerHTML = `<span class="sbname">${esc(nm)}<span class="sbocc">${esc(t('sbOcc', { a: occ, b: x.seats.length }))}</span></span><span class="sbsep" aria-hidden="true"></span><button type="button" data-rot="15">${SB_ICON.rot}${esc(t('sbRotate'))}</button><button type="button" data-act="dup">${SB_ICON.dup}${esc(t('duplicate'))}</button><button type="button" data-act="shuffle">${SB_ICON.mix}${esc(t('sbShuffle'))}</button>`;
+  }
+  bar.hidden = false;
+  placeSelBar();
+}
+// Above the table, or below it when there is no room; hidden while the table is off screen.
+function placeSelBar() {
+  const bar = $('#selbar');
+  if (!bar || bar.hidden) return;
+  const g = $('#plan').querySelector(`.tgrp[data-tg="${CSS.escape(appState.sel.t || '')}"]`),
+    cv = $('#canvas');
+  if (!g || !cv) return;
+  const r = g.getBoundingClientRect(),
+    c = cv.getBoundingClientRect(),
+    bw = bar.offsetWidth,
+    bh = bar.offsetHeight,
+    gap = 10;
+  const off = r.bottom < c.top || r.top > c.bottom || r.right < c.left || r.left > c.right;
+  bar.style.visibility = off ? 'hidden' : '';
+  let top = r.top - c.top - bh - gap;
+  if (top < 64) top = r.bottom - c.top + gap; // under the floating "add" toolbar: flip below the table
+  const left = Math.min(Math.max(8, r.left - c.left + r.width / 2 - bw / 2), c.width - bw - 8);
+  bar.style.left = Math.round(left) + 'px';
+  bar.style.top = Math.round(Math.min(top, c.height - bh - 8)) + 'px';
+}
+let sbRaf = 0;
+$('#scroller').addEventListener(
+  'scroll',
+  () => {
+    cancelAnimationFrame(sbRaf);
+    sbRaf = requestAnimationFrame(placeSelBar);
+  },
+  { passive: true }
+);
+window.addEventListener('resize', () => placeSelBar());
 /* View: `scale` is screen pixels per plan unit, so opening or closing a panel never changes the zoom.
    fitMode remembers a pressed Fit button so the view refits when the window changes size. */
 const isPhone = () => matchMedia('(max-width:900px)').matches;
@@ -245,6 +302,7 @@ function applyZoom(refit) {
   }
   if (refit && appState.fitMode) appState.scale = fitScale(appState.fitMode, true);
   sizePlan();
+  placeSelBar();
 }
 /* Zoom keeping the plan point under (cx,cy) — or the view centre — still. */
 function zoomTo(ns, cx, cy) {

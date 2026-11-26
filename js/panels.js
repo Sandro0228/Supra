@@ -140,6 +140,7 @@ function renderTop() {
             : t('saved');
   st.dataset.state =
     appState.saveState === 'error' || appState.saveState === 'conflict' || appState.dirty ? 'dirty' : 'ok';
+  st.title = st.textContent; // when space is tight the bar shows only the dot
   const bk = $('#backlink');
   if (bk) {
     bk.setAttribute('aria-label', t('logoHome'));
