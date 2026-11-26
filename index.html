@@ -189,6 +189,21 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .account .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .account a{color:var(--accent)}.account a.btn{color:var(--ink)}
 .aclist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+/* home: greeting, the next wedding and its next step; the feast painting above once it exists */
+.home{display:grid;gap:clamp(20px,3vw,32px)}
+.feast{margin:0;border-radius:var(--r-panel);overflow:hidden;outline:1px solid color-mix(in srgb,var(--gold) 45%,transparent);outline-offset:6px;box-shadow:0 30px 60px -40px rgba(36,23,31,.5);background:#17130f}
+.feast[hidden]{display:none}
+.feast img{display:block;width:100%;height:auto;aspect-ratio:3/1;object-fit:cover;object-position:center}
+@media (max-width:600px){.feast img{aspect-ratio:16/9}}
+.homerow{display:grid;gap:20px 40px;align-items:end}
+@media (min-width:860px){.homerow{grid-template-columns:minmax(0,1fr) minmax(0,380px)}}
+.hometext{display:grid;gap:6px}
+.hello{margin:0;color:var(--muted);font-size:16px}
+.home h1{font-family:var(--display);font-weight:500;font-size:clamp(38px,6vw,64px);line-height:1.04;margin:0;text-wrap:balance}
+.homewhen{margin:4px 0 0;display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:15px}.homewhen .count{color:var(--ink);font-weight:500}
+.nextstep{display:grid;gap:14px;justify-items:start;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--r-panel)}
+.nextstep p{margin:0;font-size:15px}
+.dash .dashhead h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,3vw,34px);margin:0}
 /* account menu (signed in): initials button with account, plans, theme and sign out */
 .acct{position:relative}
 .acctbtn{width:38px;height:38px;border-radius:50%;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--panel));color:var(--accent);font-family:var(--display);font-size:17px;font-weight:500;display:grid;place-items:center;padding:0;cursor:pointer}
