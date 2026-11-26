@@ -171,6 +171,7 @@
     th.setAttribute('aria-label', t(dark ? 'toLight' : 'toDark'));
     th.title = t(dark ? 'toLight' : 'toDark');
     $('#lang').setAttribute('aria-label', t('language'));
+    document.querySelector('.hdrnav')?.setAttribute('aria-label', t('lpNavA11y'));
     $('#lang').innerHTML = [
       ['en', 'EN', 'English'],
       ['ka', 'ქარ', 'ქართული']
