@@ -113,7 +113,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .newfoot .btn{margin-left:auto}
 .newfoot label.linkish{cursor:pointer;color:var(--ink)}
 .events{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:18px}
-.ev{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr);min-width:0;
+.ev{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:grid;grid-template-columns:minmax(110px,150px) minmax(0,1fr);min-width:0;
   transition:box-shadow .2s,border-color .2s}
 .ev:hover{border-color:color-mix(in srgb,var(--c) 30%,var(--line));box-shadow:0 18px 40px -28px rgba(60,35,30,.35)}
 .events.one{grid-template-columns:1fr}
@@ -135,13 +135,26 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .pill.plan::before{display:none}.pill.plan.paid{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .pill.plan.over{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
 .when{margin:0;display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted);font-size:14px}
-.edited{margin:-4px 0 0}
 .when .count{color:var(--ink);font-weight:500}.when .count.soon{color:var(--accent)}
 .prog{display:grid;gap:6px}
-.progtxt{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.facts{margin:0;display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--muted)}
+.facts .seated{color:var(--ink);font-weight:500}
+/* status and plan sit in the text, not in outlined pills */
+.ev .pill{border:0;padding:0;border-radius:0;font-size:13px}
+.ev .pill.status{align-self:flex-start;padding-right:48px}
+.ev .facts .pill{font-size:14px;color:var(--muted)}
+.ev .facts .pill.plan.paid{color:var(--accent)}.ev .facts .pill.plan.over{color:var(--danger)}
 .bar{height:6px;border-radius:99px;background:color-mix(in srgb,var(--c) 12%,var(--soft));overflow:hidden}
 .bar i{display:block;height:100%;border-radius:inherit;background:var(--c)}
-.evact{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto;padding-top:4px}
+.evact{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto;padding-top:6px}
+.evbody{position:relative}
+.evmore{position:absolute;top:clamp(10px,1.8vw,16px);right:clamp(10px,1.8vw,16px)}
+.btn.more{width:40px;height:40px;padding:0;color:var(--muted)}
+.btn.more[aria-expanded="true"]{color:var(--ink);border-color:var(--muted)}
+.evmenu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:220px;display:grid;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-panel);box-shadow:0 18px 40px -18px rgba(36,23,31,.35)}
+.evmenu [role=menuitem]{display:flex;align-items:center;gap:10px;padding:10px 12px;border:0;border-radius:var(--r-control);background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;text-decoration:none;cursor:pointer}
+.evmenu [role=menuitem]:hover,.evmenu [role=menuitem]:focus-visible{background:var(--soft);outline:none}
+.evmenu .danger{color:var(--danger)}
 .evact .linkish{margin-left:auto}
 .evact .linkish.danger{color:var(--muted)}.evact .linkish.danger:hover,.evact .linkish.danger:focus-visible{color:var(--danger)}
 @media (max-width:560px){.ev,.events.one .ev{grid-template-columns:1fr}.cover{min-height:120px}.newgrid{grid-template-columns:1fr}}
