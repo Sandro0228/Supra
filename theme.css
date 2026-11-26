@@ -9,7 +9,7 @@
   --tablecloth: #fcfbfa; /* panels, cards, fields */
   --saperavi: #24171f; /* text */
   --wine: #7b1f3e; /* the next action */
-  --gold: #a57f2e; /* hairlines, the seat reveal */
+  --gold: #a57f2e; /* hairlines, the seat reveal; never for text (3.2:1 on stone, below AA for text) */
   --vine: #4e6a4c; /* saved, coming, done */
 
   /* roles used by page CSS */
