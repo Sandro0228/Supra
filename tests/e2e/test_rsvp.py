@@ -187,3 +187,27 @@ def add_to_calendar_downloads_an_event_file(pw, base):
     assert 'DTSTART:20270612T140000Z' in body and 'SUMMARY:Nino & Giorgi' in body and 'LOCATION:Restaurant Iveria' in body, body
     assert d.value.suggested_filename.endswith('.ics')
     c.close()
+
+@test
+def choices_have_icons_and_the_thank_you_shines_for_guests_coming(pw, base):
+    c, p = rsvp(pw, base)
+    assert member(p, 'g01').locator('.rc-yes .ric').count() == 1 and member(p, 'g01').locator('.rc-no .ric').count() == 1
+    choose(p, 'g01', True); choose(p, 'g09', False)
+    p.click('.rsend'); p.wait_for_selector('#rdone')
+    assert p.locator('#rdone.rcoming').count() == 1 and "can't wait to see you" in p.inner_text('#rdone')
+    glow = p.evaluate("getComputedStyle(document.querySelector('#rdone .ron .gportrait')).boxShadow")
+    assert glow != 'none', glow
+    assert p.evaluate("getComputedStyle(document.querySelector('#rdone .rno .gportrait')).boxShadow") == 'none'
+    assert p.get_attribute('[data-rics]', 'class') == 'btn primary'    # adding it to the calendar is the next step
+    assert 'primary' not in p.get_attribute('[data-rchange]', 'class')
+    c.close()
+
+@test
+def a_household_that_cannot_come_gets_a_plain_thank_you(pw, base):
+    c, p = rsvp(pw, base, reduced_motion='reduce')
+    choose(p, 'g01', False); choose(p, 'g09', False)
+    p.click('.rsend'); p.wait_for_selector('#rdone')
+    assert p.locator('#rdone.rcoming').count() == 0 and p.locator('[data-rics]').count() == 0
+    assert "can't wait" not in p.inner_text('#rdone')
+    assert p.evaluate("getComputedStyle(document.querySelector('#rdone')).animationName") == 'none'
+    c.close()

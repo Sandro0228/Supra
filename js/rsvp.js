@@ -63,8 +63,8 @@ function rsvpForm() {
         return `<li class="rmember${c === true ? ' ryes' : c === false ? ' rno' : ''}" data-mid="${esc(m.id)}">
         <div class="rface">${portrait(m, 72)}</div>
         <fieldset class="rpick"><legend class="rname">${esc(m.name)}</legend>
-          <label class="rchoice rc-yes"><input type="radio" name="c-${esc(m.id)}" value="yes"${c === true ? ' checked' : ''}><span>${t('rsvpYes')}</span></label>
-          <label class="rchoice rc-no"><input type="radio" name="c-${esc(m.id)}" value="no"${c === false ? ' checked' : ''}><span>${t('rsvpNo')}</span></label>
+          <label class="rchoice rc-yes"><input type="radio" name="c-${esc(m.id)}" value="yes"${c === true ? ' checked' : ''}><span><svg class="ric" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>${t('rsvpYes')}</span></label>
+          <label class="rchoice rc-no"><input type="radio" name="c-${esc(m.id)}" value="no"${c === false ? ' checked' : ''}><span><svg class="ric" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>${t('rsvpNo')}</span></label>
         </fieldset>
         <label class="rmeal"${c === true ? '' : ' hidden'}><span>${t('meal')}</span>${mealSelect(`data-meal="${esc(m.id)}"`, x.meal)}</label>
       </li>`;
@@ -100,9 +100,10 @@ function rsvpDone() {
     a = inv.answer || { members: {}, extras: [] },
     ex = a.extras || [],
     n = inv.members.filter(m => a.members[m.id]?.coming).length + ex.length;
-  return `<section class="rdone" id="rdone" tabindex="-1" aria-labelledby="rdoneh">
-    <div class="rfaces" aria-hidden="true">${inv.members.map(m => `<span class="${a.members[m.id]?.coming ? '' : 'rno'}">${portrait(m, 64)}</span>`).join('')}</div>
-    <h2 id="rdoneh">${n ? esc(tn('rsvpThanksYes', n)) : t('rsvpThanksNo')}</h2>
+  // The household's peak moment: everyone coming shines in the same gold glow as the guest page's seat reveal.
+  return `<section class="rdone${n ? ' rcoming' : ''}" id="rdone" tabindex="-1" aria-labelledby="rdoneh">
+    <div class="rfaces" aria-hidden="true">${inv.members.map(m => `<span class="${a.members[m.id]?.coming ? 'ron' : 'rno'}">${portrait(m, 64)}</span>`).join('')}</div>
+    <div class="rdonehead"><h2 id="rdoneh">${n ? esc(tn('rsvpThanksYes', n)) : t('rsvpThanksNo')}</h2>${n ? `<p class="rlead">${t('rsvpSeeYou')}</p>` : ''}</div>
     <ul class="rsum">${inv.members
       .map(m => {
         const x = a.members[m.id];
@@ -112,7 +113,7 @@ function rsvpDone() {
       ${ex.map(x => `<li><span class="rn">${esc(x.name)}</span><span class="ryes">${t('rsvpYes')}${x.meal ? `<small>${esc(mealName(x.meal))}</small>` : ''}</span></li>`).join('')}</ul>
     ${a.allergies ? `<div class="rextra-text"><h3>${t('rsvpAllergies')}</h3><p>${esc(a.allergies)}</p></div>` : ''}
     ${a.message ? `<div class="rextra-text"><h3>${t('rsvpMessage')}</h3><p>${esc(a.message)}</p></div>` : ''}
-    <div class="racts">${appState.R.closed ? '' : `<button type="button" class="btn" data-rchange>${t('rsvpChange')}</button>`}${appState.R.event.startsAt ? `<button type="button" class="btn" data-rics>${t('rsvpCalendar')}</button>` : ''}</div>
+    <div class="racts">${appState.R.event.startsAt && n ? `<button type="button" class="btn primary" data-rics>${t('rsvpCalendar')}</button>` : ''}${appState.R.closed ? '' : `<button type="button" class="btn" data-rchange>${t('rsvpChange')}</button>`}</div>
     <p class="rnote">${appState.R.closed ? t('rsvpClosed') : appState.R.deadline ? esc(t('rsvpUntil', { when: fmtWhen(appState.R.deadline) })) : ''}</p>
   </section>`;
 }
