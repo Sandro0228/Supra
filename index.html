@@ -219,6 +219,18 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .homewhen{margin:4px 0 0;display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:15px}.homewhen .count{color:var(--ink);font-weight:500}
 .nextstep{display:grid;gap:14px;justify-items:start;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--r-panel)}
 .nextstep p{margin:0;font-size:15px}
+.quick{display:flex;flex-wrap:wrap;gap:6px 18px;border-top:1px solid var(--line);padding-top:12px;width:100%}
+.quick .linkish{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink);text-decoration:none;cursor:pointer;min-height:32px}
+.quick .linkish svg{color:var(--muted)}.quick .linkish:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.activity{display:grid;gap:10px;padding:16px 20px;border:1px solid var(--line);border-radius:var(--r-panel);background:var(--panel)}
+.activity h2{font-family:var(--display);font-weight:400;font-size:20px;margin:0}
+.activity ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.activity li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 16px;padding:7px 0;border-top:1px solid var(--line);font-size:15px}
+.activity li:first-child{border-top:0}
+.activity li a{color:var(--ink);text-decoration:none;min-width:0;overflow-wrap:anywhere}.activity li a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.activity li.yes a::before,.activity li.no a::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:10px;vertical-align:1px;background:var(--vine)}
+.activity li.no a::before{background:var(--muted)}
+.activity li .small{color:var(--muted)}
 .dash .dashhead h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,3vw,34px);margin:0}
 /* account menu (signed in): initials button with account, plans, theme and sign out */
 .acct{position:relative}

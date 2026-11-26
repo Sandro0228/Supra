@@ -79,7 +79,8 @@
     events: null,
     trash: [],
     plans: null, // the owner's entitlements (migration 011); null = unknown
-    invites: [], // invitation replies per event (migration 008): event_id, state, revoked
+    invites: [], // invitation replies per event (migration 008): id, event_id, name, members, state, revoked
+    replies: [], // the latest guest answers across all events (invite_log)
     menuId: null, // the event whose ⋯ menu is open
     trashOpen: false,
     forever: null,
@@ -422,7 +423,7 @@
             : '';
     const hero = evs && evs.length && !D.loadErr ? homeHero(nextEvent(evs)) : '',
       H = hero ? 'h2' : 'h1';
-    $('#main').innerHTML = `<div class="dash">${hero}
+    $('#main').innerHTML = `<div class="dash">${hero}${hero ? activity() : ''}
   <div class="dashhead"><${H} id="yourh">${esc(t('dYour'))}</${H}>${first || D.newOpen ? '' : `<button type="button" class="btn${hero ? '' : ' primary'}" data-newopen>${PLUS}${esc(t('dNew'))}</button>`}</div>
   ${first || D.newOpen ? newPanel(first) : ''}
   <section aria-labelledby="yourh" class="yours">${list}</section>${D.trash.length ? trashSection() : ''}</div>`;
@@ -487,8 +488,54 @@
     <div class="homerow">
       <div class="hometext"><p class="hello">${esc(greeting())}</p><h1 id="homeh">${esc(nm)}</h1>
         ${e.event_date ? `<p class="homewhen"><span>${esc(fmtDate(e.event_date))}</span>${when ? `<span class="count">${esc(when)}</span>` : ''}</p>` : ''}</div>
-      <div class="nextstep" role="group" aria-label="${esc(t('nsA11y'))}"><p>${esc(step.text)}</p>${step.btn}</div>
+      <div class="nextstep" role="group" aria-label="${esc(t('nsA11y'))}"><p>${esc(step.text)}</p>${step.btn}${quick(e, step)}</div>
     </div></section>`;
+  }
+  /* Quick actions for the next wedding, under its next step: copy the guest link (unless that is the next step),
+     place cards (the planner opens them straight away with ?do=cards) and the Invitations panel. */
+  function quick(e, step) {
+    const acts = [];
+    if (pubOf(e) && !step.btn.includes('data-copy'))
+      acts.push(
+        `<button type="button" class="linkish" data-copy="${esc(e.slug)}">${LINK}${esc(t('dCopyLink'))}</button>`
+      );
+    if (seatedCount(e))
+      acts.push(`<a class="linkish" href="/edit/${esc(e.id)}?do=cards">${CARDS}${esc(t('qaCards'))}</a>`);
+    if (guestCount(e))
+      acts.push(`<a class="linkish" href="/edit/${esc(e.id)}?panel=invites">${MAIL}${esc(t('qaInvites'))}</a>`);
+    return acts.length ? `<div class="quick" role="group" aria-label="${esc(t('qaA11y'))}">${acts.join('')}</div>` : '';
+  }
+  /* Recent replies: the latest answers guests sent from their invitation links, across all events. The couple's own
+     edits are left out (they know about those). Nothing shows until someone has answered. */
+  const REPLIES = 6;
+  function ago(at) {
+    const s = Math.max(0, (Date.now() - new Date(at).getTime()) / 1000);
+    return s < 60
+      ? t('agoNow')
+      : s < 3600
+        ? tn('agoMin', Math.round(s / 60))
+        : s < 86400
+          ? tn('agoHour', Math.round(s / 3600))
+          : tn('agoDay', Math.round(s / 86400));
+  }
+  function activity() {
+    const evs = D.events || [],
+      byId = new Map(evs.map(e => [e.id, e])),
+      invs = new Map((D.invites || []).map(i => [i.id, i])),
+      L = (D.replies || []).filter(r => byId.has(r.event_id) && invs.has(r.invite_id));
+    if (!L.length) return '';
+    const many = new Set(L.map(r => r.event_id)).size > 1 || evs.length > 1;
+    const who = (i, e) => {
+      const g = e.guests || {};
+      return (i.name || '').trim() || (i.members || []).map(id => g[id]?.name).filter(Boolean)[0] || t('rpSomeone');
+    };
+    return `<section class="activity" aria-labelledby="acth"><h2 id="acth">${esc(t('rpTitle'))}</h2><ul role="list">${L.map(
+      r => {
+        const e = byId.get(r.event_id),
+          what = r.state_after === 'coming' ? tn('invComingN', r.coming_after || 0) : t('rs_declined');
+        return `<li class="${r.state_after === 'coming' ? 'yes' : 'no'}"><a href="/edit/${esc(e.id)}?panel=invites"><b>${esc(who(invs.get(r.invite_id), e))}</b>: ${esc(what)}</a><span class="small">${many ? `${esc(e.name || '—')} · ` : ''}<time datetime="${esc(r.at)}">${esc(ago(r.at))}</time></span></li>`;
+      }
+    ).join('')}</ul></section>`;
   }
   /* Trash: deleted events stay 30 days (the server empties it), can be restored, or deleted for good after typing
      the event's name. */
@@ -625,6 +672,10 @@
       '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
     TRASH =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
+    CARDS =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-5 9 5"/><rect x="4" y="9" width="16" height="10" rx="1.5"/><path d="M8 14h8"/></svg>',
+    MAIL =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
     CHECK =
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     FLOWERS = (window.SUPRA_IMG_FILES || {}).flowers_top || '';
@@ -633,17 +684,24 @@
     const g = ++loadGen;
     D.loadErr = false;
     const plans = SB.from('entitlements').select('kind,event_id,status,starts_at,ends_at'),
-      invites = SB.from('invites').select('event_id,state,revoked');
+      invites = SB.from('invites').select('id,event_id,name,members,state,revoked'),
+      replies = SB.from('invite_log')
+        .select('invite_id,event_id,at,state_after,coming_after')
+        .eq('by', 'guest')
+        .order('at', { ascending: false })
+        .limit(REPLIES);
     const { data, error } = await SB.from('events')
       .select(
         'id,name,event_date,slug,guest_page,share_status,updated_at,deleted_at,guests:data->guests,tables:data->tables,ev:data->event'
       )
       .order('updated_at', { ascending: false });
     const pr = await plans,
-      ir = await invites;
+      ir = await invites,
+      lr = await replies;
     if (g !== loadGen || A.state !== 'authenticated') return;
     D.plans = pr.error ? null : pr.data || [];
     D.invites = ir.error ? [] : ir.data || [];
+    D.replies = lr.error ? [] : lr.data || [];
     if (error) {
       D.loadErr = true;
       D.events = [];

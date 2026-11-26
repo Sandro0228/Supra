@@ -1,6 +1,6 @@
 """Signed-in home: greeting, the next wedding up front with one next step, the planner opening on that panel, and the
 feast painting frame staying hidden until the picture exists."""
-import copy, datetime
+import copy, datetime, json
 from harness import Ctx, PLAN, test
 
 def ev(id='ev1', name='Nino & Giorgi', date=None, data=None, status='published', **kw):
@@ -100,4 +100,50 @@ def card_checklist_in_georgian(pw, base):
     p = c.goto('/', '.home')
     assert p.get_attribute('.ev .ring', 'aria-label') == '4 ნაბიჯიდან შესრულებულია 2'
     assert 'ვერ მოდის' in p.inner_text('.ev .rsvpline')
+    c.close()
+
+def log(inv_id, state, n, ago_s, event='ev1', by='guest'):
+    at = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=ago_s)).isoformat()
+    return dict(id=ago_s, invite_id=inv_id, event_id=event, at=at, by=by, state_after=state, coming_after=n)
+
+def with_log(entries):
+    return "var d=JSON.parse(localStorage.getItem('mockdb'));d.invite_log=%s;localStorage.setItem('mockdb',JSON.stringify(d));" % json.dumps(entries)
+
+@test
+def recent_replies_from_guests(pw, base):
+    invs = [inv('1', 'coming', 2), inv('2', 'declined'), inv('3', 'coming', 1)]
+    invs[0]['name'] = 'Beridze family'
+    entries = [log('1', 'coming', 2, 120), log('2', 'declined', 0, 7200), log('3', 'coming', 1, 30, by='couple')]
+    c = Ctx(pw, base, events=[ev(date=day(30))], invites=invs, extra=with_log(entries)); p = c.goto('/', '.home')
+    items = p.locator('.activity li')
+    assert items.count() == 2, p.inner_text('.activity')              # the couple's own edit is left out
+    assert items.nth(0).inner_text().startswith('Beridze family: 2 coming') and '2 minutes ago' in items.nth(0).inner_text()
+    assert "can't come" in items.nth(1).inner_text() and '2 hours ago' in items.nth(1).inner_text()
+    assert items.nth(0).locator('a').get_attribute('href') == '/edit/ev1?panel=invites'
+    assert not c.errors, c.errors
+    c.close()
+    c, p = home(pw, base, [ev(date=day(30))])
+    assert p.locator('.activity').count() == 0                         # no replies yet: no section
+    c.close()
+
+@test
+def quick_actions_under_the_next_step(pw, base):
+    c, p = home(pw, base, [ev(status='draft', date=day(30))])
+    q = p.eval_on_selector_all('.quick a, .quick button', 'xs => xs.map(x => [x.textContent.trim(), x.getAttribute("href")])')
+    assert q == [['Place cards', '/edit/ev1?do=cards'], ['Invitations', '/edit/ev1?panel=invites']], q   # not published: no link to copy
+    c.close()
+    c, p = home(pw, base, [ev(date=None)])                              # published, next step is the date
+    assert p.locator('.quick [data-copy]').count() == 1
+    c.close()
+    c, p = home(pw, base, [ev(date=day(30))])                           # copying the link is already the next step
+    assert p.locator('.quick [data-copy]').count() == 0 and p.locator('.nextstep > [data-copy]').count() == 1
+    c.close()
+
+@test
+def place_cards_quick_action_opens_the_cards(pw, base):
+    c, p = home(pw, base, [ev(status='draft', date=day(30))])
+    p.click('.quick a[href$="do=cards"]')
+    p.wait_for_selector('#cardpages')
+    assert 'do=cards' not in p.url, p.url                               # a reload won't open them again
+    assert not c.errors, c.errors
     c.close()
