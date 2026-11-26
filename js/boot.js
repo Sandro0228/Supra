@@ -23,6 +23,7 @@ import { rsvpDraftFrom } from './rsvp.js';
 import { invRefresh } from './invites.js';
 import { showConflict } from './conflict.js';
 import { loadAccess } from './access.js';
+import { storedView } from './listview.js';
 /* Startup: decides the page (planner, guest page or RSVP) and loads its data. Part of the planner (app.html); see js/README.md. */
 /* ---------------- boot ---------------- */
 function measure() {
@@ -255,6 +256,7 @@ async function boot() {
   if (appState.S.tables.some(x => x.x === undefined)) autoArrange();
   resolveOverlaps();
   // /edit/<id>?panel=guests opens the planner on that panel (used by the next-step buttons on "Your events")
+  if (appState.MODE === 'edit') appState.view = storedView();
   const startPanel = qs.get('panel');
   if (appState.MODE === 'edit' && !appState.readOnly && ['event', 'guests', 'invites', 'share'].includes(startPanel))
     appState.panel = startPanel;

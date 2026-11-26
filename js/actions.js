@@ -47,6 +47,7 @@ import {
 } from './panels.js';
 import { catererModal, dlQR, exportX, placeCards, planImage, planPdf, savePlan } from './files.js';
 import { importModal } from './import.js';
+import { renderList, renderViewSwitch, setView } from './listview.js';
 import { GERR, guestClick, setGuestErr } from './guest.js';
 import { rsvpClick, rsvpInput } from './rsvp.js';
 import { invClick, invInput, invSettingChange } from './invites.js';
@@ -124,6 +125,11 @@ function patchPlan(svg, parts, key) {
   lastKey = key;
 }
 function renderPlan() {
+  if (appState.view === 'list') {
+    renderList(); // the drawing waits until the plan view comes back
+    renderSelBar();
+    return;
+  }
   const { B, parts } = withView(() => planSVG({ rsvp: true }));
   const svg = $('#plan');
   const vb = `${B.x} ${B.y} ${B.w} ${B.h}`;
@@ -152,7 +158,7 @@ const SB_ICON = {
 function renderSelBar() {
   const bar = $('#selbar');
   if (!bar) return;
-  const x = appState.sel.kind === 'table' && !appState.readOnly ? T(appState.sel.t) : null;
+  const x = appState.sel.kind === 'table' && !appState.readOnly && appState.view !== 'list' ? T(appState.sel.t) : null;
   if (!x) {
     bar.hidden = true;
     bar.dataset.for = '';
@@ -345,6 +351,10 @@ function keepView(fn) {
 }
 /* Focused view of one table, for reading names on a phone. */
 function focusTable(x0) {
+  if (appState.view === 'list') {
+    document.getElementById('lvh-' + x0.id)?.scrollIntoView({ block: 'start' });
+    return;
+  }
   const x = withView(() => T(x0.id)),
     [w, h] = dims(x),
     sc = $('#scroller'),
@@ -367,6 +377,7 @@ function renderAll() {
   const fk = focusKeyOf(document.activeElement);
   setDocLang(UL());
   renderTop();
+  renderViewSwitch();
   const st = renderDrawer();
   renderLeft();
   renderRight();
@@ -378,7 +389,7 @@ function renderAll() {
   if (st.closed) {
     const back = appState.drawerOpener && document.querySelector(appState.drawerOpener);
     appState.drawerOpener = null;
-    (back || $('#scroller')).focus({ preventScroll: true });
+    (back || $(appState.view === 'list' ? '#listview' : '#scroller')).focus({ preventScroll: true });
     return;
   }
   if (fk && document.activeElement === document.body) {
@@ -1040,9 +1051,25 @@ document.addEventListener('click', e => {
     scrollToSeat();
     return;
   }
+  if (d.view) {
+    if (d.view !== appState.view) {
+      setView(d.view);
+      renderAll();
+    }
+    return;
+  }
+  if (d.lseat) {
+    const [tid, i] = d.lseat.split(':');
+    return clickSeat(tid, +i, `[data-lseat="${CSS.escape(d.lseat)}"]`);
+  }
+  if (d.ltable) return selectItem('table', d.ltable, `[data-ltable="${CSS.escape(d.ltable)}"]`);
   if (d.wait) {
     appState.waitSel = appState.waitSel === d.wait ? null : d.wait;
     renderLeft();
+    if (appState.view === 'list') {
+      renderList();
+      document.querySelector(`#listview [data-wait="${CSS.escape(d.wait)}"]`)?.focus();
+    }
     $('#plan').classList.toggle('seekseat', !!appState.waitSel);
     if (appState.waitSel) toast(t('tapEmpty'));
     return;
@@ -1305,10 +1332,11 @@ document.addEventListener('keydown', e => {
     next.focus();
   }
 });
-function clickSeat(tid, i) {
-  if (appState.swapFrom) return selectItem('table', tid);
+// opener: what gets focus back when the inspector closes (the list view passes its own row)
+function clickSeat(tid, i, opener) {
+  if (appState.swapFrom) return selectItem('table', tid, opener && `[data-ltable="${CSS.escape(tid)}"]`);
   const x = T(tid);
-  if (!drawerOpen) appState.drawerOpener = `.seat[data-t="${tid}"][data-i="${i}"]`;
+  if (!drawerOpen) appState.drawerOpener = opener || `.seat[data-t="${tid}"][data-i="${i}"]`;
   if (appState.waitSel && !x.seats[i]) {
     const w = appState.waitSel;
     appState.waitSel = null;
@@ -1334,7 +1362,7 @@ function swapTables(a, b) {
   });
   toast(t('swapDone', { a: tName(A), b: tName(B) }));
 }
-function selectItem(kind, id) {
+function selectItem(kind, id, opener) {
   if (appState.swapFrom) {
     if (kind === 'table' && id !== appState.swapFrom) {
       const f = appState.swapFrom;
@@ -1348,7 +1376,8 @@ function selectItem(kind, id) {
       return;
     }
   }
-  if (!drawerOpen) appState.drawerOpener = kind === 'table' ? `.tbody[data-table="${id}"]` : `.venue[data-v="${id}"]`;
+  if (!drawerOpen)
+    appState.drawerOpener = opener || (kind === 'table' ? `.tbody[data-table="${id}"]` : `.venue[data-v="${id}"]`);
   appState.sel = kind === 'table' ? { kind, t: id } : { kind, v: id };
   appState.confirmK = null;
   renderAll();
@@ -1363,6 +1392,12 @@ function closeDrawer() {
    its table. */
 const READABLE = 0.55;
 function scrollToSeat() {
+  if (appState.view === 'list') {
+    document
+      .querySelector(`#listview [data-lseat="${CSS.escape(appState.sel.t + ':' + appState.sel.i)}"]`)
+      ?.scrollIntoView({ block: 'center' });
+    return;
+  }
   const x = T(appState.sel.t);
   if (x && appState.scale && appState.scale < READABLE) {
     focusTable(x);
