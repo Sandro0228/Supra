@@ -14,6 +14,7 @@ import './import.js';
 import './guest.js';
 import './rsvp.js';
 import './invites.js';
+import './listview.js';
 import { boot } from './boot.js';
 import { planSVG } from './draw.js';
 import { catererModal } from './files.js';

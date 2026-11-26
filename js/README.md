@@ -18,6 +18,7 @@ The planner, the public "find my seat" page and the RSVP page are one program ma
 | `conflict.js` | Two tabs or devices: the version check behind `savePlan`, the "which version to keep" question, loading a newer plan when the tab comes back |
 | `guest.js` | Public "find my seat" page (`/e/<token>`), `route()` |
 | `rsvp.js` | Household RSVP page (`/r/<token>`) |
+| `listview.js` | List view (C2): "Plan / List" switch (`appState.view`, remembered per device), the plan as tables of guests; rows reuse `clickSeat` / `selectItem` / the waiting list |
 | `invites.js` | Invitations tab, `eventCols()`, and answers flowing into the plan (`invRefresh`, `invApply`) |
 | `boot.js` | `boot()`: picks the page (planner, guest page or RSVP) and loads its data |
 
