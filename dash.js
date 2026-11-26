@@ -472,9 +472,24 @@
     return `<span class="pill plan${n > FREE_LIMIT ? ' over' : ''}">${esc(t('dPlanFree', { n, max: FREE_LIMIT }))}</span>`;
   }
   const pubOf = e => (e.share_status || (e.guest_page ? 'published' : 'draft')) === 'published';
+  // "Edited today / yesterday / 3 days ago", then the date after a month. Nothing for an unreadable time.
+  function editedText(ts) {
+    const d = new Date(ts);
+    if (!ts || isNaN(d)) return '';
+    const day = x => {
+        const c = new Date(x);
+        c.setHours(12, 0, 0, 0);
+        return c;
+      },
+      ago = Math.round((day(Date.now()) - day(d)) / 864e5);
+    const when = ago <= 0 ? t('dEditedToday') : ago <= 30 ? tn('dDaysAgo', ago) : fmtDate(d.toISOString());
+    return t('dEdited', { when: ago > 30 ? when : when.charAt(0).toLowerCase() + when.slice(1) });
+  }
   function evCard(e) {
     const n = e.guests ? Object.keys(e.guests).length : 0,
       seated = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0),
+      free = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(s => !s).length, 0),
+      edited = editedText(e.updated_at),
       nm = e.name || '—',
       pal = PAL[e.ev?.palette] || PAL.blush,
       dd = daysTo(e.event_date),
@@ -486,7 +501,7 @@
     <div class="evbody">
       <div class="evtop"><div class="pills"><span class="pill ${pub ? 'on' : ''}">${esc(t(pub ? 'dPubOn' : 'dPubOff'))}</span>${planPill(e, n)}</div><h2 class="evname"><a href="/edit/${esc(e.id)}">${esc(nm)}</a></h2></div>
       <p class="when">${e.event_date ? `<span>${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span></p>
-      <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>
+      <div class="prog"><div class="progtxt"><span>${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span class="small">${esc(tn('nTables', (e.tables || []).length))}${free ? ' · ' + esc(tn('nFree', free)) : ''}</span></div>${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}</div>${edited ? `<p class="small edited">${esc(edited)}</p>` : ''}
       <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}<button type="button" class="linkish danger" data-del="${esc(e.id)}" aria-label="${esc(t('dDelete') + ': ' + nm)}">${esc(t('dDelete'))}</button></div>
       ${D.confirmId === e.id ? `<div class="confirm" role="alertdialog" aria-label="${esc(t('dDelete'))}"><span>${esc(t('dDeleteQ', { n: nm }))}</span><div class="row"><button type="button" class="btn sm danger" data-delyes="${esc(e.id)}">${esc(t('dToTrash'))}</button><button type="button" class="btn sm" data-cancel>${esc(t('dKeep'))}</button></div></div>` : ''}
     </div></li>`;
