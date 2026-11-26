@@ -19,7 +19,7 @@ def valid_stored_session_never_shows_sign_in(pw, base):
     seen = surfaces(p)
     assert 'signin' not in seen, seen
     assert seen[-1] == 'dash' and 'loading' in seen, seen
-    assert p.is_visible('#signout') and 'sandro@example.com' in p.inner_text('#who')
+    assert p.is_visible('#acctbtn') and 'sandro@example.com' in p.text_content('#who')
     assert not c.errors, c.errors; c.close()
 
 @test
@@ -29,7 +29,7 @@ def anonymous_never_sees_account_content(pw, base):
     seen = surfaces(p)
     assert 'dash' not in seen, seen
     assert seen[-1] == 'signin', seen
-    assert p.is_hidden('#signout') and p.inner_text('#who') == ''
+    assert p.is_hidden('#acctbtn') and p.text_content('#who') == ''
     c.close()
 
 @test
@@ -68,7 +68,7 @@ def successful_sign_in_then_sign_out_then_reload(pw, base):
     p = c.goto('/', wait='#sform')
     p.fill('#email', 'sandro@example.com'); p.fill('#pw', 'secret1'); p.click('#sform [type=submit]')
     p.wait_for_selector('.dashhead')
-    p.click('#signout'); p.wait_for_selector('#sform')
+    p.click('#acctbtn'); p.click('#signout'); p.wait_for_selector('#sform')
     p.evaluate("window.__seen=[]"); p.reload(); p.wait_for_selector('#sform'); p.wait_for_timeout(200)
     assert 'dash' not in surfaces(p), surfaces(p)
     c.close()
