@@ -23,7 +23,7 @@ def account_menu_opens_the_account_page(pw, base):
     p.keyboard.press('ArrowDown'); assert p.evaluate("document.activeElement.getAttribute('href')") == '/'   # wraps
     p.keyboard.press('Escape')
     assert p.is_hidden('#acctmenu') and p.evaluate("document.activeElement.id") == 'acctbtn'
-    p.click('#acctbtn'); p.click('#accttheme')                          # theme lives in the menu when signed in
+    p.click('#theme')                                                   # the theme switch stays in the header
     assert p.evaluate("document.documentElement.dataset.theme") in ('dark', 'light')
     p.click('#acctbtn'); p.click('#acctlink'); p.wait_for_selector('#ach')
     assert p.inner_text('#ach') == 'Account' and 'sandro@example.com' in p.inner_text('.account')

@@ -194,8 +194,7 @@
     document.body.classList.toggle('signedin', authed);
     document.querySelectorAll('.landing').forEach(el => (el.hidden = authed));
     $('#hdrstart').hidden = authed;
-    // signed in: theme and sign out move into the account menu behind the initials button
-    th.hidden = authed;
+    // signed in: the account menu behind the initials button holds account, plans and sign out
     $('#acct').hidden = !authed;
     const email = authed ? A.session.user.email || '' : '',
       init = (email.trim()[0] || '·').toUpperCase();
@@ -203,7 +202,6 @@
     $('#acctbtn').textContent = init;
     document.querySelector('.acctinit').textContent = init;
     $('#acctbtn').setAttribute('aria-label', t('acMenuA11y', { email }));
-    $('#accttheme').textContent = t(dark ? 'toLight' : 'toDark');
     $('#signout').textContent = t('dSignOut');
   }
   function render() {
@@ -941,14 +939,13 @@
       if (open) $('#acctmenu [role=menuitem]')?.focus();
       return;
     }
-    if (b.id === 'theme' || b.id === 'accttheme') {
+    if (b.id === 'theme') {
       const n = curTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = n;
       try {
         localStorage.setItem('supra.theme', n);
       } catch (x) {}
       chrome();
-      if (b.id === 'accttheme') setAcctMenu(false, true); // a menu choice closes the menu
       return;
     }
     if (b.id === 'signout') {
