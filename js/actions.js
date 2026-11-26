@@ -3,6 +3,7 @@ import {
   UL,
   VENUE,
   appState,
+  esc,
   lookMismatch,
   randLook,
   relook,
@@ -10,7 +11,8 @@ import {
   setLang,
   smartLook,
   t,
-  uid
+  uid,
+  setDocLang
 } from './core.js';
 import { T, V, commit, hist, markDirty, mkGuest, tName, toast, undo } from './state.js';
 import {
@@ -102,13 +104,34 @@ function celebrate() {
   $('#canvas').append(box);
   setTimeout(() => box.remove(), 4200);
 }
+/* The plan is drawn in pieces (planSVG().parts). When the pieces are the same ones as last time (same tables and
+   room items in the same order, same viewBox), only pieces whose markup changed are replaced; otherwise the whole
+   drawing is rebuilt. A 500-guest hall no longer rebuilds ~14 000 elements for each typed letter. */
+let lastParts = null,
+  lastKey = '',
+  liveT = 0;
+const SVGNS = 'http://www.w3.org/2000/svg';
+function patchPlan(svg, parts, key) {
+  if (lastParts && key === lastKey && svg.children.length === parts.length) {
+    const tmp = document.createElementNS(SVGNS, 'svg');
+    parts.forEach((c, i) => {
+      if (c.h === lastParts[i].h) return;
+      tmp.innerHTML = `<g data-chunk="${esc(c.k)}">${c.h}</g>`;
+      svg.children[i].replaceWith(tmp.firstChild);
+    });
+  } else svg.innerHTML = parts.map(c => `<g data-chunk="${esc(c.k)}">${c.h}</g>`).join('');
+  lastParts = parts;
+  lastKey = key;
+}
 function renderPlan() {
-  const { B, inner } = withView(() => planSVG({ rsvp: true }));
+  const { B, parts } = withView(() => planSVG({ rsvp: true }));
   const svg = $('#plan');
-  svg.setAttribute('viewBox', `${B.x} ${B.y} ${B.w} ${B.h}`);
-  svg.dataset.w = B.w;
-  svg.dataset.h = B.h;
-  svg.innerHTML = inner;
+  const vb = `${B.x} ${B.y} ${B.w} ${B.h}`;
+  // setting the same viewBox or size again still makes the browser lay out the whole drawing: only on change
+  if (svg.getAttribute('viewBox') !== vb) svg.setAttribute('viewBox', vb);
+  if (svg.dataset.w !== String(B.w)) svg.dataset.w = B.w;
+  if (svg.dataset.h !== String(B.h)) svg.dataset.h = B.h;
+  patchPlan(svg, parts, vb + '|' + parts.map(c => c.k).join('|'));
   svg.classList.toggle('seekseat', !!appState.waitSel);
   const now = seatMap();
   settleNew(svg, lastSeats, now);
@@ -154,12 +177,31 @@ function contentBox0() {
   if (!isFinite(x0)) return null;
   return { x0: x0 - 30, x1: x1 + 30 };
 }
-function fitScale(kind) {
-  const sc = $('#scroller'),
-    P = padOf(sc),
+/* The scroller's inner size. Measuring it right after the plan changed forces a full layout (~30 ms at 500 guests),
+   so redraws use the size a ResizeObserver keeps; deliberate fits (buttons, window resize, first view) measure afresh. */
+let scBox = null;
+function scrollerBox(fresh) {
+  if (fresh || !scBox) {
+    const sc = $('#scroller'),
+      P = padOf(sc);
+    scBox = { w: sc.clientWidth - P.l - P.r, h: sc.clientHeight - P.t - P.b };
+  }
+  return scBox;
+}
+if (window.ResizeObserver)
+  new ResizeObserver(es => {
+    const r = es[0].contentRect;
+    if (scBox && r.width === scBox.w && r.height === scBox.h) return;
+    scBox = { w: r.width, h: r.height };
+    const z = $('#zpct');
+    if (z && appState.scale && $('#plan').dataset.w) z.textContent = zoomPct();
+  }).observe($('#scroller'));
+const zoomPct = () => Math.round((appState.scale / fitScale('all')) * 100) + '%';
+function fitScale(kind, fresh) {
+  const box = scrollerBox(fresh),
     [W, H] = planWH(),
-    cw = Math.max(200, sc.clientWidth - P.l - P.r),
-    ch = Math.max(160, sc.clientHeight - P.t - P.b);
+    cw = Math.max(200, box.w),
+    ch = Math.max(160, box.h);
   if (kind === 'width') {
     const cb = contentBox();
     return cw / Math.min(W, cb ? cb.x1 - cb.x0 : W);
@@ -171,10 +213,12 @@ const ZMIN = 0.08,
 function sizePlan() {
   const svg = $('#plan'),
     [W, H] = planWH();
-  svg.style.width = Math.round(W * appState.scale) + 'px';
-  svg.style.height = Math.round(H * appState.scale) + 'px';
+  const w = Math.round(W * appState.scale) + 'px',
+    h = Math.round(H * appState.scale) + 'px';
+  if (svg.style.width !== w) svg.style.width = w;
+  if (svg.style.height !== h) svg.style.height = h;
   const z = $('#zpct');
-  if (z) z.textContent = Math.round((appState.scale / fitScale('all')) * 100) + '%';
+  if (z) z.textContent = zoomPct();
 }
 /* Scrolls so the occupied part of the room is centred, top first. */
 function centerContent() {
@@ -194,12 +238,12 @@ function applyZoom(refit) {
   if (!svg.dataset.w) return;
   if (appState.scale == null) {
     appState.fitMode = isPhone() ? 'width' : 'all';
-    appState.scale = fitScale(appState.fitMode);
+    appState.scale = fitScale(appState.fitMode, true);
     sizePlan();
     centerContent();
     return;
   }
-  if (refit && appState.fitMode) appState.scale = fitScale(appState.fitMode);
+  if (refit && appState.fitMode) appState.scale = fitScale(appState.fitMode, true);
   sizePlan();
 }
 /* Zoom keeping the plan point under (cx,cy) — or the view centre — still. */
@@ -222,7 +266,7 @@ function zoomTo(ns, cx, cy) {
 }
 function setFit(kind) {
   appState.fitMode = kind;
-  appState.scale = Math.min(ZMAX, fitScale(kind));
+  appState.scale = Math.min(ZMAX, fitScale(kind, true));
   sizePlan();
   centerContent();
 }
@@ -263,7 +307,7 @@ function focusTable(x0) {
 }
 function renderAll() {
   const fk = focusKeyOf(document.activeElement);
-  document.documentElement.lang = UL();
+  setDocLang(UL());
   renderTop();
   const st = renderDrawer();
   renderLeft();
@@ -915,6 +959,13 @@ document.addEventListener('click', e => {
       })
     );
   if (d.delrule) return commit(() => (appState.S.rules = appState.S.rules.filter(r => r.id !== d.delrule)));
+  if (d.gototable) {
+    const x = T(d.gototable);
+    if (!x) return;
+    selectItem('table', x.id);
+    requestAnimationFrame(() => focusTable(x));
+    return;
+  }
   if (d.goto) {
     const [tt, i] = d.goto.split(':');
     appState.sel = { kind: 'seat', t: tt, i: +i };
@@ -967,7 +1018,9 @@ document.addEventListener('input', e => {
     }
     live[id](e.target.value);
     markDirty();
-    renderPlan();
+    // while typing, redraw the plan once the typing pauses: a big hall costs ~70 ms per redraw
+    clearTimeout(liveT);
+    liveT = setTimeout(renderPlan, 120);
   }
 });
 document.addEventListener('change', e => {
@@ -1151,6 +1204,33 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     clickSeat(e.target.dataset.t, +e.target.dataset.i);
   }
+  // Seats of one table: arrows move between them (one Tab stop per table instead of one per seat).
+  if (
+    e.target.classList?.contains('seat') &&
+    ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key) &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey
+  ) {
+    const tid = e.target.dataset.t,
+      x = T(tid);
+    if (!x) return;
+    e.preventDefault();
+    const n = x.seats.length,
+      i = +e.target.dataset.i,
+      j =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? n - 1
+            : (i + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+    appState.seatFocus[tid] = j;
+    const next = document.querySelector(`#plan .seat[data-t="${CSS.escape(tid)}"][data-i="${j}"]`);
+    if (!next) return;
+    e.target.tabIndex = -1;
+    next.tabIndex = 0;
+    next.focus();
+  }
 });
 function clickSeat(tid, i) {
   if (appState.swapFrom) return selectItem('table', tid);
@@ -1206,7 +1286,15 @@ function closeDrawer() {
   appState.confirmK = null;
   renderAll();
 }
+/* Show the selected seat. Zoomed far out (a big hall fitted to the screen) a seat is a speck, so first zoom in to
+   its table. */
+const READABLE = 0.55;
 function scrollToSeat() {
+  const x = T(appState.sel.t);
+  if (x && appState.scale && appState.scale < READABLE) {
+    focusTable(x);
+    return;
+  }
   const el = document.querySelector(`.seat[data-t="${appState.sel.t}"][data-i="${appState.sel.i}"]`);
   el && el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
 }

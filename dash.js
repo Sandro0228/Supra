@@ -159,7 +159,8 @@
   const curTheme = () =>
     document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   function chrome() {
-    document.documentElement.lang = lang;
+    // setting lang, even to the same value, restyles the whole page: only on change
+    if (document.documentElement.lang !== lang) document.documentElement.lang = lang;
     document.title = t('dTitle');
     const md = document.querySelector('meta[name=description]');
     if (md) md.content = t('dMeta');

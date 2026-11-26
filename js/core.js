@@ -97,6 +97,11 @@ function setLang(l) {
     localStorage.setItem('supra.lang', l);
   } catch (e) {}
 }
+/* Setting <html lang>, even to the value it already has, makes the browser restyle the whole page (~80 ms with a
+   1000-guest plan on screen), so it is set only when it changes. */
+function setDocLang(l) {
+  if (document.documentElement.lang !== l) document.documentElement.lang = l;
+}
 function t(k, v) {
   let s = (L10N[UL()] || L10N.en)[k] ?? L10N.en[k] ?? k;
   if (v) for (const x in v) s = s.split('{' + x + '}').join(v[x]);
@@ -160,6 +165,7 @@ const appState = {
   saveState: 'idle',
   saveT: 0,
   scale: null,
+  seatFocus: {}, // table id -> the seat index that is in the Tab order (roving tabindex, js/draw.js)
   sel: { kind: null },
   swapFrom: null,
   waitSel: null
@@ -543,6 +549,7 @@ function person(G, P, withChair = true) {
 }
 
 export {
+  setDocLang,
   IMG,
   smartLook,
   $,

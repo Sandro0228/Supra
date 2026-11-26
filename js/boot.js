@@ -1,4 +1,4 @@
-import { $, appState, esc, imageDefs, L10N, loadImages, lookImages, randLook, t, uid, UL } from './core.js';
+import { $, appState, esc, imageDefs, L10N, loadImages, lookImages, randLook, t, uid, UL, setDocLang } from './core.js';
 import { CFG, normalize } from './state.js';
 import { autoArrange, resolveOverlaps } from './layout.js';
 import { hintSeen, logSafe, portraitLook, shareInfo } from './panels.js';
@@ -104,7 +104,7 @@ async function boot() {
   measure();
   {
     const l = UL();
-    document.documentElement.lang = l;
+    setDocLang(l);
     $('#loadingtxt').textContent =
       (L10N[l] || L10N.en)[location.pathname.startsWith('/r/') ? 'rsvpLoading' : 'loadingPlan'] || 'Loading…';
   }
