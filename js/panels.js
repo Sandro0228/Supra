@@ -86,7 +86,7 @@ function renderTop() {
   $('#evname').textContent = appState.S.event.name || 'Supra';
   if (!appState.guestMode) document.title = t('editTitle', { event: appState.S.event.name || 'Supra' });
   $('#stats').innerHTML =
-    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${appState.S.waiting.length ? ` · ${esc(tn('nUnseated', appState.S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides"><i style="background:${SIDE_COL.bride}"></i>${sides.bride} <i style="background:${SIDE_COL.groom}"></i>${sides.groom}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>` : ''}`;
+    `<span>${esc(t('statSeats', { occupied: seated, capacity: cap }))}${appState.S.waiting.length ? ` · ${esc(tn('nUnseated', appState.S.waiting.length))}` : ''}</span>${sides.bride || sides.groom ? `<span class="sides">${['bride', 'groom'].map(k => `<span title="${esc(t(k))}"><i style="background:${SIDE_COL[k]}" aria-hidden="true"></i>${esc(t(k === 'bride' ? 'statBride' : 'statGroom', { n: sides[k] }))}</span>`).join('')}</span>` : ''}${nb ? `<button type="button" class="warn" data-panel="guests">⚠ ${nb}</button>` : ''}`;
   const cur = !appState.sel.kind && appState.panel,
     tabs = [
       ['event', 'event'],

@@ -41,6 +41,7 @@ def georgian_choice_carries_from_dashboard_to_editor(pw, base):
     assert 'დასხდომის გეგმა' in p.title(), p.title()
     stats = p.inner_text('#stats')
     assert '18 ადგილიდან 18 დაკავებულია' in stats, stats
+    assert 'პატარძალი 1' in stats and 'სიძე 1' in stats, stats
     p.click('#tab-event'); p.wait_for_selector('#ev-date-txt')
     assert p.inner_text('#ev-date-txt') == '12 ივნისი, 2027'
     txt = p.inner_text('body')
