@@ -13,7 +13,7 @@ plan, findings and risk register.
 - **Big weddings (P1B):** partial redraws, one Tab stop per table, table search with zoom.
 - **Safer import (P1C):** preview, column mapping, duplicates, seats, Georgian CSV.
 - **Redesign, direction A** ("a calm table, warm guests"), nine steps: shared theme, sentence-case labels, the guest's seat reveal, RSVP thank-you, landing, event cards with ⋯ menu, planner top bar, selection toolbar, pricing/account/privacy.
-- **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting; a checklist with a progress ring and invitation replies on each card.
+- **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting; a checklist with a progress ring and invitation replies on each card; recent replies and quick actions (copy link, place cards, invitations).
 
 ### Waiting on the owner
 - `supportEmail` in `config.js` (how to buy a pass until online payment exists).
@@ -25,8 +25,7 @@ plan, findings and risk register.
 
 ### Next, in small steps (one PR each)
 Signed-in home (in order):
-1. **Activity and quick actions:** recent RSVP answers ("Beridze family: 2 coming"); copy link, place cards, invitations from home.
-2. **Feast painting:** convert and add `art/feast.webp` once the owner has generated it.
+1. **Feast painting:** convert and add `art/feast.webp` once the owner has generated it.
 
 Planner and pages:
 - **A4** sample wedding to explore.
@@ -41,6 +40,10 @@ Planner and pages:
 - **C6** select several guests at once.
 - **D1** ESLint in the test run.
 - **D2** reuse unchanged table drawings in big plans.
+
+New features (owner's ideas, 2026-11-26; propose a PR split before starting):
+- **F1 Guest photo wall (paid add-on):** during the wedding guests open their link, take photos with the phone camera, the photos go to the couple's album and guests can see it. Needs Supabase Pro (Storage; about 2 GB per wedding after shrinking photos on the phone), uploads allowed only through the guest link with a rate limit, the couple hides/deletes and downloads all, a keep-time rule, a new `entitlements` kind, privacy page and consent. About 6–8 PRs.
+- **F2 Invitation card designer:** several designs, own text or suggested texts (fixed en/ka texts first, AI suggestions later), print/PDF, each household's RSVP QR on its card. Confirm who designs them (the couple, or guests too). About 4–6 PRs.
 
 Needs owner input first:
 - **E1** bank checkout.

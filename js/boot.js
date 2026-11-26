@@ -3,7 +3,7 @@ import { CFG, normalize } from './state.js';
 import { autoArrange, resolveOverlaps } from './layout.js';
 import { hintSeen, logSafe, portraitLook, shareInfo } from './panels.js';
 import { renderPlan } from './actions.js';
-import { savePlan } from './files.js';
+import { placeCards, savePlan } from './files.js';
 import { route } from './guest.js';
 import { rsvpDraftFrom } from './rsvp.js';
 import { invRefresh } from './invites.js';
@@ -247,6 +247,13 @@ async function boot() {
     savePlan();
   }
   if (appState.MODE === 'edit' && appState.conflict) showConflict(appState.conflict);
+  // /edit/<id>?do=cards opens the place cards at once (the quick action on "Your events"), unless a save conflict
+  // needs an answer first. The parameter is dropped so a reload doesn't open them again.
+  if (appState.MODE === 'edit' && qs.get('do') === 'cards') {
+    qs.delete('do');
+    history.replaceState(history.state, '', location.pathname + (qs.size ? '?' + qs : ''));
+    if (!appState.readOnly && !appState.conflict) placeCards();
+  }
   if (appState.MODE === 'edit' && !appState.readOnly) invRefresh();
   window.__supraState = () => appState.S;
 }
