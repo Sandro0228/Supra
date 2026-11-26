@@ -10,23 +10,12 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/brand.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Serif+Display:wght@400;500;600&family=Noto+Serif+Georgian:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: signed out, a landing page that shows the product itself: the hall from above, the guest's phone and the
    place cards, made from a demo wedding in the real app (landing/*.webp, English and Georgian), then the sign-in card.
    Signed in, only the event list. Text left-aligned; one bold thing (the hall), everything around it quiet. */
-:root{
-  --bg:#F6F1EA; --panel:#FFFFFF; --ink:#2B2522; --muted:#6E655F; --line:#E4DACD;
-  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#FBF8F3; --danger:#B3261E; --sage:#6F8F72;
-  --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
-  --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; --danger:#F2867E; --sage:#97B79A; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; --danger:#F2867E; --sage:#97B79A; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
@@ -57,7 +46,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
 .who{font-size:13px;color:var(--muted)}
 .iconb{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0;color:var(--ink)}.iconb svg{width:18px;height:18px}
-.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
+.btn{font-weight:500;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-control);padding:9px 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn.sm{padding:5px 10px;font-size:13px}
@@ -190,7 +179,7 @@ footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted)
 .signin{max-width:420px;width:100%;margin:0 auto}
 .field{display:flex;flex-direction:column;gap:5px}
 .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.inp,select{border:1px solid var(--line);background:var(--soft);border-radius:9px;padding:10px 12px;width:100%;min-width:0}
+.inp,select{border:1px solid var(--line);background:var(--soft);border-radius:var(--r-control);padding:10px 12px;width:100%;min-width:0}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
 .msg{font-size:14px;color:var(--muted)}.msg.err{color:var(--danger)}
 h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
