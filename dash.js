@@ -79,6 +79,7 @@
     events: null,
     trash: [],
     plans: null, // the owner's entitlements (migration 011); null = unknown
+    invites: [], // invitation replies per event (migration 008): event_id, state, revoked
     menuId: null, // the event whose ⋯ menu is open
     trashOpen: false,
     forever: null,
@@ -448,11 +449,23 @@
     const h = new Date().getHours();
     return t(h >= 5 && h < 12 ? 'hiMorning' : h >= 12 && h < 18 ? 'hiAfternoon' : 'hiEvening');
   }
+  const guestCount = e => (e.guests ? Object.keys(e.guests).length : 0),
+    seatedCount = e => (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0);
+  /* The checklist on each card, in the order a wedding plan comes together. nextStep() below picks the first open
+     step of the same list, so the card and the hero never disagree. */
+  function steps(e) {
+    const n = guestCount(e);
+    return [
+      { k: 'ckGuests', done: n > 0, panel: 'guests' },
+      { k: 'ckSeat', done: n > 0 && seatedCount(e) >= n, panel: '' },
+      { k: 'ckPublish', done: pubOf(e), panel: 'share' },
+      { k: 'ckDate', done: !!e.event_date, panel: 'event' }
+    ];
+  }
   // what to do next for this event, in the order a wedding plan comes together
   function nextStep(e) {
-    const n = e.guests ? Object.keys(e.guests).length : 0,
-      seated = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0),
-      open = Math.max(0, n - seated),
+    const n = guestCount(e),
+      open = Math.max(0, n - seatedCount(e)),
       go = (panel, label) =>
         `<a class="btn primary" href="/edit/${esc(e.id)}${panel ? '?panel=' + panel : ''}">${esc(t(label))}</a>`;
     if (!n) return { text: t('nsGuests'), btn: go('guests', 'nsGuestsBtn') };
@@ -543,9 +556,40 @@
     const when = ago <= 0 ? t('dEditedToday') : ago <= 30 ? tn('dDaysAgo', ago) : fmtDate(d.toISOString());
     return t('dEdited', { when: ago > 30 ? when : when.charAt(0).toLowerCase() + when.slice(1) });
   }
+  // A ring that fills as the checklist is done, with the open steps as links to the planner panel that does them.
+  const RING_R = 15,
+    RING_C = 2 * Math.PI * RING_R;
+  function checklist(e) {
+    const L = steps(e),
+      done = L.filter(x => x.done).length,
+      all = done === L.length,
+      label = t('ckDone', { a: done, b: L.length }),
+      off = (RING_C * (1 - done / L.length)).toFixed(2);
+    return `<div class="ck${all ? ' all' : ''}">
+      <svg class="ring" viewBox="0 0 36 36" width="40" height="40" role="img" aria-label="${esc(label)}"><circle class="trk" cx="18" cy="18" r="${RING_R}"/><circle class="val" cx="18" cy="18" r="${RING_R}" stroke-dasharray="${RING_C.toFixed(2)}" stroke-dashoffset="${off}" transform="rotate(-90 18 18)"/><text x="18" y="18" aria-hidden="true">${done}/${L.length}</text></svg>
+      <ul class="cklist" role="list" aria-label="${esc(t('ckA11y'))}">${L.map(x =>
+        x.done
+          ? `<li class="done">${CHECK}<span class="vh">${esc(t('ckDoneItem'))} </span>${esc(t(x.k))}</li>`
+          : `<li><span class="dot" aria-hidden="true"></span><a href="/edit/${esc(e.id)}${x.panel ? '?panel=' + x.panel : ''}">${esc(t(x.k))}</a></li>`
+      ).join('')}</ul></div>`;
+  }
+  /* Invitation replies, counted by household like the planner's Invitations panel. Nothing until the couple has
+     made invitations (or on an older database without the invites table). */
+  function rsvpLine(e) {
+    const L = (D.invites || []).filter(i => i.event_id === e.id && !i.revoked);
+    if (!L.length) return '';
+    const n = k => L.filter(i => i.state === k).length;
+    return `<a class="rsvpline" href="/edit/${esc(e.id)}?panel=invites" aria-label="${esc(t('rsA11y', { a: n('coming'), b: n('declined'), c: n('pending') }))}">${[
+      'coming',
+      'declined',
+      'pending'
+    ]
+      .map(k => `<span class="rs rs-${k}"><b>${n(k)}</b> ${esc(t('rs_' + k))}</span>`)
+      .join('')}</a>`;
+  }
   function evCard(e) {
-    const n = e.guests ? Object.keys(e.guests).length : 0,
-      seated = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(Boolean).length, 0),
+    const n = guestCount(e),
+      seated = seatedCount(e),
       free = (e.tables || []).reduce((a, x) => a + (x.seats || []).filter(s => !s).length, 0),
       edited = editedText(e.updated_at),
       nm = e.name || '—',
@@ -562,6 +606,7 @@
       <p class="when">${e.event_date ? `<span class="date">${esc(fmtDate(e.event_date))}</span>` : ''}<span class="count${dd !== null && dd >= 0 && dd <= 30 ? ' soon' : ''}">${esc(when)}</span>${edited ? `<span class="edited">${esc(edited)}</span>` : ''}</p>
       ${n ? `<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${Math.min(seated, n)}" aria-label="${esc(t('dSeated', { a: Math.min(seated, n), b: n }))}"><i style="width:${pct}%"></i></div>` : ''}
       <p class="facts progtxt"><span class="seated">${esc(n ? t('dSeated', { a: Math.min(seated, n), b: n }) : t('dNoGuests'))}</span><span>${esc(tn('nTables', (e.tables || []).length))}</span>${free ? `<span>${esc(tn('nFree', free))}</span>` : ''}${planPill(e, n)}</p>
+      ${checklist(e)}${rsvpLine(e)}
       <div class="evact"><a class="btn primary" href="/edit/${esc(e.id)}" aria-label="${esc(t('dOpenPlanner') + ': ' + nm)}">${esc(t('dOpenPlanner'))}</a>${pub ? `<button type="button" class="btn" data-copy="${esc(e.slug)}" aria-label="${esc(t('dCopyLink') + ': ' + nm)}">${LINK}${esc(t('dCopyLink'))}</button>` : ''}
         <div class="evmore"><button type="button" class="btn more" data-more="${esc(e.id)}" aria-haspopup="menu" aria-expanded="${D.menuId === e.id}" aria-label="${esc(t('dMore', { n: nm }))}">${DOTS}</button>
         ${
@@ -580,20 +625,25 @@
       '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
     TRASH =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>',
+    CHECK =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     FLOWERS = (window.SUPRA_IMG_FILES || {}).flowers_top || '';
   let loadGen = 0;
   async function loadEvents() {
     const g = ++loadGen;
     D.loadErr = false;
-    const plans = SB.from('entitlements').select('kind,event_id,status,starts_at,ends_at');
+    const plans = SB.from('entitlements').select('kind,event_id,status,starts_at,ends_at'),
+      invites = SB.from('invites').select('event_id,state,revoked');
     const { data, error } = await SB.from('events')
       .select(
         'id,name,event_date,slug,guest_page,share_status,updated_at,deleted_at,guests:data->guests,tables:data->tables,ev:data->event'
       )
       .order('updated_at', { ascending: false });
-    const pr = await plans;
+    const pr = await plans,
+      ir = await invites;
     if (g !== loadGen || A.state !== 'authenticated') return;
     D.plans = pr.error ? null : pr.data || [];
+    D.invites = ir.error ? [] : ir.data || [];
     if (error) {
       D.loadErr = true;
       D.events = [];
