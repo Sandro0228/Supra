@@ -189,6 +189,18 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .account .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .account a{color:var(--accent)}.account a.btn{color:var(--ink)}
 .aclist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+/* account menu (signed in): initials button with account, plans, theme and sign out */
+.acct{position:relative}
+.acctbtn{width:38px;height:38px;border-radius:50%;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--panel));color:var(--accent);font-family:var(--display);font-size:17px;font-weight:500;display:grid;place-items:center;padding:0;cursor:pointer}
+.acctbtn:hover,.acctbtn[aria-expanded="true"]{background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
+.acctmenu{position:absolute;right:0;top:calc(100% + 8px);z-index:20;min-width:250px;display:grid;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-panel);box-shadow:0 20px 44px -18px rgba(36,23,31,.4)}
+.acctmenu[hidden]{display:none}
+.acctwho{display:flex;align-items:center;gap:10px;padding:10px 12px 12px;margin-bottom:4px;border-bottom:1px solid var(--line);font-size:14px;color:var(--muted);min-width:0}
+.acctwho #who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acctinit{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 10%,var(--panel));color:var(--accent);font-family:var(--display);font-size:14px}
+.acctmenu [role=menuitem]{display:flex;align-items:center;gap:10px;padding:10px 12px;border:0;border-radius:var(--r-control);background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;text-decoration:none;cursor:pointer}
+.acctmenu [role=menuitem]:hover,.acctmenu [role=menuitem]:focus-visible{background:var(--soft);outline:none}
+.acctmenu #signout{border-top:1px solid var(--line);border-radius:0 0 var(--r-control) var(--r-control);margin-top:4px;padding-top:12px}
 footer.foot{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}footer.foot a{color:inherit}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px}
 .signin{max-width:420px;width:100%;margin:0 auto}
@@ -222,14 +234,20 @@ h2+.field{margin-top:4px}
 @media (max-width:420px){.seg .full{display:none}.seg .short{display:inline}}
 @media (max-width:420px){.newgrid{grid-template-columns:minmax(0,1fr)}}
 .newgrid .field{min-width:0}
-.who{color:var(--muted);text-decoration:none}.who:hover{text-decoration:underline}
-.who{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
-@media (max-width:600px){.who{order:10;flex-basis:100%;text-align:left}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><nav class="hdrnav landing"><a href="#how" data-t="lpNavHow"></a><a href="/pricing" data-t="lpPricing"></a></nav><a class="who" id="who" href="/account"></a><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button><button type="button" class="btn sm" id="signout" hidden></button></header>
+  <header><div class="logo"><span class="brand hdrlogo"><img class="brandimg brandimg-l" src="/brand/supra-logo.svg" width="170" height="59" alt="Supra"><img class="brandimg brandimg-d" src="/brand/supra-logo-dark.svg" width="170" height="59" alt="Supra"></span></div><nav class="hdrnav landing"><a href="#how" data-t="lpNavHow"></a><a href="/pricing" data-t="lpPricing"></a></nav><div class="seg" id="lang" role="radiogroup"></div><button type="button" class="iconb" id="theme" aria-label="Light / dark" title="Light / dark"></button><button type="button" class="btn sm" id="hdrstart" data-start="signin" data-t="dSignIn"></button>
+  <div class="acct" id="acct" hidden><button type="button" class="acctbtn" id="acctbtn" aria-haspopup="menu" aria-expanded="false" aria-controls="acctmenu"></button>
+    <div class="acctmenu" id="acctmenu" role="menu" hidden>
+      <div class="acctwho"><span class="acctinit" aria-hidden="true"></span><span id="who"></span></div>
+      <a role="menuitem" tabindex="-1" href="/" data-t="dYour"></a>
+      <a role="menuitem" tabindex="-1" href="/account" id="acctlink" data-t="acTitleMenu"></a>
+      <a role="menuitem" tabindex="-1" href="/pricing" data-t="acPlansMenu"></a>
+      <button type="button" role="menuitem" tabindex="-1" id="accttheme"></button>
+      <button type="button" role="menuitem" tabindex="-1" id="signout"></button>
+    </div></div></header>
   <main class="lp">
   <section class="hero2 landing" aria-labelledby="tag">
     <div class="herotext">

@@ -32,7 +32,7 @@ def start_buttons_open_sign_up_and_sign_in(pw, base):
 def signed_in_shows_only_the_event_list(pw, base):
     c = Ctx(pw, base); p = c.goto('/', '.dashhead')
     assert p.evaluate("[...document.querySelectorAll('.landing')].every(e=>e.hidden)")
-    assert p.is_hidden('#hdrstart') and p.is_visible('#signout')
+    assert p.is_hidden('#hdrstart') and p.is_visible('#acctbtn') and p.is_hidden('#theme')
     c.close()
 
 @test

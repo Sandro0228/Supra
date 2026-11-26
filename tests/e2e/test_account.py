@@ -12,10 +12,20 @@ def calls(p, name):
     return [x for x in p.evaluate('window.__mockCalls') if x[0] == name]
 
 @test
-def header_email_opens_the_account_page(pw, base):
+def account_menu_opens_the_account_page(pw, base):
     c = Ctx(pw, base); p = c.goto('/', '.ev')
-    assert p.get_attribute('#who', 'href') == '/account'
-    p.click('#who'); p.wait_for_selector('#ach')
+    b = p.locator('#acctbtn')
+    assert b.inner_text() == 'S' and b.get_attribute('aria-haspopup') == 'menu' and 'sandro@example.com' in b.get_attribute('aria-label')
+    b.focus(); p.keyboard.press('Enter')
+    assert b.get_attribute('aria-expanded') == 'true' and p.evaluate("document.activeElement.getAttribute('role')") == 'menuitem'
+    assert 'sandro@example.com' in p.inner_text('#acctmenu')
+    p.keyboard.press('End'); assert p.evaluate("document.activeElement.id") == 'signout'
+    p.keyboard.press('ArrowDown'); assert p.evaluate("document.activeElement.getAttribute('href')") == '/'   # wraps
+    p.keyboard.press('Escape')
+    assert p.is_hidden('#acctmenu') and p.evaluate("document.activeElement.id") == 'acctbtn'
+    p.click('#acctbtn'); p.click('#accttheme')                          # theme lives in the menu when signed in
+    assert p.evaluate("document.documentElement.dataset.theme") in ('dark', 'light')
+    p.click('#acctbtn'); p.click('#acctlink'); p.wait_for_selector('#ach')
     assert p.inner_text('#ach') == 'Account' and 'sandro@example.com' in p.inner_text('.account')
     assert p.locator('.account a[href="/"]').count() >= 1
     assert not c.errors, c.errors

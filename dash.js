@@ -194,12 +194,17 @@
     document.body.classList.toggle('signedin', authed);
     document.querySelectorAll('.landing').forEach(el => (el.hidden = authed));
     $('#hdrstart').hidden = authed;
-    $('#who').textContent = authed ? A.session.user.email || '' : '';
-    $('#who').setAttribute('aria-label', authed ? t('acTitle') + ': ' + (A.session.user.email || '') : '');
-    $('#who').hidden = !authed;
-    const so = $('#signout');
-    so.hidden = !authed;
-    so.textContent = t('dSignOut');
+    // signed in: theme and sign out move into the account menu behind the initials button
+    th.hidden = authed;
+    $('#acct').hidden = !authed;
+    const email = authed ? A.session.user.email || '' : '',
+      init = (email.trim()[0] || '·').toUpperCase();
+    $('#who').textContent = email;
+    $('#acctbtn').textContent = init;
+    document.querySelector('.acctinit').textContent = init;
+    $('#acctbtn').setAttribute('aria-label', t('acMenuA11y', { email }));
+    $('#accttheme').textContent = t(dark ? 'toLight' : 'toDark');
+    $('#signout').textContent = t('dSignOut');
   }
   function render() {
     chrome();
@@ -730,6 +735,39 @@
     location.replace('/?deleted=1');
   }
 
+  // The account menu (initials button): same keyboard behaviour as the card's ⋯ menu.
+  function setAcctMenu(open, focusButton) {
+    const m = $('#acctmenu'),
+      b = $('#acctbtn');
+    if (!m || !b) return;
+    m.hidden = !open;
+    b.setAttribute('aria-expanded', String(open));
+    if (!open && focusButton) b.focus();
+  }
+  document.addEventListener('pointerdown', e => {
+    if (!$('#acctmenu')?.hidden && !e.target.closest('#acct')) setAcctMenu(false);
+  });
+  document.addEventListener('focusin', e => {
+    if (!$('#acctmenu')?.hidden && !e.target.closest('#acct')) setAcctMenu(false);
+  });
+  document.addEventListener('keydown', e => {
+    if ($('#acctmenu')?.hidden || !e.target.closest('#acct')) return;
+    const items = [...document.querySelectorAll('#acctmenu [role=menuitem]')],
+      i = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setAcctMenu(false, true);
+    } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+      const j =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? items.length - 1
+            : (i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[j].focus();
+    }
+  });
   // The card's ⋯ menu closes without redrawing the list, so focus moving out of it (Tab, a click elsewhere) stays put.
   function closeMenu(focusButton) {
     const id = D.menuId;
@@ -897,13 +935,20 @@
       ($('#' + ae) || $(`[data-lang="${lang}"]`))?.focus();
       return;
     }
-    if (b.id === 'theme') {
+    if (b.id === 'acctbtn') {
+      const open = $('#acctmenu').hidden;
+      setAcctMenu(open);
+      if (open) $('#acctmenu [role=menuitem]')?.focus();
+      return;
+    }
+    if (b.id === 'theme' || b.id === 'accttheme') {
       const n = curTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = n;
       try {
         localStorage.setItem('supra.theme', n);
       } catch (x) {}
       chrome();
+      if (b.id === 'accttheme') setAcctMenu(false, true); // a menu choice closes the menu
       return;
     }
     if (b.id === 'signout') {
