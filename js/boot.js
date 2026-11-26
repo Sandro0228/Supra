@@ -234,6 +234,10 @@ async function boot() {
   if (appState.MODE === 'edit') await allImages;
   if (appState.S.tables.some(x => x.x === undefined)) autoArrange();
   resolveOverlaps();
+  // /edit/<id>?panel=guests opens the planner on that panel (used by the next-step buttons on "Your events")
+  const startPanel = qs.get('panel');
+  if (appState.MODE === 'edit' && !appState.readOnly && ['event', 'guests', 'invites', 'share'].includes(startPanel))
+    appState.panel = startPanel;
   route();
   document.fonts?.ready.then(() => {
     if (!appState.guestMode) renderPlan();
