@@ -61,3 +61,43 @@ def home_in_georgian(pw, base):
     assert p.inner_text('.hello') in ('დილა მშვიდობისა', 'გამარჯობა', 'საღამო მშვიდობისა')
     assert 'ყველაფერი მზადაა' in p.inner_text('.nextstep')
     c.close()
+
+@test
+def card_checklist_ring_and_open_steps(pw, base):
+    c, p = home(pw, base, [ev(status='draft')])                        # guests seated, not published, no date
+    assert p.get_attribute('.ev .ring', 'aria-label') == '2 of 4 steps done'
+    assert p.locator('.ev .cklist li.done').count() == 2
+    links = p.eval_on_selector_all('.ev .cklist a', 'as => as.map(a => [a.textContent, a.getAttribute("href")])')
+    assert links == [['Guest page published', '/edit/ev1?panel=share'], ['Wedding date', '/edit/ev1?panel=event']], links
+    assert p.locator('.ev .rsvpline').count() == 0                     # no invitations yet: no replies line
+    assert not c.errors, c.errors
+    c.close()
+    c, p = home(pw, base, [ev(date=day(30))])
+    assert p.get_attribute('.ev .ring', 'aria-label') == '4 of 4 steps done'
+    assert p.locator('.ev .ck.all').count() == 1 and p.locator('.ev .cklist a').count() == 0
+    c.close()
+
+def inv(id, state, n=0, event='ev1', revoked=False):
+    return dict(id=id, event_id=event, token='t' + id, name='H' + id, members=[], extra_allowed=0, lang='en', sent=[],
+                answer=None, coming_count=n, state=state, revoked=revoked)
+
+@test
+def card_shows_invitation_replies(pw, base):
+    invs = [inv('1', 'coming', 2), inv('2', 'coming', 3), inv('3', 'declined'), inv('4', 'pending'), inv('5', 'pending'),
+            inv('6', 'pending', revoked=True), inv('7', 'coming', 1, event='other')]
+    c = Ctx(pw, base, events=[ev(date=day(30))], invites=invs); p = c.goto('/', '.home')
+    line = p.locator('.ev .rsvpline')
+    assert line.inner_text().split() == ['2', 'coming', '1', "can't", 'come', '2', 'no', 'answer', 'yet'], line.inner_text()
+    assert line.get_attribute('href') == '/edit/ev1?panel=invites'
+    assert line.get_attribute('aria-label').startswith('Invitation replies: 2 coming, 1 can’t come, 2 no answer yet')
+    assert not c.errors, c.errors
+    c.close()
+
+@test
+def card_checklist_in_georgian(pw, base):
+    c = Ctx(pw, base, events=[ev(status='draft')], invites=[inv('1', 'declined')],
+            extra="localStorage.setItem('supra.lang','ka');")
+    p = c.goto('/', '.home')
+    assert p.get_attribute('.ev .ring', 'aria-label') == '4 ნაბიჯიდან შესრულებულია 2'
+    assert 'ვერ მოდის' in p.inner_text('.ev .rsvpline')
+    c.close()

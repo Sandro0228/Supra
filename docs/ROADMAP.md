@@ -13,7 +13,7 @@ plan, findings and risk register.
 - **Big weddings (P1B):** partial redraws, one Tab stop per table, table search with zoom.
 - **Safer import (P1C):** preview, column mapping, duplicates, seats, Georgian CSV.
 - **Redesign, direction A** ("a calm table, warm guests"), nine steps: shared theme, sentence-case labels, the guest's seat reveal, RSVP thank-you, landing, event cards with ⋯ menu, planner top bar, selection toolbar, pricing/account/privacy.
-- **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting.
+- **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting; a checklist with a progress ring and invitation replies on each card.
 
 ### Waiting on the owner
 - `supportEmail` in `config.js` (how to buy a pass until online payment exists).
@@ -25,9 +25,8 @@ plan, findings and risk register.
 
 ### Next, in small steps (one PR each)
 Signed-in home (in order):
-1. **Checklist and RSVP on cards:** next-steps checklist with a progress ring; coming / can't come / no answer counts.
-2. **Activity and quick actions:** recent RSVP answers ("Beridze family: 2 coming"); copy link, place cards, invitations from home.
-3. **Feast painting:** convert and add `art/feast.webp` once the owner has generated it.
+1. **Activity and quick actions:** recent RSVP answers ("Beridze family: 2 coming"); copy link, place cards, invitations from home.
+2. **Feast painting:** convert and add `art/feast.webp` once the owner has generated it.
 
 Planner and pages:
 - **A4** sample wedding to explore.
