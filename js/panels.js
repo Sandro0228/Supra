@@ -452,6 +452,15 @@ function doFind() {
       return v.toLowerCase().includes(q) || (qk.length >= 2 && skel(v).includes(qk));
     };
   const res = [];
+  // tables first: "12" or "table 12" jumps to that table in a big hall
+  appState.S.tables.forEach(x => {
+    const nm = tName(x),
+      num = (nm.match(/\d+/) || [])[0];
+    if (has(nm) || (num && num === q.replace(/\D/g, '') && /^\D*\d+$/.test(q)))
+      res.push(
+        `<button type="button" data-gototable="${x.id}"><span>${esc(nm)}</span><small>${esc(tn('nSeatsTaken', x.seats.filter(Boolean).length))} · ${esc(tn('nFree', x.seats.filter(v => !v).length))}</small></button>`
+      );
+  });
   appState.S.tables.forEach(x =>
     x.seats.forEach((id, i) => {
       const G = id && appState.S.guests[id];
@@ -468,7 +477,11 @@ function doFind() {
         `<button type="button" data-wait="${id}"><span>${esc(G.name)}</span><small>${t('waiting')}</small></button>`
       );
   });
-  box.innerHTML = res.join('') || `<span class="muted">${t('noOne')}</span>`;
+  const MAX = 50; // a one-letter search in a 1000-guest plan would otherwise list hundreds
+  box.innerHTML =
+    res.length > MAX
+      ? res.slice(0, MAX).join('') + `<span class="muted">${esc(tn('findMore', res.length - MAX))}</span>`
+      : res.join('') || `<span class="muted">${t('noOne')}</span>`;
 }
 function loadScript(src) {
   return new Promise((ok, no) => {

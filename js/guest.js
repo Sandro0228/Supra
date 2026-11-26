@@ -1,4 +1,4 @@
-import { $, appState, esc, guessKind, loadImages, randLook, seatMode, setLang, t, UL } from './core.js';
+import { $, appState, esc, guessKind, loadImages, randLook, seatMode, setLang, t, UL, setDocLang } from './core.js';
 import { T, tName } from './state.js';
 import { dims, turnView, withView } from './layout.js';
 import { planSVG } from './draw.js';
@@ -50,7 +50,7 @@ function gDate() {
   return fmtDate(appState.S.event.date);
 }
 function guestMeta() {
-  document.documentElement.lang = UL();
+  setDocLang(UL());
   document.title = appState.PREVIEW
     ? t('pvTitle') + ' · ' + (appState.S.event.name || 'Supra')
     : [t('fgTitle'), appState.S.event.name, 'Supra'].filter(Boolean).join(' · ');
