@@ -182,7 +182,12 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 .whotxt{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
 .whotxt h2{word-break:break-word}
 .how{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
-.search-res{display:flex;flex-direction:column;gap:2px;max-height:200px;overflow:auto}
+.search-res{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow:auto}
+.ffilters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 4px}
+.ffilters .chip{cursor:pointer;min-height:30px}.ffilters .chip .dot{margin-right:5px}
+.ffgroup{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:4px 10px;min-height:30px;max-width:100%}
+.ffgroup.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.ffcount{padding:2px 6px}
 .search-res button{text-align:left;border:0;background:none;padding:5px 6px;border-radius:6px;display:flex;justify-content:space-between;gap:8px}
 .search-res button:hover{background:var(--soft)}
 .search-res small{color:var(--muted)}
