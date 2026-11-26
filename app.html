@@ -240,11 +240,11 @@ table.cat{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;
 .gfield{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
 .gfield small,.ghint{color:var(--muted);font-weight:400;font-size:13px}
 .gfind{min-height:48px;font-size:16px}
+.gform.found .gfind{background:var(--panel);color:var(--ink);border-color:var(--line)}
 .gres{min-height:56px}
 .ghits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .ghit{width:100%;min-height:48px;align-items:center}
 .gseat{color:var(--muted);font-weight:400}
-.gcard h3.lbl{margin:8px 0 0}
 .gcard:focus{outline:none}.gcard:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .gwait{opacity:.8}
 .sharelink{margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px;overflow-wrap:anywhere;word-break:break-all}
@@ -258,9 +258,24 @@ table.cat{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;
 .gres{display:flex;flex-direction:column;gap:8px}
 .ghit{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);text-align:left}
 .ghit .gtable{color:var(--accent);white-space:nowrap}
-.gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px}
-.gbig{font-family:var(--display);font-size:40px;color:var(--accent);line-height:1.1}
-.gcard .gname{font-size:18px;font-weight:500}
+.gcard{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px 20px 18px;display:flex;flex-direction:column;align-items:center;gap:6px}
+/* the seat reveal: their own drawing in a candle glow, then the table large (design direction A's peak moment) */
+.greveal .gportrait{border-radius:50%;box-shadow:0 0 0 3px var(--panel),0 0 0 4px var(--gold),0 0 46px 16px color-mix(in srgb,var(--gold) 20%,transparent)}
+.gyou{margin:10px 0 0;color:var(--muted);font-size:15px;text-wrap:balance}
+.gseatline{font-size:17px;font-weight:500}
+.gwithbox{margin-top:10px;padding-top:12px;border-top:1px solid var(--line);align-self:stretch}
+.gwithh{font:500 13px/1.4 var(--body);color:var(--muted);margin:0}
+.gcard .gwith{color:var(--ink);font-size:15px;margin:4px 0 0}
+.gshow{align-self:stretch;min-height:48px;margin-top:12px;font-size:16px}
+.gcard .gacts{justify-content:center;flex-wrap:wrap;gap:4px 18px;margin-top:4px}
+.gmap:focus{outline:none}.gmap:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:8px}
+@media (prefers-reduced-motion:no-preference){
+  .greveal{animation:greveal .45s cubic-bezier(.2,.7,.2,1) both}
+  .greveal .gportrait{animation:gglow 1.6s ease-out both}
+}
+@keyframes greveal{from{opacity:0;transform:translateY(8px) scale(.985)}}
+@keyframes gglow{from{box-shadow:0 0 0 3px var(--panel),0 0 0 4px var(--gold),0 0 0 0 transparent}}
+.gbig{font-family:var(--display);font-weight:500;font-size:clamp(44px,13vw,60px);color:var(--accent);line-height:1.02;text-wrap:balance}
 .gwith{color:var(--muted);font-size:14px}
 .gnone{color:var(--muted)}
 .gmap{display:flex;flex-direction:column;gap:8px}.gmapbtns{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 20px}.gmapbtns .linkbtn{display:inline-flex;align-items:center;gap:6px;min-height:32px}.gmap .gmapbtns svg{width:16px;height:16px;max-height:none;border:0;border-radius:0;flex:none}.gmap svg{width:100%;height:auto;max-height:70vh;border-radius:12px;border:1px solid var(--line)}
