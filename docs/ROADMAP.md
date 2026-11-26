@@ -15,6 +15,7 @@ plan, findings and risk register.
 - **Redesign, direction A** ("a calm table, warm guests"), nine steps: shared theme, sentence-case labels, the guest's seat reveal, RSVP thank-you, landing, event cards with ⋯ menu, planner top bar, selection toolbar, pricing/account/privacy.
 - **Signed-in home:** account menu behind an initials button; greeting, the next wedding and its next step; a framed space for the feast painting; a checklist with a progress ring and invitation replies on each card; recent replies and quick actions (copy link, place cards, invitations); a sample wedding to explore (A4).
 - **List view (C2):** the plan as tables of guests (seat, side, group, meal, allergies) with the same selecting and seating as the drawing.
+- **Seating rules list (C5):** every rule in words, broken first with where the guests sit now, "Show me", and the top-bar warning opens the rules.
 - **Guest filters (C1):** without a seat, bride's/groom's side, group, allergies, combined with the guest search.
 
 ### Waiting on the owner
@@ -34,7 +35,6 @@ Planner and pages:
 - **B3** phone planner priorities.
 - **C3** simpler drawings when zoomed far out.
 - **C4** minimap.
-- **C5** seating-rules list with "show me".
 - **C6** select several guests at once.
 - **D1** ESLint in the test run.
 - **D2** reuse unchanged table drawings in big plans.

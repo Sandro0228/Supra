@@ -14,7 +14,7 @@ import {
   uid,
   setDocLang
 } from './core.js';
-import { T, V, commit, hist, markDirty, mkGuest, tName, toast, undo } from './state.js';
+import { T, V, commit, hist, markDirty, mkGuest, tName, toast, undo, where } from './state.js';
 import {
   applyArrangement,
   arrangeDefaults,
@@ -905,11 +905,22 @@ document.addEventListener('click', e => {
   }
   if (d.panel) {
     const k = d.panel;
-    if (!drawerOpen) appState.drawerOpener = '#tab-' + k;
-    appState.panel = appState.panel === k && !appState.sel.kind ? null : k;
+    if (!drawerOpen) appState.drawerOpener = d.open ? '.warn' : '#tab-' + k;
+    // data-open: open the panel on one of its sections (the broken-rules warning opens Seating rules)
+    appState.panel = appState.panel === k && !appState.sel.kind && !d.open ? null : k;
+    if (d.open) OPEN.add(d.open);
     appState.sel = { kind: null };
     appState.confirmK = null;
     renderAll();
+    if (d.open) document.querySelector(`[data-sec="${CSS.escape(d.open)}"]`)?.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+  if (d.rshow) {
+    const r = appState.S.rules.find(x => x.id === d.rshow),
+      w = r && (where(r.a) || where(r.b));
+    if (!w) return;
+    clickSeat(w.t.id, w.i, '#tab-guests');
+    scrollToSeat();
     return;
   }
   if (d.lang) {
