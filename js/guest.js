@@ -87,7 +87,7 @@ function guestRender() {
       <p id="gerr" class="gerr" role="alert">${GERR ? esc(t(GERR)) : ''}</p>
       <button type="submit" class="btn primary gfind">${t('fgFind')}</button>
     </form>
-    <div id="gres" class="gres" aria-live="polite"></div><div id="gmap" class="gmap"></div>
+    <div id="gres" class="gres" aria-live="polite"></div><div id="gmap" class="gmap" tabindex="-1"></div>
     ${appState.MODE === 'edit' ? `<button type="button" class="linkbtn" data-gback>${t('fgBack')}</button>` : ''}
     <footer class="gpowered"><span>${esc(t('poweredBy'))}</span>${SupraLogo({ kind: 'full', width: 100, alt: UL() === 'ka' ? '' : 'Supra', cls: 'gplogo' })}</footer></div>`;
   guestShow();
@@ -115,6 +115,8 @@ function guestShow() {
   const st = GS.status,
     ms = GS.matches;
   map.innerHTML = '';
+  // once a seat is shown, "Show me on the plan" is the one next step: the search button steps back
+  $('#gform')?.classList.toggle('found', st === 'ok' && ms.length > 0 && (ms.length === 1 || GS.chosen >= 0));
   if (st === 'idle') {
     res.innerHTML = '';
     return;
@@ -132,13 +134,22 @@ function guestShow() {
     return;
   }
   const m = ms[Math.max(0, GS.chosen)],
-    mates = Array.isArray(m.mates) ? m.mates.filter(Boolean) : [];
-  res.innerHTML = `<div class="gcard" tabindex="-1" id="gcard"><div class="gchar">${portrait(m, 132, t('fgPortrait', { name: m.name }))}</div><span class="lbl">${t('fgTable')}</span><div class="gbig">${esc(gTableName(m))}</div>
-    <div class="gname">${esc(m.name)}${m.seat != null && seatMode() === 'seat' ? ` · <span class="gseat">${esc(t('seatN', { number: m.seat }))}</span>` : ''}</div>
-    ${m.seat == null || seatMode() === 'table' ? `<p class="gfree"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10l-1 9H8z"/><path d="M6 12h12M8 12l-1 9M16 12l1 9"/></svg><span>${t('fgAnySeat')}</span></p>` : ''}
-    ${mates.length ? `<h3 class="lbl">${t('fgWith')}</h3><p class="gwith">${mates.map(esc).join(' · ')}</p>` : ''}
+    mates = Array.isArray(m.mates) ? m.mates.filter(Boolean) : [],
+    ownSeat = m.seat != null && seatMode() === 'seat',
+    onPlan = !!appState.S.tables[m.table];
+  // The seat reveal (design direction A's "peak"): their own drawing in a candle glow, their name, the table large.
+  res.innerHTML = `<div class="gcard greveal" tabindex="-1" id="gcard"><div class="gchar">${portrait(m, 128, t('fgPortrait', { name: m.name }))}</div>
+    <p class="gyou">${esc(t('fgYourTable', { name: m.name }))}</p><div class="gbig">${esc(gTableName(m))}</div>
+    ${ownSeat ? `<div class="gseatline">${esc(t('seatN', { number: m.seat }))}</div>` : `<p class="gfree"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10l-1 9H8z"/><path d="M6 12h12M8 12l-1 9M16 12l1 9"/></svg><span>${t('fgAnySeat')}</span></p>`}
+    ${mates.length ? `<div class="gwithbox"><h3 class="gwithh">${t('fgWith')}</h3><p class="gwith">${esc(listOf(mates))}</p></div>` : ''}
+    ${onPlan ? `<button type="button" class="btn primary gshow" data-gshow>${t('fgShowPlan')}</button>` : ''}
     <div class="row gacts">${ms.length > 1 ? `<button type="button" class="linkbtn" data-gall>${t('fgNotYou')}</button>` : ''}<button type="button" class="linkbtn" data-gagain>${t('fgAgain')}</button></div></div>`;
   gMap(m);
+}
+// "Lasha, Teona and Giorgi" / "ლაშა, თეონა და გიორგი". Built here: browsers without Georgian list data fall back to "and".
+function listOf(names) {
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + t('listAnd') + names[names.length - 1];
 }
 function gTableName(m) {
   const x = appState.S.tables[m.table];
@@ -301,6 +312,16 @@ function guestClick(e) {
     GROOM = !GROOM;
     guestShow();
     $('[data-groom]')?.focus();
+    return;
+  }
+  if (b.dataset.gshow !== undefined) {
+    const map = $('#gmap');
+    if (!map) return;
+    map.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start'
+    });
+    map.focus({ preventScroll: true });
     return;
   }
   if (b.dataset.gagain !== undefined) {
