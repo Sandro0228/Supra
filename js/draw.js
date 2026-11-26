@@ -169,7 +169,7 @@ function venueM(v, p, isSel, guest) {
     ly = v.type === 'bar' ? y + Math.min(46, v.h * 0.55) / 2 + 4 : 0;
   const [lx, lyy] = rot(0, ly, r);
   return `<g class="venue" data-v="${v.id}"${guest ? '' : ` role="button" tabindex="0" aria-label="${esc(lbl || t(v.type))}"`} transform="translate(${v.x} ${v.y})"><g transform="rotate(${r})">${body}${isSel ? `<rect x="${x - 6}" y="${y - 8}" width="${v.w + 12}" height="${v.h + 14}" rx="10" fill="none" stroke="${p.accent}" stroke-width="2" stroke-dasharray="6 4"/>` : ''}</g>
-  <g transform="translate(${lx.toFixed(1)} ${lyy.toFixed(1)})">${pill ? `<rect x="${-lw / 2}" y="-12" width="${lw}" height="24" rx="12" fill="#FFFFFF" stroke="${p.accent}" opacity=".95"/>` : ''}<text x="0" y="5" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="15" fill="${p.ink}">${esc(lbl)}</text></g>
+  <g transform="translate(${lx.toFixed(1)} ${lyy.toFixed(1)})">${pill ? `<rect x="${-lw / 2}" y="-12" width="${lw}" height="24" rx="12" fill="#FFFFFF" stroke="${p.accent}" opacity=".95"/>` : ''}<text x="0" y="5" text-anchor="middle" font-family="Noto Serif Display, Noto Serif Georgian, Georgia, serif" font-size="15" fill="${p.ink}">${esc(lbl)}</text></g>
   ${
     isSel
       ? (() => {
@@ -301,7 +301,7 @@ function planSVG(opt = {}) {
   const seated = appState.S.tables.reduce((a, x) => a + x.seats.filter(Boolean).length, 0);
   const date = gDate();
   const cx = B.x + B.w / 2;
-  s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(appState.S.event.name || t('wedding'))}</text>`;
+  s += `<text x="${cx}" y="${B.y + 70}" text-anchor="middle" font-family="Noto Serif Display, Noto Serif Georgian, Georgia, serif" font-size="38" fill="${p.ink}">${esc(appState.S.event.name || t('wedding'))}</text>`;
   s += `<text x="${cx}" y="${B.y + 102}" text-anchor="middle" font-family="${BODYFONT}" font-size="15" fill="${p.accent}" letter-spacing="1">${esc([date, tn('nGuests', seated), tn('nTables', appState.S.tables.length)].filter(Boolean).join('  ·  '))}</text>`;
   s += `<path d="M${cx - 70},${B.y + 116} H${cx + 70}" stroke="${p.accent}" stroke-width="1"/>`;
   add('title', s);
@@ -396,7 +396,7 @@ function planSVG(opt = {}) {
       ly = g.shape.type === 'round' ? (x.deco === 'none' ? 0 : -g.shape.r + 46) : x.shape === 'head' ? -10 : 0;
     tb += `</g></g>`;
     const [plx, ply] = rot(0, ly, R0);
-    tb += `<g pointer-events="none"><rect x="${(plx - lw / 2).toFixed(1)}" y="${(ply - 13).toFixed(1)}" width="${lw}" height="26" rx="13" fill="#FFFFFF" stroke="${p.accent}" stroke-width="1"/><text x="${plx.toFixed(1)}" y="${(ply + 5).toFixed(1)}" text-anchor="middle" font-family="Marcellus, Noto Serif Georgian, Georgia, serif" font-size="14" fill="${p.ink}">${esc(nm)}</text></g>`;
+    tb += `<g pointer-events="none"><rect x="${(plx - lw / 2).toFixed(1)}" y="${(ply - 13).toFixed(1)}" width="${lw}" height="26" rx="13" fill="#FFFFFF" stroke="${p.accent}" stroke-width="1"/><text x="${plx.toFixed(1)}" y="${(ply + 5).toFixed(1)}" text-anchor="middle" font-family="Noto Serif Display, Noto Serif Georgian, Georgia, serif" font-size="14" fill="${p.ink}">${esc(nm)}</text></g>`;
     g.seats.forEach((st, i) => {
       const G = x.seats[i] && appState.S.guests[x.seats[i]];
       if (G && !G.anon) {

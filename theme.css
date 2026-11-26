@@ -1,0 +1,72 @@
+/* Supra's shared look (design direction A, "a calm table, warm guests"). Every page links this file before its own
+   styles. The interface stays quiet (stone and tablecloth white) so the illustrated hall and guests carry the warmth;
+   Saperavi wine marks the one next action on a screen; gold appears only in fine lines and the seat reveal.
+   The short names (--bg, --panel, --accent …) are what page CSS uses; they map onto the named colours here.
+   The event's own plan colours (PALETTES in js/core.js) are separate and never come from this file. */
+:root {
+  /* named colours */
+  --stone: #f1f0ee; /* page ground, planner backdrop */
+  --tablecloth: #fcfbfa; /* panels, cards, fields */
+  --saperavi: #24171f; /* text */
+  --wine: #7b1f3e; /* the next action */
+  --gold: #a57f2e; /* hairlines, the seat reveal */
+  --vine: #4e6a4c; /* saved, coming, done */
+
+  /* roles used by page CSS */
+  --bg: var(--stone);
+  --panel: var(--tablecloth);
+  --soft: #f6f5f3; /* a quiet fill: inputs, hover, segmented controls */
+  --ink: var(--saperavi);
+  --muted: #6c6168;
+  --line: #e3dedb;
+  --accent: var(--wine);
+  --accent-ink: #ffffff;
+  --danger: #a8321f;
+  --warn-bg: #f8ebe6;
+  --sage: var(--vine);
+  --yes: var(--vine);
+  --yes-ink: #ffffff;
+
+  /* type */
+  --display: 'Noto Serif Display', 'Noto Serif Georgian', Georgia, serif;
+  --body: 'Noto Sans', 'Noto Sans Georgian', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* shape: corners grow with the size of the thing */
+  --r-control: 8px; /* buttons, fields */
+  --r-panel: 14px; /* panels, cards, dialogs */
+  --r-pill: 999px; /* status chips only */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --stone: #141015;
+    --tablecloth: #1e181e;
+    --saperavi: #f3edef;
+    --wine: #d98aa7;
+    --gold: #d4b05f;
+    --vine: #97b793;
+    --soft: #261f26;
+    --muted: #b0a4ab;
+    --line: #372d34;
+    --accent-ink: #24101a;
+    --danger: #f0907e;
+    --warn-bg: #3a2420;
+    --yes-ink: #10251a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --stone: #141015;
+  --tablecloth: #1e181e;
+  --saperavi: #f3edef;
+  --wine: #d98aa7;
+  --gold: #d4b05f;
+  --vine: #97b793;
+  --soft: #261f26;
+  --muted: #b0a4ab;
+  --line: #372d34;
+  --accent-ink: #24101a;
+  --danger: #f0907e;
+  --warn-bg: #3a2420;
+  --yes-ink: #10251a;
+  color-scheme: dark;
+}

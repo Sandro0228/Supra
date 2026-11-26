@@ -10,21 +10,10 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/brand.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Serif+Display:wght@400;500;600&family=Noto+Serif+Georgian:wght@400;500;600;700&display=swap">
 <style>
 /* Pricing (plans from migration 011). Same tokens as index.html. */
-:root{
-  --bg:#F6F1EA; --panel:#FFFFFF; --ink:#2B2522; --muted:#6E655F; --line:#E4DACD;
-  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#FBF8F3;
-  --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
-  --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#1A1716; --panel:#24201E; --ink:#F1EAE3; --muted:#B3A79D; --line:#3A332F;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#2B2624; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
@@ -40,7 +29,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .seg button[aria-checked="true"]{background:var(--ink);color:var(--panel)}
 .seg .short{display:none}@media (max-width:420px){.seg .full{display:none}.seg .short{display:inline}}
 .iconb{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0}.iconb svg{width:18px;height:18px}
-.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.btn{font-weight:500;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:var(--r-control);padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;color:var(--ink)}
 h1{font-size:clamp(32px,5vw,52px);line-height:1.1;text-wrap:balance}

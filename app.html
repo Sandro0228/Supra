@@ -9,7 +9,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/brand.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans+Georgian:wght@400;500;700&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Serif+Display:wght@400;500;600&family=Noto+Serif+Georgian:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: canvas-first. A slim top bar with the three panels (Event, Guests, Share); the paper plan fills the rest;
    one slide-in panel shows whichever panel or selected item is active; floating toolbars sit on the canvas. */
@@ -92,18 +93,6 @@ body.focus .bar{display:none}
 }
 @media (max-width:520px){#savestate{display:none}.seg button{padding:6px 8px}}
 /* Layout: three-pane workbench — tabbed event/guest/share panel left, the paper floor plan centre, the inspector right; a separate full-screen "find my seat" view for guests */
-:root{
-  --bg:#EEF0EA; --panel:#FFFFFF; --ink:#24302A; --muted:#66706A; --line:#DADFD5;
-  --accent:#B4506F; --accent-ink:#FFFFFF; --soft:#F5F6F1; --danger:#B3261E; --warn-bg:#FBEDE9; --yes:#3D6B4A; --yes-ink:#FFFFFF;
-  --display:"Marcellus","Noto Serif Georgian",Georgia,serif;
-  --body:"Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#141917; --panel:#1D2421; --ink:#E7EBE4; --muted:#9BA59E; --line:#2F3934;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; --yes:#94C9A0; --yes-ink:#10251A; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#141917; --panel:#1D2421; --ink:#E7EBE4; --muted:#9BA59E; --line:#2F3934;
-  --accent:#E08AA6; --accent-ink:#2A1018; --soft:#232B27; --danger:#F2867E; --warn-bg:#3A2420; --yes:#94C9A0; --yes-ink:#10251A; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -128,7 +117,7 @@ p{margin:0}
 .seg button[aria-checked="true"]{background:var(--ink);color:var(--panel)}
 #savestate{font-size:12px;color:var(--muted)}
 #savestate[data-state="dirty"]{color:var(--accent)}
-.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn{font-weight:500;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-control);padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn.danger{color:var(--danger)}
@@ -140,7 +129,7 @@ p{margin:0}
 .sec{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
 .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
-.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.inp,.sec select{border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.field input:not([type=checkbox]):not([type=radio]),.field select,.field textarea,.inp,.sec select{border:1px solid var(--line);background:var(--soft);border-radius:var(--r-control);padding:7px 9px;width:100%;min-width:0}
 /* One height for every one-line control, so date/time pickers line up with text boxes and dropdowns */
 .field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,input.inp,select.inp,.sec select{height:calc(1.45em + 16px)}
 textarea{resize:vertical}
